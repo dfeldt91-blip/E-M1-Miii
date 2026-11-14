@@ -419,3 +419,10 @@ E-M1 III equivalents found so far:
   Height table, ORF frame, LV ratio pair and CapThr switches not located yet.
 - Diagnostic build option `--aspect-test` (drop 3:4) tests whether validator
   edits reach the menus (E-P7 v4 step).
+
+## Multiple Exposure frames (tools/patch_multiexp.py)
+
+MODE_MULTI_EXPOSURE_FRAME 0x10a: validator 0x604dc904 ([0,2]), tab descriptors 0x611af8b0/0x61206d60/
+0x61288514, and the Number of Frames row records 0x611bc7ac/0x61271fd8/0x61280730 (36 B, two option
+lists each). The sequencer (0x609c7bff, 0x609c857c, 0x609c8da5) counts to the setting; frame array
+malloc(20). Camera: 3f and 4f work (1.602); 5f froze and restarted the camera, so the list is [0,2,3,4].

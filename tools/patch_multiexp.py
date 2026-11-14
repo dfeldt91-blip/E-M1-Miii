@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Multiple Exposure with 3, 4 or 5 frames (EXPERIMENTAL, E-M1 Mark III, 1.5-based).
+"""Multiple Exposure with 3 or 4 frames (EXPERIMENTAL, E-M1 Mark III, 1.5-based).
 
   python3 tools/patch_multiexp.py IN.BIN OUT.BIN [--version 0x1601]
 
 Port of the E-P7 Caduceus "Live ND" route A (docs/LIVE_ND.md there), data only:
   - validator record of MODE_MULTI_EXPOSURE_FRAME (0x10a) at 0x604dc904: u8 list [0, 2] ->
-    new list [0, 2, 3, 4, 5] in free space;
+    new list [0, 2, 3, 4] in free space (5 froze the camera on test);
   - the three menu option lists {0 Off, 2 "2f"} (descriptors 0x611af8b0 / 0x61206d60 / 0x61288514 in
     blob B) -> 5-entry copies with the stock labels "3f" 1430, "4f" 1431, "5f" 1899.
 Camera (1.601): the tab descriptors alone do not change the Number of Frames row. The row record
@@ -29,7 +29,7 @@ BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 REC, STOCK_LIST = 0x604dc904, 0x604d93d2
 DESCS = (0x611af8b0, 0x61206d60, 0x61288514)
 ROWS = (0x611bc7ac, 0x61271fd8, 0x61280730)
-FRAMES = [0, 2, 3, 4, 5]
+FRAMES = [0, 2, 3, 4]          # camera: 5 froze and restarted the camera (1.602); 4 works
 LABELS = {3: 1430, 4: 1431, 5: 1899}
 FREE_LO, FREE_HI = 0x600d6d00, 0x600d6f80      # 0xff padding, unused by the aspect build
 
@@ -67,7 +67,7 @@ def patch(main):
         es = [struct.unpack_from("<IHHI", gui, ptr - BLOB_B + 12 * k) for k in range(2)]
         check([e[0] for e in es] == [0, 2] and all(e[1] == 4 for e in es), "option list %#x differs" % ptr)
         cond = es[1][3]
-        new = es + [(v, 4, LABELS[v], cond) for v in (3, 4, 5)]
+        new = es + [(v, 4, LABELS[v], cond) for v in FRAMES[2:]]
         data = b"".join(struct.pack("<IHHI", *e) for e in new)
         m[off(free):off(free) + len(data)] = data
         struct.pack_into("<HI", gui, d - BLOB_B + 2, len(new), free)
@@ -76,7 +76,7 @@ def patch(main):
         nonlocal free
         es = [struct.unpack_from("<IHHI", gui, ptr - BLOB_B + 12 * k) for k in range(2)]
         check([e[0] for e in es] == [0, 2] and all(e[1] == 4 for e in es), "row list %#x differs" % ptr)
-        new = es + [(v, 4, LABELS[v], es[1][3]) for v in (3, 4, 5)]
+        new = es + [(v, 4, LABELS[v], es[1][3]) for v in FRAMES[2:]]
         data = b"".join(struct.pack("<IHHI", *e) for e in new)
         m[off(free):off(free) + len(data)] = data
         at = free
