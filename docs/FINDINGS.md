@@ -380,3 +380,23 @@ Profile editor (152 named states; only RAW-edit Color Creator).
 `0x609ec110` packs per-kind picture-mode parameters (kind 5 = Color Profile:
 selector 902 then that preset's 12 saturations 933..) - display/metadata, not an
 editor. Whether a profile editor screen exists at all is still open.
+
+## Editor search (Color / Mono Profile)
+
+- Editor request code: global `0x61ea1270` (set `0x60ed7ee1`, get `0x60ed7eea`).
+  Codes 1, 2, 3, 4, 5, 8 are used. Codes 1 (Multi Function item 615), 2 (SCP INFO
+  on Picture Mode 21) and 4 all open the classic Color Creator screen via
+  `0x60ed53f2(33, 48)`; item 382 posts `(33, 50)`.
+- `0x60ed53f2(event, param)` = `PostEventToCA` (log "[GUI App]: PostEventToCA").
+  Constant events seen: groups 1-40; event 33 params 48, 50, 51.
+- Event-33 handler candidate `0x60cd2a2e`: param 48 -> state 53, **49 -> state 69**,
+  50 -> state 52, 51 -> `0x60cd1cd2`. Param 49 is not posted by any code found so
+  far. State changer `0x60cd303f`; state table `0x60f3d43c` ({state, 0x58xx}
+  pairs, states 0x2d-0x46, 0x61, 0x66) belongs to SubAppStateShootingModeDirect.
+  State 69 is unidentified.
+- No GUI state/panel/class names for a profile editor (152 SsXxx_StYyy names,
+  39 panel names, 92 Actuator/Viewer names). Label code exists:
+  `0x60e5e5a4` / `0x60e5e5c8` pick "Color/Mono Profile 1-3" (0xb2b-0xb30) by slot
+  for record values 25/26 (jump table `0x61230608`).
+- Facade calls with profile parameter IDs are dominated by display/info code;
+  no clear writer (editor) of the 12 saturations found yet.
