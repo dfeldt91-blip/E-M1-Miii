@@ -333,7 +333,7 @@ Validator lists for picture modes are 64-byte entries `{+0 pipeline mode,
 | sid | list | entries |
 |---|---|---|
 | 0x6f MODE_COLORTONE (used on this body) | `0x604bc4f4`, 26 | 7,1,2,3,4,5(+4=1),6,8,10,9,100-109,119-124 |
-| 0x385 DIAL_NON | `0x604c3df4`, 26 | 7,1..6,8,9,11?,12?.. (differs slightly) |
+| 0x385 DIAL_NON | `0x604c3df4`, 26 | 7,1-6,8,9,11,12 (slot 0),100-109,119-123 |
 | 0x381 DIAL_NEUTRAL | 8 | 7,1..6,8 |
 | 0x383 DIAL_COLOR_CREATOR | 2 | 2, 9 |
 | 0x384 DIAL_COLOR_CREATOR_2 | 4 | 2, 11/1, 11/2, 11/3 |
