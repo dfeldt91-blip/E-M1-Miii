@@ -46,6 +46,11 @@ LIST, ALT = 0x604bc4f4, 0x604ae834      # stock 0x6f list / alt list
 NON_LIST, NON_ALT = 0x604c3df4, 0x604aefc4   # DIAL_NON list / alt list
 NEW_LIST, NEW_ALT = 0x600d7000, 0x600d7700
 FREE_LO, FREE_HI = 0x600d6ff0, 0x600d7800    # must be all 0xff (16-byte guard)
+# --low: put the lists at 0x600d6400 instead, so the patch can go on top of patch_aspect.py
+# output (which uses 0x600d7000-0x600d7800 and stubs up to 0x600d62e0)
+if "--low" in sys.argv:
+    NEW_LIST, NEW_ALT = 0x600d6400, 0x600d6b00
+    FREE_LO, FREE_HI = 0x600d63f0, 0x600d6b80
 ELEM, N_STOCK = 64, 26
 ASPECT_REC = 0x604dc954
 STOCK_ASPECT_REC = bytes.fromhex("0d018000da934d6000000000050001000001000000"[:40])
@@ -121,8 +126,8 @@ def main(argv):
         plain = new_main if i == 0 else b["plain"]
         head, tail = bytearray(b["head"]), bytearray(b["tail"])
         if i == 0 and ver is not None:
-            check(struct.unpack_from("<H", head, 16)[0] == 0x1500 and
-                  struct.unpack_from("<H", tail, 16)[0] == 0x1500, "main block version is not 0x1500")
+            check(struct.unpack_from("<H", head, 16)[0] == struct.unpack_from("<H", tail, 16)[0],
+                  "main block head/tail versions differ")
             struct.pack_into("<H", head, 16, ver)
             struct.pack_into("<H", tail, 16, ver)
         out += olyfw.build_block(bytes(head), plain, bytes(tail))
