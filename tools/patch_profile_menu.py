@@ -34,6 +34,15 @@ by Custom's base mode (setting 0xd3) through REMAP {u16 item, u32 list, u16 n} l
 Vivid/Natural/Muted/Portrait -> Contrast/Sharpness/Saturation = channels 1-3/4-6/7-9/10-12 of
 preset 1 (VIVID_SET1_n); i-Finish -> CC2 contrast/sharpness SET1; Monotone -> Monochrome Profile
 contrast/sharpness/filter/tint SET1. Keeps the test2 hook.
+Camera: sliders have 11 steps (labels wrong: -2..+2 plus junk), no colour change.
+
+--test4: test3 + the image path. The builder 0x60419154 copies snapshot +0x65ec (property 0xf6ea
+[0..11]) into the 12 saturations; the snapshot is filled from properties, and setting -> property
+is the table PROP_MAP[sid] = {u16 property, u16 index} (0x604e4d90). 0xf6ea comes from the
+*current* settings COLOR_CREATOR_2_VIVID_1..12 (0x38d-0x398, no validator, not editable); SET1_n
+(0x399-0x3a4) feed 0xf6fa. Swap the two mappings, so SET1 (edited by the sliders) feeds the
+pipeline. Same for Monochrome Profile grain/level/shading (0x3ce/0x3d8/0x3dc <-> SET1). Monotone
+base: Contrast -> shading SET1, Sharpness -> grain SET1; i-Finish base: Contrast -> level SET1.
 """
 import hashlib
 import os
@@ -50,6 +59,8 @@ BLOB_A, BLOB_A_OFF = 0x60803000, 0x7e1fe0
 CHG_CHECK, CHG_STOCK = 0x608d522f, bytes.fromhex("f1e20cfadae513")   # mov d0,a2; clr d3; cmp 5093,a2
 CHG_STUB = 0x600d6c80
 REMAP = 0x611cfdf0
+PROP_MAP = 0x604e4d90
+PROP_SWAPS = [(0x38d + k, 0x399 + k) for k in range(12)] + [(0x3ce, 0x3cf), (0x3d8, 0x3d9), (0x3dc, 0x3dd)]
 SET1 = lambda ch: 0x399 + ch - 1                        # MODE_COLOR_CREATOR_2_VIVID_SET1_ch
 # item -> {base GUI value: new real setting}
 REMAP_NEW = {
@@ -109,7 +120,17 @@ def patch(main):
           "blob B does not recompress identically")
     check(set(m[off(FREE_LO - 16):off(FREE_HI)]) == {0xff}, "free area not 0xff")
 
-    if "--test3" in sys.argv:
+    if "--test4" in sys.argv:
+        for a, b in PROP_SWAPS:
+            pa = struct.unpack_from("<HH", m, off(PROP_MAP) + 4 * a)
+            pb = struct.unpack_from("<HH", m, off(PROP_MAP) + 4 * b)
+            check(pa[0] in (0xf6ea, 0xf769, 0xf7a9, 0xf7c9) and pb[0] in (0xf6fa, 0xf779, 0xf7b9, 0xf7d9),
+                  "property map %#x/%#x differs" % (a, b))
+            struct.pack_into("<HH", m, off(PROP_MAP) + 4 * a, *pb)
+            struct.pack_into("<HH", m, off(PROP_MAP) + 4 * b, *pa)
+        REMAP_NEW[0xcd][3], REMAP_NEW[0xce][3], REMAP_NEW[0xcd][7] = 0x3dd, 0x3cf, 0x3d9
+        print("  property map: %d swaps (SET1 -> pipeline)" % len(PROP_SWAPS))
+    if "--test3" in sys.argv or "--test4" in sys.argv:
         n = 0
         for k in range(7):
             item, lp, cnt = struct.unpack_from("<HxxIH", gui, REMAP - BLOB_B + 12 * k)
@@ -121,7 +142,7 @@ def patch(main):
         check(n == 18, "remap entries patched: %d" % n)
         print("  Custom remap: %d entries -> Color/Mono Profile settings" % n)
     rows = []
-    if "--test3" in sys.argv:
+    if "--test3" in sys.argv or "--test4" in sys.argv:
         SW = []
     else:
         SW = SWAPS
@@ -173,7 +194,7 @@ def patch(main):
                 ndesc += 1
     check(not SW or (nlab >= 3 and ndesc >= 3), "labels %d / descriptors %d too few" % (nlab, ndesc))
 
-    if "--test2" in sys.argv or "--test3" in sys.argv:
+    if any(x in sys.argv for x in ("--test2", "--test3", "--test4")):
         import patch_aspect
         check(set(m[off(CHG_STUB):off(CHG_STUB + 0x40)]) == {0xff}, "stub area not free")
         acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
@@ -206,7 +227,7 @@ def patch(main):
 
 
 def main(argv):
-    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3")):
+    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--test4")):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
