@@ -51,6 +51,36 @@ jmp back
 last:
 clr d2
 jmp back"""
+# Camera (1.604): still no overlay after shot 2. ScaleDispForce (0x609c7b57) builds the overlay from
+# the held shots array[1..hdl_count] (0x609450f6 loops k = 1..n). With 3-4 frames the combine runs
+# once two shots are held: the result goes to array[0] (edit buffer made in entryEXECUTE 0x609c86c7)
+# and the shots are freed, so hdl_count = 0 and the overlay is dropped. When hdl_count == 0 and
+# array[0] exists, show array[0] (the combined shots so far): pass base array-4 with n = 1.
+SDF_SITE = 0x609c7b7a
+SDF_STOCK = bytes.fromhex("fcaeb88ae8618001aa00c815fa23f80099fca5c08ae86188dd64d5f7fff05c")
+SDF_BACK = 0x609c7b99
+SDF_STUB = 0x600d6fc0
+SDF_SRC = """movhu (0x61e88ab8),d2
+mov (0x61e88ac0),d1
+cmp 0,d2
+bne go
+cmp 0,d1
+beq fail
+mov d1,a0
+mov (a0),d0
+cmp 0,d0
+beq fail
+add -4,d1
+mov 1,d2
+go:
+mov (248,a3),a0
+mov a2,a1
+mov d2,d0
+call disp,[d2,d3,a2,a3],92
+jmp back
+fail:
+mov 1,d0
+jmp back"""
 
 
 def off(a):
@@ -113,6 +143,14 @@ def patch(main):
     acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
     a = bytearray(olycompress.unpack(m, BLOB_A_OFF))
     check(bytes(a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)]) == OVL_STOCK, "overlay site differs")
+    check(set(m[off(SDF_STUB):off(SDF_STUB + 0x40)]) == {0xff}, "overlay stub 2 area not free")
+    check(bytes(a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)]) == SDF_STOCK, "ScaleDispForce differs")
+    stub2 = patch_aspect.assemble_syms(SDF_SRC, SDF_STUB, {"back": SDF_BACK, "disp": 0x609450f6})
+    check(len(stub2) <= 0x40, "stub 2 too long")
+    m[off(SDF_STUB):off(SDF_STUB) + len(stub2)] = stub2
+    a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)] = (
+        b"\xdc" + struct.pack("<i", SDF_STUB - SDF_SITE) + b"\xcb" * (len(SDF_STOCK) - 5))
+    print("  ScaleDispForce hook %#x -> stub %#x (%d B)" % (SDF_SITE, SDF_STUB, len(stub2)))
     stub = patch_aspect.assemble_syms(OVL_SRC, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8})
     m[off(OVL_STUB):off(OVL_STUB) + len(stub)] = stub
     a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
