@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -27,6 +27,12 @@ Label test (diagnostic): relabel the 4:3 entry of the three aspect option lists
   inside GUI blob B (0x611af064, 0x61206514, 0x61287cc8) from 0x124 "4:3" to
   0xf1 "Panorama", in place. Shows whether blob-B edits reach the camera and
   whether these lists label the Image Aspect menu.
+
+Stage 2c: stage 2a + the real menu label list (screen record 0x61294774, shared
+  count 6; list 0x612941d4 = values 1,2,3,4,9,10, confirmed on camera by label
+  test 2): its 17:9 entry {10, 4, 0xcbd} becomes {6, 4, 0xf1 "Panorama"} in place
+  (17:9 is never offered for stills: 10 is not in the validator list). Plus the
+  SCP/Live Control row {0x10d, 5 -> 6} with value 6 using the 16:9 icons.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -142,6 +148,33 @@ def stage2b(m):
 
 
 LISTS_IN_B = (0x611af064, 0x61206514, 0x61287cc8)
+MENU_LABELS = 0x612941d4          # real Image Aspect label list (6 entries, shared count)
+
+
+def stage2c(m):
+    stage2a(m)
+    check(bytes(m[BLOB_B_OFF:BLOB_B_OFF + 11]) == b"olycompress", "blob B header not found")
+    csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
+    gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
+    check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
+          "stock blob B does not recompress identically")
+    es = ents(gui, BLOB_B, MENU_LABELS, 6)
+    check([e[0] for e in es] == [1, 2, 3, 4, 9, 10] and all(e[1] == 4 for e in es), "menu label list differs")
+    check(es[5][2] == 0xcbd, "17:9 entry differs")
+    struct.pack_into("<IHHI", gui, MENU_LABELS - BLOB_B + 12 * 5, 6, 4, PANORAMA, es[5][3])
+    sid, n, pa, pb = struct.unpack_from("<HHII", gui, LV_ROW - BLOB_B)
+    check((sid, n) == (0x10d, 5), "LV row differs")
+    free = NEW_LIST + 0x130
+    for i, p in enumerate((pa, pb)):
+        e = ents(gui, BLOB_B, p, n)
+        check([x[0] for x in e] == [1, 3, 2, 4, 9] and all(x[1] == 3 for x in e), "LV list %#x differs" % p)
+        new = e + [(6, 3, e[1][2], e[1][3])]
+        m[off(free):off(free) + 72] = pack_ents(new)
+        struct.pack_into("<I", gui, LV_ROW - BLOB_B + 4 + 4 * i, free)
+        free += 0x50
+    struct.pack_into("<H", gui, LV_ROW - BLOB_B + 2, 6)
+    check(free <= FREE_HI, "new lists overflow the free area")
+    repack_b(m, gui, csz)
 
 
 def repack_b(m, gui, csz):
@@ -210,6 +243,8 @@ def main(argv):
         stage2a(m)
     elif "--stage2b" in argv:
         stage2b(m)
+    elif "--stage2c" in argv:
+        stage2c(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
