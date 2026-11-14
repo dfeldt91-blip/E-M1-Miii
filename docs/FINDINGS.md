@@ -169,3 +169,37 @@ Per-MB: entropy ~7.36 and only 8-19 % reached by recursive disassembly at
 `0x60c21020-0x60eb1020`), vs 45-80 % elsewhere. Standard formats (zlib/gzip/
 xz/lzma/bz2) not found; raw-deflate hits are false positives. Section-table
 search (E-P7 style, 9 x `{start, src, dst}`) not found yet.
+
+## Toolchain (this session)
+
+- GNU binutils 2.45 `mn10300-elf` built from the signature-verified ftp.gnu.org
+  tarball (`objdump -D -b binary -m am33-2 --adjust-vma=0x60021020`), and the
+  GNU MN10300 simulator from GDB 18.1 (`sim/mn10300/run`, built with sim
+  hardware enabled; `--disable-sim-hardware` fails to link).
+- `tools/disasm.py` / `tools/mn103/mn103.py` agree with GNU objdump on
+  99,573 of 99,574 instructions over 0x602c0000-0x60300000.
+- `tools/mn103/recursive.py`: control-flow disassembly from the entry;
+  3.67 M instructions, 48,028 functions, 27.6 % of block 0 reached.
+
+## String IDs (language block)
+
+Block 1 = 72 sections (languages), same string order in each; string ID =
+index of the NUL-terminated UTF-16LE string. English is section 8.
+`0x4f4` "Color Creator", `0xabb-0xabd` "Color Profile 1-3",
+`0xabe-0xac0` "@A0B2@..@A0B4@Color Profile 1-3", `0xac3-0xac5`
+"Monochrome Profile 1-3", `0xac6-0xac8` iconed, `0xb29-0xb2e` short
+"Color/Mono Profile 1-3". `0x606f5c40..` draws 0xabb / 0xac8 via
+`0x606e93c1(d0=0xf812000, d1=21, a1=string id)`.
+
+## Boot
+
+Reset `0x60021020` -> boot copies via flash reader `0x60022454(a0=flash,
+a1=dst, d0=len)` (plain page copies, no decompression):
+flash `0x4080f000` -> `0x60030000` (to `0x600e0800`, linear), initialised data
+flash `0x40a31800/0x40a69800/0x40a71800/0x40a75800` -> `0x61e72ac0/
+0x61eaaac0/0x61eb2ac0/0x61eb6ac0`, flash `0x41e28000` -> `0x61649000`
+(0x1800). Then main `0x6003009c`. Remaining sections load later
+(`USRSTART2..5`, `USRSTART_LOAD[_1/_2]` names present, as on the E-P7);
+the loader and its table are not found yet. `0x6005c2ac..` and
+`0x60022675..` are settings-bank (28 slots at flash `0x4eb20000`) readers/
+writers, not code loaders.
