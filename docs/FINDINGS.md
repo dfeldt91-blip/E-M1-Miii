@@ -266,3 +266,16 @@ in E-M1 III block 0, and no table holds the Color/Mono Profile string-ID trios
 (0xabb.., 0xac3.., 0xb29..) at any stride in blocks 0/1/2/4. Consistent with
 caduceus: the E-M1 III GUI tables/code sit in the compressed blobs. The E-P7
 section table shape `(start, flash src, dst)` is absent too.
+
+## Image processing supports Color/Mono Profile on this body
+
+Imgpro parameter builder `0x60418d51..` (dump strings at `0x61623bd6..`, dump code
+`0x615e0548..`). Parameter block fields: +5536 CC hue, +5537 CC sat,
++5538..5549 Color Profile saturations x12, +5550 mono level, +5551 grain,
++5552 shading. The builder reads the effective picture-mode type at settings
+snapshot +26087: if 11, copies 12 u16 saturations from snapshot +26092; if 12,
+copies mono level/grain/shading from snapshot +26118..26120. Snapshot fields
+come from property keys via `0x6005fa9c(key)` in `0x602c2d5e..` (e.g. key
+0xe8f1 -> +26090 CC hue, 0xe909 -> +26091 CC sat). +26087 is written directly
+only by the picture-bracket path `0x60411e22` (44-byte bracket entries); the
+normal-path writer is not identified yet (many `add 0x65e7` pointer sites).
