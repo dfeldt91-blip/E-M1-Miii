@@ -1,3 +1,4 @@
 # unpacked firmware output (large)
 *.unpacked/
 unpacked/
+__pycache__/
