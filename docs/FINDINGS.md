@@ -99,3 +99,46 @@ creator. Wanted: Color Profile (`COLOR_CREATOR_2`, 12 saturations
 Likely approach: find the code that reads the (absent) dial position into
 `MODE_COLORTONE_DIAL` and the button-function assignment table, then add a
 button function that cycles that setting.
+
+## Color Profile / Mono Profile as picture modes (new lead)
+
+The firmware contains the newer "profiles as picture modes" model (three
+presets each), not only the PEN-F creative dial:
+
+- Picture Mode list toggles: `MODE_COLORTONE_COLOR_CREATOR_2_SET1..3_ONOFF`
+  (`0x40e`-`0x410`), `MODE_COLORTONE_MONOCHROME_CREATOR_SET1..3_ONOFF`
+  (`0x411`-`0x413`), next to the usual `MODE_COLORTONE_*_ONOFF` toggles
+  (`0x157`-`0x167`, `0x24a` Color Creator, ...).
+- Preset selectors: `MODE_COLOR_CREATOR_2_SELECT` (`0x386`),
+  `MODE_MONOCHROME_CREATOR_SELECT` (`0x3c7`); dial copies `0x433`/`0x434`;
+  RAW-edit copies `0x402`/`0x403`/`0x406`/`0x407`.
+- Picture Mode values (`MODE_COLORTONE`, value-name list at block 2
+  `0x2073ffc`): I_FINISH, VIVID, NATURAL, FLAT, SOFT, MONOTONE, CUSTOM, BEAUTY,
+  UNDERWATER, COLOR_CREATOR, POPART ... PLACAME. No separate profile value, so
+  profiles are probably Color Creator variants chosen by the selectors.
+- UI text exists (block 1, UTF-16LE): "Color Profile 1-3", "Mono Profile 1-3"
+  (short labels after ART filter labels and C3/C4), "Monochrome Profile 1-3"
+  with icon codes `@A0B2@`-`@A0B7@`. Language block = 72 sections of
+  NUL-terminated UTF-16 strings; string-ID scheme not yet decoded.
+- Debug-shell code at `0x615cfc00`-`0x615d2fff` references all six toggles
+  (confirms the IDs).
+
+Likely patch: un-hide these picture-mode entries (find the model capability
+check / list builder) instead of adding a button function.
+
+## Mode storage internals
+
+- get(mode) `0x602cb8f4`: kind = `0x602dc310(id)`; custom descriptor via
+  RAM hash `0x621171a8` (64 buckets, +20 = getter fn); else `0x602eeec8`
+  (u16 array at `0xa262ac38 - 12000 + 2*id` for id 6000..) or `0x602cbb47`.
+- Conf records: RAM hash `0x62119a40` (128 buckets) filled at boot from ROM
+  records at `0x604da438`, 20 bytes each, 0x58e of them (extended IDs).
+- `0x605f6378` / `0x605f663b` are mode-change trace/notify hooks, not getters.
+- `0x6145225c` is a fixed-point conversion (`0x384` there = 900), not a mode check.
+
+## Pitfall
+
+Linear-sweep disassembly decodes data as code, and setting IDs are small
+numbers that collide with line numbers, sizes and constants. Several
+"immediate = setting ID" hits were false. A recursive (call/branch-following)
+disassembly is needed before trusting xrefs.
