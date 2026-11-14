@@ -155,8 +155,9 @@ disassembly is needed before trusting xrefs.
   said to be absent on E-M1 III; the settings and labels are present here.
 - **fishcu/oly_fw_analysis** (Apache-2.0 + GPL-3.0 sim): PEN-F HSL mod,
   component decoder, MN103 emulator (patched GNU sim from binutils-gdb),
-  firmware inventory. Stock E-M1 III 1.5 = sha256 `0fbc7b82...a2cc2` (sic,
-  see inventory), 1.6 = `4f9ea315...9aac`. Historical E-M1 III patch
+  firmware inventory. Stock E-M1 III 1.5 = sha256
+  `0fbc7b82dff3e5cc7de2c6a0793fcee2b89941f89805df05c75796608214902a`,
+  1.6 = `4f9ea315a2f2280dd5746abc39b5e4b038f183836eadfbe9d96b266e49a09aac`. Historical E-M1 III patch
   `e1399999.bin` (sha `4786323c...`) is v1.2. Our file (`fec00684...`, header
   version 1.5) is not in the inventory: probably stock 1.5 + a focus-stacking
   allowlist patch.
