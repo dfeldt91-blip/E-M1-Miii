@@ -174,13 +174,18 @@ def titletest(m):
     gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
     check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
           "stock blob B does not recompress identically")
-    pat = struct.pack("<IHH", 0x10d, 4, 0x46)
-    hits = [mm.start() for mm in re.finditer(re.escape(pat), bytes(gui))]
+    hits = []
+    # two record layouts: {u32 0x10d, u16 4, u16 0x46, u32 cond} and
+    # {u32 0x10d, u32 0, u16 4, u16 0x46, u32 cond}
+    for pat, so in ((struct.pack("<IHH", 0x10d, 4, 0x46), 6), (struct.pack("<IIHH", 0x10d, 0, 4, 0x46), 10)):
+        for mm in re.finditer(re.escape(pat), bytes(gui)):
+            o = mm.start()
+            cond = struct.unpack_from("<I", gui, o + so + 2)[0]
+            check(0x60000000 <= cond < 0x62000000, "item at %#x has no condition pointer" % (BLOB_B + o))
+            hits.append(o + so)
     check(len(hits) >= 10, "expected many Image Aspect item records, found %d" % len(hits))
-    for o in hits:
-        cond = struct.unpack_from("<I", gui, o + 8)[0]
-        check(0x60000000 <= cond < 0x62000000, "item at %#x has no condition pointer" % (BLOB_B + o))
-        struct.pack_into("<H", gui, o + 6, PANORAMA)
+    for so in hits:
+        struct.pack_into("<H", gui, so, PANORAMA)
     print("  retitled %d Image Aspect item records" % len(hits))
     repack_b(m, gui, csz)
 
