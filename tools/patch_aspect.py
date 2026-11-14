@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--stage13|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--stage13|--stage14|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -100,6 +100,9 @@ Stage 12: 11 + the valid-AF-point mask builder 0x60e60978: the aspect lookup
 
 Stage 13: 12 + local remaps 6 -> 3 after the aspect read (getter 0x60d00909)
   in three Rec_Info_Viewer functions (part numbers, per-aspect mark sets).
+
+Stage 14: 13 + the same remap in three more Rec_Info_Viewer part selectors
+  (0x60e56d40, 0x60e56fa1, 0x60e5710e).
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -910,6 +913,12 @@ REMAPS13 = [
     (0x60e572be, "2c0d015c08dd4696eafff01c", 5, "(a0)", "mov (8,sp),a0"),
     (0x60e568e8, "2c0d013c2040dd1ba0eafff01c", 6, "(64,sp)", None),
 ]
+# stage 14: three more part-number selectors (a miss returns without writing -> stale part shown)
+REMAPS14 = [
+    (0x60e56d40, "2c0d013c2010ddc39beafff01c", 6, "(16,sp)", None),
+    (0x60e56fa1, "2c0d01dd6599eafff01c", 3, "(16,sp)", None),
+    (0x60e5710e, "2c0d013c2010ddf597eafff01c", 6, "(16,sp)", None),
+]
 STUB13_LO, STUB13_HI = 0x600d6200, 0x600d6400
 
 
@@ -918,7 +927,7 @@ def stage13(m):
     def more8(rt, put, hook):
         stub = STUB13_LO
         check(set(rt[off(STUB13_LO):off(STUB13_HI)]) == {0xff}, "stage 13 stub area not free")
-        for site, stock, plen, where, pre in REMAPS13:
+        for site, stock, plen, where, pre in REMAPS13 + (REMAPS14 if "--stage14" in sys.argv else []):
             b = bytes.fromhex(stock)
             prefix, call = b[:plen], b[plen:]
             check(len(call) == 7 and call[0] == 0xdd, "site %#x: not call d32" % site)
@@ -1026,7 +1035,7 @@ def main(argv):
         stage11(m)
     elif "--stage12" in argv:
         stage12(m)
-    elif "--stage13" in argv:
+    elif "--stage13" in argv or "--stage14" in argv:
         stage13(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
