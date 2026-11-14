@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -86,6 +86,10 @@ Stage 8: 7 + local remaps 6 -> 3 (16:9) right after the aspect read in the
 
 Stage 9: 8 + the AF/tracking ratio-pair globals 0xa27212e1/e2: after each of
   the 3 stock writers, 65:24 becomes 16:9 there only (LV keeps 65:24).
+
+Stage 10: 9 + the AF module config struct (0x62192128, aspect at +21): its
+  writer 0x60694d04 stores 6 as 3, so the AF driver's grid/window switches
+  take the 16:9 case.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -772,7 +776,7 @@ jmp back""" % (PAIR_W, PAIR_H, PAIR_W, PAIR_H)
 STUB9_HI = 0x600d6100
 
 
-def stage9(m):
+def stage9(m, more5=None):
     """8 + the AF/tracking ratio-pair globals 65:24 -> 16:9 (C-AF, tracking, AF frame display)."""
     def more4(rt, put, hook, stub):
         for site, stock in PAIR_WRITERS:
@@ -785,7 +789,35 @@ def stage9(m):
             hook(site, stock, stub)
             stub = (stub + len(code) + 15) & ~15
         print("  stage 9: %d ratio-pair writers hooked, stubs end %#x" % (len(PAIR_WRITERS), stub))
+        if more5:
+            more5(rt, put, hook)
     stage8(m, more4)
+
+
+# AF module config struct 0x62192128 (+21 = aspect id, read by the AF grid/window switches 0x6069d5bd,
+# 0x6069d62f, 0x606ab5e8 (via 0x606a99ad), 0x606e347e ...: ids 1,2,3,4,9,10 only, a miss logs and
+# falls back). Its writer 0x60694d04 copies the message byte; 6 is stored as 3 (16:9).
+AFCFG_SITE, AFCFG_STOCK, AFCFG_BYTE = 0x60694d04, "fc823d211962", 0x6219213d
+AFCFG_SRC = """cmp 6,d0
+bne st
+mov 3,d0
+st:
+movbu d0,(%#x)
+jmp back""" % AFCFG_BYTE
+STUB10 = 0x600d7700          # 0x600d7700-0x600d7800: after the readout table (0x600d7600..0x600d772e)
+
+
+def stage10(m):
+    """9 + AF module config aspect 6 -> 3 (AF grid/windows of the AF driver)."""
+    def more5(rt, put, hook):
+        at = 0x600d7740
+        check(set(rt[off(at):off(at) + 0x40]) == {0xff}, "stage 10 stub slot not free")
+        code = assemble_syms(AFCFG_SRC, at, {"back": AFCFG_SITE + 6})
+        check(len(code) <= 0x40, "stage 10 stub too long")
+        rt[off(at):off(at) + len(code)] = code
+        hook(AFCFG_SITE, AFCFG_STOCK, at)
+        print("  stage 10: AF config aspect hook at %#x" % at)
+    stage9(m, more5)
 
 
 def repack_b(m, gui, csz):
@@ -874,6 +906,8 @@ def main(argv):
         stage8(m)
     elif "--stage9" in argv:
         stage9(m)
+    elif "--stage10" in argv:
+        stage10(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
