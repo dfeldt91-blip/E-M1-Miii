@@ -104,6 +104,74 @@ def patch_main(main, aspect=False):
     return bytes(m), len(new_list), len(new_alt)
 
 
+# --menu (step 2): the Picture Mode menu option lists (3 descriptors in blob B, {u16 sid, u16 n,
+# u32 list} of 12-byte {u32 GUI value, u16 3 = icon, u16 icon id, u32 cond}) and the 32 restriction
+# rules of 0x6f (record 0x60492848 -> rules {IF terms, MAP {u16 from, u16 to}} keyed by GUI value)
+# only know the 26 stock values. Give both 54 (Color Profile) and 57 (Monochrome Profile):
+# menu entries after Color Creator with the Live Control icons 4436 / 4437, and in every rule map the
+# target Color Creator (21) gets.
+BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
+MENU_DESCS = (0x611af718, 0x61206bc8, 0x6128837c)
+RULES, N_RULES = 0x60476160, 32
+NEW_ICONS = {0x36: 4436, 0x39: 4437}
+MENU_AT, MAPS_AT = 0x600d7800, 0x600d2500
+
+
+def patch_menu(main):
+    import olycompress
+    m = bytearray(main)
+    check(bytes(m[BLOB_B_OFF:BLOB_B_OFF + 11]) == b"olycompress", "blob B header not found")
+    csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
+    gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
+    check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
+          "blob B does not recompress identically")
+    check(set(m[off(MENU_AT - 16):off(0x600d8000)]) == {0xff}, "menu list area not free")
+    check(set(m[off(MAPS_AT - 16):off(0x600d3000)]) == {0xff}, "rule map area not free")
+    free = MENU_AT
+    for d in MENU_DESCS:
+        sid, n, lp = struct.unpack_from("<HHI", gui, d - BLOB_B)
+        check((sid, n) == (0x6f, 54), "menu descriptor %#x differs" % d)
+        es = [struct.unpack_from("<IHHI", gui, lp - BLOB_B + 12 * k) for k in range(n)]
+        check([e[0] for e in es[:10]] == [7, 0, 1, 2, 5, 3, 6, 20, 28, 21] and all(e[1] == 3 for e in es),
+              "menu list %#x differs" % lp)
+        cond = es[9][3]
+        new = es[:10] + [(v, 3, ic, cond) for v, ic in sorted(NEW_ICONS.items())] + es[10:]
+        data = b"".join(struct.pack("<IHHI", *e) for e in new)
+        m[off(free):off(free) + len(data)] = data
+        struct.pack_into("<HI", gui, d - BLOB_B + 2, len(new), free)
+        free += (len(data) + 15) & ~15
+    check(free <= 0x600d8000, "menu lists overflow")
+    maps = {}
+    nxt = MAPS_AT
+    for k in range(N_RULES):
+        r = off(RULES + 16 * k)
+        cp, cn, mp, mn = struct.unpack_from("<IHxxIHxx", m, r)
+        check(mn == 26, "rule %d map size differs" % k)
+        if mp not in maps:
+            pairs = [struct.unpack_from("<HH", m, off(mp) + 4 * j) for j in range(mn)]
+            check([a for a, b in pairs] == STOCK_ALT, "rule %d map keys differ" % k)
+            to21 = dict(pairs)[21]
+            pairs += [(v, v if to21 == 21 else to21) for v in sorted(NEW_ICONS)]
+            data = b"".join(struct.pack("<HH", a, b) for a, b in pairs)
+            m[off(nxt):off(nxt) + len(data)] = data
+            maps[mp] = nxt
+            nxt += (len(data) + 15) & ~15
+        struct.pack_into("<I", m, r + 8, maps[mp])
+        struct.pack_into("<H", m, r + 12, 28)
+    check(nxt <= 0x600d3000, "rule maps overflow")
+    c = olycompress.pack(bytes(gui))
+    check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
+    old_end = BLOB_B_OFF + 32 + csz
+    m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + len(c)] = c
+    if len(c) < csz:
+        m[BLOB_B_OFF + 32 + len(c):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(c))
+    struct.pack_into("<I", m, BLOB_B_OFF + 16, len(c))
+    check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "recompressed blob does not decode to the edit")
+    print("  menu: 3 lists -> 56 entries at %#x-%#x; %d rule maps -> 28 pairs at %#x-%#x; blob B %#x -> %#x"
+          % (MENU_AT, free, len(maps), MAPS_AT, nxt, csz, len(c)))
+    return bytes(m)
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__)
@@ -116,6 +184,8 @@ def main(argv):
     check(b0["info"]["type"] == "OE" and b0["info"]["model"] == 0x1390 and b0["info"]["flags"] == 0x100,
           "first block is not the E-M1 III main code block")
     new_main, nl, na = patch_main(b0["plain"], aspect="--aspect-test" in argv)
+    if "--menu" in argv:
+        new_main = patch_menu(new_main)
     ver = None
     if "--version" in argv:
         ver = int(argv[argv.index("--version") + 1], 0)
