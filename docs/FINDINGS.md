@@ -203,3 +203,24 @@ flash `0x40a31800/0x40a69800/0x40a71800/0x40a75800` -> `0x61e72ac0/
 the loader and its table are not found yet. `0x6005c2ac..` and
 `0x60022675..` are settings-bank (28 slots at flash `0x4eb20000`) readers/
 writers, not code loaders.
+
+## Suspect regions: what they are not
+
+Two blobs, roughly block-0 offsets `0x7f5000-0x9eb000` (runtime
+`0x60816020-0x60a0c020`) and `0xc78000-0xddf000` (`0x60c99020-0x60e00020`),
+4 KB-window entropy 7.0-7.45 throughout (code 6.4-7.0, deflate/LZMA ~7.95).
+
+- Not plain code: decoding as MN103 gives calls whose targets hit known
+  functions 3-7 % of the time and the top-300 called functions 0 % (normal code:
+  86 % / 51 %).
+- Not relocated code: no constant delta maps their call targets onto known
+  functions.
+- No clean code calls or jumps into them; no clean code loads their RAM or
+  flash addresses.
+- No zlib/gzip/xz/lzma/bz2 stream; classic Okumura LZSS constants
+  (`|0xff00`, `&0xfff`, `0xfee`) not found together in clean code.
+- Raw bytes show MN103 fragments (`dd ..` calls, `df ..` returns), so an LZ-type
+  compression of code (no entropy coder) remains the best guess, possibly
+  unpacked by another CPU or by code not reached here. LZSS literal-scoring
+  (flag=1 literal, 2-byte refs, LSB-first) is suggestive for the first blob
+  but not conclusive.
