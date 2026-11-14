@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -93,6 +93,10 @@ Stage 10: 9 + the AF module config struct (0x62192128, aspect at +21): its
 
 Stage 11: 10 + GUI shared data item 48 (AF area info for the AF_AreaTarget /
   REC_IMAGER_AF panels): the item setter 0x60ce7201 stores aspect 6 as 3.
+
+Stage 12: 11 + the valid-AF-point mask builder 0x60e60978: the aspect lookup
+  in its {aspect, layout} maps treats 6 as 3 (a miss used an unwritten stack
+  slot as a jump-table index).
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -846,7 +850,7 @@ mov mdr,d1
 jmp back"""
 
 
-def stage11(m):
+def stage11(m, more7=None):
     """10 + GUI data item 48 (AF area info): aspect 6 published as 3 (16:9)."""
     def more6(rt, put, hook):
         at = 0x600d7780
@@ -856,7 +860,39 @@ def stage11(m):
         rt[off(at):off(at) + len(code)] = code
         hook(ITEM_SET_SITE, ITEM_SET_STOCK, at)
         print("  stage 11: item-48 hook at %#x (%d bytes)" % (at, len(code)))
+        if more7:
+            more7(rt, put, hook)
     stage10(m, more6)
+
+
+# Valid-AF-point mask builder 0x60e60978 (E-P7 "shooting-screen validity" 0x60e3bde8): looks the aspect
+# ((4,a1)) up in a 6-entry {aspect, layout} map (12 maps 0x6123117c.., 1,2,3,4,9,10); a miss leaves
+# (12,SP) unwritten and it then indexes the 48-way jump table 0x6123266c. 6 is looked up as 3.
+VALID_SITE, VALID_STOCK = 0x60e60b39, None     # mov (8,sp),a1 ; clr d1 ; mov (4,a1),d2  (6 bytes)
+VALID_SRC = """mov (8,sp),a1
+clr d1
+mov (4,a1),d2
+cmp 6,d2
+bne go
+mov 3,d2
+go:
+jmp back"""
+
+
+def stage12(m):
+    """11 + valid-AF-point mask: aspect 6 looked up as 3."""
+    def more7(rt, put, hook):
+        at = 0x600d77c0
+        stock = bytes(rt[off(VALID_SITE):off(VALID_SITE) + 6])
+        ref = assemble_syms("mov (8,sp),a1\nclr d1\nmov (4,a1),d2", at, {})
+        check(stock == ref, "valid-mask site differs from stock")
+        check(set(rt[off(at):off(at) + 0x40]) == {0xff}, "stage 12 stub slot not free")
+        code = assemble_syms(VALID_SRC, at, {"back": VALID_SITE + 6})
+        check(len(code) <= 0x40, "stage 12 stub too long")
+        rt[off(at):off(at) + len(code)] = code
+        hook(VALID_SITE, stock.hex(), at)
+        print("  stage 12: valid-AF-point hook at %#x" % at)
+    stage11(m, more7)
 
 
 def repack_b(m, gui, csz):
@@ -949,6 +985,8 @@ def main(argv):
         stage10(m)
     elif "--stage11" in argv:
         stage11(m)
+    elif "--stage12" in argv:
+        stage12(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
