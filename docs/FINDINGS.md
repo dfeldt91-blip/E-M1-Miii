@@ -35,13 +35,22 @@ Model id `0x1390`, main code version `0x1500`. Load address includes the
 - `0x47001165` / `0x47001059`: memset / memcpy (boot ROM, outside the firmware;
   pattern `a0=buf, d0=0|src, d1=len`). Many `0x380` immediates are sizes passed
   to these, not the colour-tone-dial setting ID.
+- `0x600ee604`: strcmp.
 - Candidate setting accessors (called after `MOV <setting id>,d0` with many
   different IDs): `0x605f6378`, `0x60689723`, `0x6145225c`, `0x602eeec8`. Unverified.
+- Mode-controller ("mcon") API jump table at `0x602ca8b3`: `+0` down(mode),
+  `+9` up(mode), `+0x12` get(mode) (wrappers around `0x602cb5f9`, `0x602cb74c`,
+  `0x602cb8f4`). Used by the mcon debug shell (`mcon_if_debug.c`, handler near
+  `0x615d2f89`; e.g. `mcon dialp mu` = up(MODE_DIAL_MAIN_PROGRAM)).
+- `0x614a4fd9` is a trace logger (`a1=0x12345678`, `a0`=source file name,
+  `d1`=line number). Its `d1` values are line numbers, not setting IDs.
 
 ## Setting-name table (block 2, offset `0x20403f0`)
 
-6163 entries of 52 (0x34) byte NUL-padded strings; entry index is presumably
-the setting ID (`MODE_DRIVE` = 0, `MODE_AE` = 1, …).
+Entries are 52 (0x34) byte NUL-padded strings; **entry index = setting (mode)
+ID**, confirmed from the mcon shell (`dialp`→70 `MODE_DIAL_MAIN_PROGRAM`,
+`diala`→74 `MODE_DIAL_MAIN_APERTURE`, `cdial c3/c4`→0x40b/0x40c
+`MODE_CUSTOM3/4_DIAL`). Some later entries are misaligned/truncated.
 
 ## Feature: 65:24 aspect
 
@@ -67,8 +76,25 @@ Multi Function menu: `MODE_EVF_FN` plus on/off items
 already appears to be a Multi Function item; the dial-only modes are
 `COLOR_CREATOR_2` (Color Profile) and `MONOCHROME_CREATOR` (Monochrome Profile).
 
-Note: the name table has gaps and some misaligned entries later on, so
-"index = setting ID" is only verified as plausible near the start.
+The user confirmed: Multi Function "Color Creator" is the classic one-hue
+creator. Wanted: Color Profile (`COLOR_CREATOR_2`, 12 saturations
+`VIVID_1..12`) and Monochrome Profile (`MONOCHROME_CREATOR`).
+
+- Image processing supports both: `chColorCreator2Saturation[0..11]`,
+  `ucMonochromeCreatorLevel/Granular/Shading` (imgpro param dump strings).
+- Dial position list (u32) at `0x60265ad8`: 0x381 NEUTRAL, 0x382 ART,
+  0x383 COLOR_CREATOR, 0x384 COLOR_CREATOR_2, 0x3c6 MONOCHROME_CREATOR,
+  0x385 NON, then 0x6f MODE_COLORTONE. No direct pointer to it; probably one
+  record of a larger table.
+- `0x6145225c` is called 18x with 0x384 (COLOR_CREATOR_2): likely an
+  "is dial position X" check.
+- Few code immediates reference these IDs, so menus/panels are table-driven
+  (IDs stored as u16/u32 in data).
+- Wi-Fi: `colorprofile`/`monochromeprofile` are myset backup "kind" values
+  (`request_getmysetdata.cgi` etc.), so the profile data model exists on this
+  body. The `set_camprop` property list has no colour-tone or creator property,
+  so no remote shortcut. OI.Share capability XML lists `<support func="firmup"/>`
+  (Wi-Fi firmware update), worth studying as an install path.
 
 Likely approach: find the code that reads the (absent) dial position into
 `MODE_COLORTONE_DIAL` and the button-function assignment table, then add a
