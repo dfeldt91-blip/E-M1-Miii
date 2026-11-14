@@ -94,8 +94,13 @@ def patch_main(main, aspect=False):
     check(non_alt[k11[0]] == 0x36 and non_alt[k12[0]] == 0x39, "DIAL_NON GUI values are not 54/57")
     check(set(m[off(FREE_LO):off(FREE_HI)]) == {0xff}, "target area is not free 0xff padding")
 
-    new_list = b"".join(stock) + e11 + e12
-    new_alt = struct.pack("<%dI" % (N_STOCK + 2), *(STOCK_ALT + [0x36, 0x39]))
+    ents_, alts_ = stock + [e11, e12], STOCK_ALT + [0x36, 0x39]
+    if "--diag" in sys.argv:
+        # diagnostic: drop Muted (GUI 2) from the validator list
+        k = alts_.index(2)
+        ents_, alts_ = ents_[:k] + ents_[k + 1:], alts_[:k] + alts_[k + 1:]
+    new_list = b"".join(ents_)
+    new_alt = struct.pack("<%dI" % len(alts_), *alts_)
     m[off(NEW_LIST):off(NEW_LIST) + len(new_list)] = new_list
     m[off(NEW_ALT):off(NEW_ALT) + len(new_alt)] = new_alt
     rec = bytearray(STOCK_REC)
@@ -137,6 +142,8 @@ def patch_menu(main):
               "menu list %#x differs" % lp)
         cond = es[9][3]
         new = es[:10] + [(v, 3, ic, cond) for v, ic in sorted(NEW_ICONS.items())] + es[10:]
+        if "--diag" in sys.argv:
+            new = [e for e in new if e[0] != 5]      # diagnostic: drop Portrait from the menu lists
         data = b"".join(struct.pack("<IHHI", *e) for e in new)
         m[off(free):off(free) + len(data)] = data
         struct.pack_into("<HI", gui, d - BLOB_B + 2, len(new), free)
@@ -171,6 +178,10 @@ def patch_menu(main):
         struct.pack_into("<I", gui, t + 8 * 24 + 4, 0x24a)
         struct.pack_into("<I", gui, t + 8 * 25 + 4, 0x24a)
         print("  toggles: 54/57 -> ONOFF 0x24a")
+        if "--diag" in sys.argv:
+            check(tog[6] == (6, 0x15d), "toggle entry for Custom differs")
+            struct.pack_into("<I", gui, t + 8 * 6 + 4, 0x40e)   # diagnostic: Custom -> CC2 SET1 ONOFF
+            print("  diag: Muted out of validator, Portrait out of menu lists, Custom -> ONOFF 0x40e")
     c = olycompress.pack(bytes(gui))
     check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
     old_end = BLOB_B_OFF + 32 + csz
