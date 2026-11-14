@@ -400,3 +400,22 @@ editor. Whether a profile editor screen exists at all is still open.
   for record values 25/26 (jump table `0x61230608`).
 - Facade calls with profile parameter IDs are dominated by display/info code;
   no clear writer (editor) of the 12 saturations found yet.
+
+## 65:24 (XPan) groundwork
+
+The E-P7 port (caduceus docs/ASPECT.md) repurposed hidden aspect ids 6 (7:6) ->
+65:24 and 7 (6:5) -> 21:9 across the validator, menu/SCP lists, capture size
+tables, ORF frame, LV ratio pair, CapThr LV switches, icons and guides
+(~145 edits, several camera rounds).
+
+E-M1 III equivalents found so far:
+- Validator record for 0x10d (MODE_ASPECT_RATIO) at `0x604dc954`, u8 list
+  `0x604d93da` = [1,3,2,4,9] (same as the E-P7 record).
+- Menu descriptor `{0x10d, 6, 0x611af064}` (runtime image), entries 1/3/2/4/9/10
+  with string ids 0x124 "4:3", 0x123 "16:9", 0x125 "3:2", 0x6fa "1:1",
+  0x127 "3:4", 0xcbd "17:9".
+- Capture width table at `0x60549954 - 5*48` (48 B per id, ids 1..9): same rows
+  as the E-P7, incl. hidden ids 5 (4864), 6 (4544), 7 (4672), 8 (5184).
+  Height table, ORF frame, LV ratio pair and CapThr switches not located yet.
+- Diagnostic build option `--aspect-test` (drop 3:4) tests whether validator
+  edits reach the menus (E-P7 v4 step).
