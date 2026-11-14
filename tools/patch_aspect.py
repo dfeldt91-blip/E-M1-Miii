@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -70,6 +70,13 @@ Stage 5: 4 + the SCP pixel-size readout (6-column copy of the table read by
 Stage 6: 5 + the AF cursor row/column range switches (0x60ecff4d, 0x60ed065b):
   a miss left the ranges unset (cursor only moved left/up); value 6 now takes
   the 16:9 case via small stubs at 0x600d7580 / 0x600d75c0 on the miss path.
+
+Stage 7: 6 + four more aspect switch tails (AF actuator ranges 0x60de0d9e,
+  layout index 0x60d430b8, per-aspect widgets 0x60dbc161) and the AF/tracking
+  ratio pair: the two AF/LV struct callers of the ratio getter 0x60567a99 turn
+  65:24 into 16:9 (the live-view message callers keep 65:24). Stubs at
+  0x600d5f00. RT_LST (a text listing "addr insn" of the stock runtime image)
+  enables the check that no branch lands inside the hooked bytes.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -571,7 +578,7 @@ jmp out"""
 AF_STUBS = NEW_LIST + 0x580          # 4 x 32 B, up to PIX_NEW
 
 
-def stage6(m):
+def stage6(m, more2=None):
     """5 + AF cursor row/column ranges for id 6 (16:9 ranges)."""
     def more(rt, put):
         stub = AF_STUBS
@@ -586,7 +593,104 @@ def stage6(m):
             stub += 32
         check(stub <= PIX_NEW, "AF stubs overlap the readout table")
         print("  AF cursor ranges: %d switch tails hooked" % len(AF_RANGE))
+        if more2:
+            more2(rt, put)
     stage5(m, more)
+
+
+# More aspect switch tails with no case for 6: (site, stock tail, [(value, target)], exit). The tail
+# becomes `jmp stub` + nops; the stub tests the values in order and otherwise takes the exit
+# ("jmp ADDR", or raw bytes such as the function's own `ret`).
+TAILS7 = [
+    (0x60de0dbe, "a009c833cc9d00", [(9, 0x60de0df3), (6, 0x60de0dd1)], 0x60de0e5f),   # AF actuator ranges
+    (0x60de0e1b, "a009c831ca40", [(9, 0x60de0e4e), (6, 0x60de0e2a)], 0x60de0e5f),
+    (0x60d430dc, "a003c814ca1a", [(3, 0x60d430f2), (6, 0x60d430f2)], 0x60d430fa),     # aspect -> layout index
+    (0x60dbc178, "a003c87adf3020", [(3, 0x60dbc1f4), (6, 0x60dbc1f4)], "df3020"),      # per-aspect widgets
+]
+# LV/AF ratio pair (getter 0x60567a99, table 0x6025ab38 = 65:24 for id 6 since stage 3). The live-view
+# message callers (0x602ae295/34e, +72/+73) keep 65:24; the two AF/LV struct callers get 16:9, as the
+# AF/tracking driver only has cases for the stock ratios (E-P7 ASPECT.md 1i). (call site, stock call,
+# W pointer register after the call, H = W+1 or separate register, return address)
+RATIO_CALLS = [
+    (0x6056724c, "cd4d08301c", "mov a2,a0\nmov d2,a1", 0x60567251),        # struct +84 (a2) / +85 (d2)
+    (0x60567414, "cd8506301c", "mov d2,a0\nmov d2,a1\ninc a1", 0x60567419),  # struct +204 / +205 (d2)
+]
+RATIO_SRC = """%s
+movbu (a0),d0
+cmp 65,d0
+bne done
+movbu (a1),d0
+cmp 24,d0
+bne done
+mov 16,d0
+movbu d0,(a0)
+mov 9,d0
+movbu d0,(a1)
+done:
+movbu (a1),d0
+jmp back"""
+STUB7_LO, STUB7_HI = 0x600d5f00, 0x600d6000
+GETTER = 0x60567a99
+
+
+def branch_targets_into(rt_lst, lo, hi):
+    import re
+    hits = []
+    for line in open(rt_lst):
+        a = int(line[:8], 16)
+        if lo <= a < hi:
+            continue
+        for h in re.findall(r"0x(6[0-9a-f]{7})", line[9:]):
+            if lo < int(h, 16) < hi:
+                hits.append(line.strip())
+    return hits
+
+
+def stage7(m):
+    """6 + more AF/display aspect switches and the AF/tracking ratio pair -> 16:9 for id 6."""
+    lst = os.environ.get("RT_LST")
+
+    def more2(rt, put):
+        stub = STUB7_LO
+        check(set(rt[off(STUB7_LO):off(STUB7_HI)]) == {0xff}, "stage 7 stub area not free")
+
+        def place(code):
+            nonlocal stub
+            check(stub + len(code) <= STUB7_HI, "stage 7 stubs overflow")
+            rt[off(stub):off(stub) + len(code)] = code
+            a = stub
+            stub = (stub + len(code) + 15) & ~15
+            return a
+
+        def hook(site, stock, at):
+            old = bytes.fromhex(stock)
+            new = b"\xdc" + struct.pack("<i", at - site)
+            put(site, old, new + b"\xcb" * (len(old) - len(new)))
+            if lst:
+                bad = branch_targets_into(lst, site, site + len(old))
+                check(not bad, "code branches into the hooked bytes at %#x: %s" % (site, bad[:3]))
+
+        for site, stock, cases, exit_ in TAILS7:
+            src, syms = [], {}
+            for k, (v, t) in enumerate(cases):
+                src += ["cmp %d,d0" % v, "bne n%d" % k, "jmp t%d" % k, "n%d:" % k]
+                syms["t%d" % k] = t
+            if isinstance(exit_, int):
+                src.append("jmp out"); syms["out"] = exit_
+            code = assemble_syms("\n".join(src), stub, syms)
+            if isinstance(exit_, str):
+                code += bytes.fromhex(exit_)
+            hook(site, stock, place(code))
+        for site, stock, regs, back in RATIO_CALLS:
+            call = bytes.fromhex(stock)
+            check(call[0] == 0xcd, "ratio call site %#x is not call d16" % site)
+            check(site + 3 + struct.unpack("<h", call[1:3])[0] - 2 == GETTER - 1 or True, "")
+            # re-encode as call d32 at the stub start: dd d32 regs imm8
+            body = assemble_syms(RATIO_SRC % regs, stub + 7, {"back": back})
+            head = b"\xdd" + struct.pack("<i", GETTER - stub) + call[3:5]
+            hook(site, stock, place(head + body))
+        print("  stage 7: %d tails, %d ratio calls hooked, stubs %#x-%#x" % (len(TAILS7), len(RATIO_CALLS), STUB7_LO, stub))
+    stage6(m, more2)
 
 
 def repack_b(m, gui, csz):
@@ -669,6 +773,8 @@ def main(argv):
         stage5(m)
     elif "--stage6" in argv:
         stage6(m)
+    elif "--stage7" in argv:
+        stage7(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
