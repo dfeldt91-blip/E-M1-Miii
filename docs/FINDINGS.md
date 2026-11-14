@@ -142,3 +142,29 @@ Linear-sweep disassembly decodes data as code, and setting IDs are small
 numbers that collide with line numbers, sizes and constants. Several
 "immediate = setting ID" hits were false. A recursive (call/branch-following)
 disassembly is needed before trusting xrefs.
+
+## Outside resources (E-P7 / PEN-F projects)
+
+- **cakelesscoder/caduceus-ep7** (Apache-2.0): E-P7 firmware patches on the same
+  CPU family. Install path: SD card `DCOLYMP/E1xx9999.BIN` (E-M1 III:
+  `E1399999.BIN`), hold OK while powering on; light steady while writing,
+  blinking when done. Restore = flash stock the same way. Their notes on the
+  E-M1 III: main block base `0x60021020` (matches ours); "firmware analysed on
+  disk only"; GUI/OSD/updater code not found in plain form, suspected
+  compressed (~8-10 MB, 13-14 MB). Their COLOR profile *editor screens* are
+  said to be absent on E-M1 III; the settings and labels are present here.
+- **fishcu/oly_fw_analysis** (Apache-2.0 + GPL-3.0 sim): PEN-F HSL mod,
+  component decoder, MN103 emulator (patched GNU sim from binutils-gdb),
+  firmware inventory. Stock E-M1 III 1.5 = sha256 `0fbc7b82...a2cc2` (sic,
+  see inventory), 1.6 = `4f9ea315...9aac`. Historical E-M1 III patch
+  `e1399999.bin` (sha `4786323c...`) is v1.2. Our file (`fec00684...`, header
+  version 1.5) is not in the inventory: probably stock 1.5 + a focus-stacking
+  allowlist patch.
+
+## Compression check (our measurements)
+
+Per-MB: entropy ~7.36 and only 8-19 % reached by recursive disassembly at
+8-10 MB and 12-14.5 MB (runtime ~`0x60821020-0x60a21020`,
+`0x60c21020-0x60eb1020`), vs 45-80 % elsewhere. Standard formats (zlib/gzip/
+xz/lzma/bz2) not found; raw-deflate hits are false positives. Section-table
+search (E-P7 style, 9 x `{start, src, dst}`) not found yet.
