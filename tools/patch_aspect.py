@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--stage13|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -97,6 +97,9 @@ Stage 11: 10 + GUI shared data item 48 (AF area info for the AF_AreaTarget /
 Stage 12: 11 + the valid-AF-point mask builder 0x60e60978: the aspect lookup
   in its {aspect, layout} maps treats 6 as 3 (a miss used an unwritten stack
   slot as a jump-table index).
+
+Stage 13: 12 + local remaps 6 -> 3 after the aspect read (getter 0x60d00909)
+  in three Rec_Info_Viewer functions (part numbers, per-aspect mark sets).
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -879,7 +882,7 @@ go:
 jmp back"""
 
 
-def stage12(m):
+def stage12(m, more8=None):
     """11 + valid-AF-point mask: aspect 6 looked up as 3."""
     def more7(rt, put, hook):
         at = 0x600d77c0
@@ -892,7 +895,43 @@ def stage12(m):
         rt[off(at):off(at) + len(code)] = code
         hook(VALID_SITE, stock.hex(), at)
         print("  stage 12: valid-AF-point hook at %#x" % at)
+        if more8:
+            more8(rt, put, hook)
     stage11(m, more7)
+
+
+# Rec_Info_Viewer (shooting info screen) reads the aspect with getter 0x60d00909(d0 = id, a0 = out) and
+# looks it up in 5-entry lists (1,2,3,4,9): part numbers 0x6122e3d8.. (0x60e57f17), mark sets
+# 0x6122dee8 / 0x6122e17c .. (0x60e572be, a miss draws nothing), table pick 0x60e568e8. Local remap
+# 6 -> 3 after the call. (site, stock bytes = prefix + `call d32,regs,imm`, prefix length, value location)
+GETTER2 = 0x60d00909
+REMAPS13 = [
+    (0x60e57f17, "2c0d01ddef89eafff01c", 3, "(16,sp)", None),
+    (0x60e572be, "2c0d015c08dd4696eafff01c", 5, "(a0)", "mov (8,sp),a0"),
+    (0x60e568e8, "2c0d013c2040dd1ba0eafff01c", 6, "(64,sp)", None),
+]
+STUB13_LO, STUB13_HI = 0x600d6200, 0x600d6400
+
+
+def stage13(m):
+    """12 + Rec_Info_Viewer local remaps 6 -> 3 (AF part numbers, metering/AEL marks)."""
+    def more8(rt, put, hook):
+        stub = STUB13_LO
+        check(set(rt[off(STUB13_LO):off(STUB13_HI)]) == {0xff}, "stage 13 stub area not free")
+        for site, stock, plen, where, pre in REMAPS13:
+            b = bytes.fromhex(stock)
+            prefix, call = b[:plen], b[plen:]
+            check(len(call) == 7 and call[0] == 0xdd, "site %#x: not call d32" % site)
+            check(site + plen + struct.unpack("<i", call[1:5])[0] == GETTER2, "site %#x: call target differs" % site)
+            ncall = b"\xdd" + struct.pack("<i", GETTER2 - (stub + plen)) + call[5:]
+            body = assemble_syms(REMAP_SRC % (pre or "", where, where), stub + plen + 7, {"back": site + len(b)})
+            code = prefix + ncall + body
+            check(stub + len(code) <= STUB13_HI, "stage 13 stubs overflow")
+            rt[off(stub):off(stub) + len(code)] = code
+            hook(site, stock, stub)
+            stub = (stub + len(code) + 15) & ~15
+        print("  stage 13: %d Rec_Info remaps, stubs %#x-%#x" % (len(REMAPS13), STUB13_LO, stub))
+    stage12(m, more8)
 
 
 def repack_b(m, gui, csz):
@@ -987,6 +1026,8 @@ def main(argv):
         stage11(m)
     elif "--stage12" in argv:
         stage12(m)
+    elif "--stage13" in argv:
+        stage13(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
