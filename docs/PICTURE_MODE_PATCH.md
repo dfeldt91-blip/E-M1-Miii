@@ -78,3 +78,14 @@ E-M1 III.
 - INFO on the entries: what happens?
 - Power cycle: does the selection persist? Any error?
 - Restore the original file and confirm the camera is back to normal.
+
+## Camera results (2026-11)
+
+| Build | Change | Result |
+|---|---|---|
+| 1.590-1.593 | new list entries 11/12, menu option lists, 0x6f rule maps, toggle table 0x611cfbc0 | nothing visible |
+| 1.594 diag | Muted out of validator, Portrait out of menu lists, Custom on ONOFF 0x40e | all three still shown: none of these lists drive the menu/SCP |
+| 1.595 `--repurpose` | Custom entry pipeline 6 -> 11, e-Portrait 8 -> 12 (2 bytes at 0x604bc674 / 0x604bc6b4) | e-Portrait shoots black and white (Monochrome Profile); Custom looks like Natural (Color Profile defaults are flat); minor graphic glitch; EXIF shows the menu name |
+
+So the validator list's pipeline type drives the image pipeline, while the menus use GUI-side lists
+behind a filter not found yet. No editor for the profile parameters (12 saturations etc.).
