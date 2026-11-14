@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -40,6 +40,12 @@ Stage 2d: everything at once. Camera results showed the main menu enumerates
   at all. 2d = 2a + the 2b option lists + the 2c label + the LV row + the SCP
   item table row 17 at 0x611eeedc ({17, A, B, 5}, icon lists in order
   1,3,2,9,4; the E-P7 "row 16" equivalent), each given value 6 with 16:9 icons.
+
+Stage 2e: 2d + the setting restriction rules (record 0x60492f00 for 0x10d,
+  13 rules {IF terms, MAP {from,to}}, evaluated by 0x602d4bb5; the step code
+  0x602cb5f9 skips any value the check 0x602d51ee rejects with 0x100). Rule 12
+  (IF setting 44 == 0, i.e. stills) maps 1,3,2,4,9,10 -> 1,3,2,4,9,1; value 6
+  is not a target, so it is skipped. Its map is relocated with {6, 6} added.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -236,6 +242,25 @@ def stage2d(m):
     repack_b(m, gui, csz)
 
 
+RULE12 = 0x6048a918   # aspect restriction rule {IF 44==0 (stills), MAP 0x6048a840, 6}
+STOCK_MAP12 = [(1, 1), (3, 3), (2, 2), (4, 4), (9, 9), (10, 1)]
+
+
+def stage2e(m):
+    """2d + allow 6 in the stills restriction rule (rule engine 0x602d4bb5)."""
+    stage2d(m)
+    r = off(RULE12)
+    cp, cn, mp, mn = struct.unpack_from("<IHxxIHxx", m, r)
+    check((cn, mn) == (1, 6) and tuple(m[off(cp):off(cp) + 4]) == (0x2c, 0, 0, 0), "rule 12 differs")
+    check([struct.unpack_from("<HH", m, off(mp) + 4 * k) for k in range(6)] == STOCK_MAP12, "rule 12 map differs")
+    new = NEW_LIST + 0x280
+    check(set(m[off(new):off(new) + 0x20]) == {0xff}, "rule map target not free")
+    data = b"".join(struct.pack("<HH", *e) for e in STOCK_MAP12 + [(6, 6)])
+    m[off(new):off(new) + len(data)] = data
+    struct.pack_into("<I", m, r + 8, new)
+    struct.pack_into("<H", m, r + 12, 7)
+
+
 def repack_b(m, gui, csz):
     c = olycompress.pack(bytes(gui))
     room = off(BLOB_END) - (BLOB_B_OFF + 32)
@@ -306,6 +331,8 @@ def main(argv):
         stage2c(m)
     elif "--stage2d" in argv:
         stage2d(m)
+    elif "--stage2e" in argv:
+        stage2e(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
