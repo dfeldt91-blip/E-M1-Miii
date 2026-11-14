@@ -19,6 +19,11 @@ GUI menu model (blob B, runtime addresses; three GUI copies of every table):
 --test1: Shooting Menu 1 row "Digital Tele-converter" (0x22) -> MODE_COLOR_CREATOR_2_VIVID_SET1_1
 (0x399, -5..+5, title "Saturation"); row "Intrvl. Sh./Time Lapse" (0x1dd) ->
 MODE_COLOR_CREATOR_2_SELECT (0x386, 0..3, title "Color Profile 1").
+Camera: both rows shown with their values, but could not be opened.
+
+--test2: test1 + the "is this setting changeable" check 0x608d522f (blob A; nonzero = yes; used by
+the menu item opener 0x60df667c through 0x6085c41b) answers yes for all Color/Mono Profile
+settings 0x386-0x3e8. Without it they fall through to a group test (0x602ca813) that refuses them.
 """
 import hashlib
 import os
@@ -31,6 +36,20 @@ import olycompress  # noqa: E402
 
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
+BLOB_A, BLOB_A_OFF = 0x60803000, 0x7e1fe0
+CHG_CHECK, CHG_STOCK = 0x608d522f, bytes.fromhex("f1e20cfadae513")   # mov d0,a2; clr d3; cmp 5093,a2
+CHG_STUB = 0x600d6c80
+CHG_SRC = """cmp 0x386,d0
+bcs orig
+cmp 0x3e9,d0
+bcc orig
+mov 1,d0
+ret [d2,d3,a2],28
+orig:
+mov d0,a2
+clr d3
+cmp 5093,a2
+jmp back"""
 FREE_LO, FREE_HI = 0x600d6b80, 0x600d7000      # 0xff padding, unused by the other patches
 EMPTY_STR = 8                                   # empty English string (unit for type-1 labels)
 PAGE1 = [0xd1d, 0x6f, 0xa, 0x10d, 0x22, 0xcc1, 0x1dd]
@@ -119,6 +138,25 @@ def patch(main):
                 ndesc += 1
     check(nlab >= 3 and ndesc >= 3, "labels %d / descriptors %d too few" % (nlab, ndesc))
 
+    if "--test2" in sys.argv:
+        import patch_aspect
+        check(set(m[off(CHG_STUB):off(CHG_STUB + 0x40)]) == {0xff}, "stub area not free")
+        acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
+        a = bytearray(olycompress.unpack(m, BLOB_A_OFF))
+        check(bytes(a[CHG_CHECK - BLOB_A:CHG_CHECK - BLOB_A + 7]) == CHG_STOCK, "check entry differs")
+        stub = patch_aspect.assemble_syms(CHG_SRC, CHG_STUB, {"back": CHG_CHECK + 7})
+        m[off(CHG_STUB):off(CHG_STUB) + len(stub)] = stub
+        a[CHG_CHECK - BLOB_A:CHG_CHECK - BLOB_A + 7] = (b"\xdc" + struct.pack("<i", CHG_STUB - CHG_CHECK)
+                                                        + b"\xcb\xcb")
+        ca = olycompress.pack(bytes(a))
+        check(len(ca) <= BLOB_B_OFF - (BLOB_A_OFF + 32), "blob A does not fit")
+        old_end = BLOB_A_OFF + 32 + acsz
+        m[BLOB_A_OFF + 32:BLOB_A_OFF + 32 + len(ca)] = ca
+        if len(ca) < acsz:
+            m[BLOB_A_OFF + 32 + len(ca):old_end] = b"\xff" * (old_end - BLOB_A_OFF - 32 - len(ca))
+        struct.pack_into("<I", m, BLOB_A_OFF + 16, len(ca))
+        check(olycompress.unpack(m, BLOB_A_OFF) == bytes(a), "blob A does not decode to the edit")
+        print("  changeable hook %#x -> stub %#x (%d B); blob A %#x -> %#x" % (CHG_CHECK, CHG_STUB, len(stub), acsz, len(ca)))
     c = olycompress.pack(bytes(gui))
     check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
     old_end = BLOB_B_OFF + 32 + csz
@@ -133,7 +171,7 @@ def patch(main):
 
 
 def main(argv):
-    if len(argv) < 3 or "--test1" not in argv:
+    if len(argv) < 3 or not ("--test1" in argv or "--test2" in argv):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
