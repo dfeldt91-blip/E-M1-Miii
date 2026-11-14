@@ -224,3 +224,20 @@ Two blobs, roughly block-0 offsets `0x7f5000-0x9eb000` (runtime
   unpacked by another CPU or by code not reached here. LZSS literal-scoring
   (flag=1 literal, 2-byte refs, LSB-first) is suggestive for the first blob
   but not conclusive.
+
+## ARM (Cortex-A9) side: not the unpacker
+
+Block 2 sub-image `0x46000000` (block-2 offset `0x2100000`, 14 MB) has its own
+directory: kernel (gzip at +`0x17e78`, Linux 4.4.127), initramfs (gzip cpio at
++`0x1d1fe0`), squashfs (LZO, +`0x4887e0`). Contents: Wi-Fi/BT (Broadcom
+bcmdhd, CYW43455 firmware, BLE bridge), lighttpd + OI.Share fcgi (`isc_*`),
+`sd_reader`, `remocon`, `hhhr` (matrix math for High Res Shot, uses /dev/mem).
+No decompression of main-CPU data anywhere on the ARM side.
+
+The blobs also show no internally repeated call targets when decoded as MN103
+(max 3 callers vs 399 in normal code), so they are not plain code for any core
+or base: compressed/encrypted data, possibly not code at all.
+
+Next lead: recursive disassembly reached only 27.6 % of block 0; much plain C++
+UI code is reachable only via vtables/handler tables. Extend seeding before
+assuming the Picture Mode list is inside the blobs.
