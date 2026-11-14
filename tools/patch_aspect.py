@@ -74,7 +74,9 @@ Stage 6: 5 + the AF cursor row/column range switches (0x60ecff4d, 0x60ed065b):
 Stage 7: 6 + four more aspect switch tails (AF actuator ranges 0x60de0d9e,
   layout index 0x60d430b8, per-aspect widgets 0x60dbc161) and the AF/tracking
   ratio pair: the two AF/LV struct callers of the ratio getter 0x60567a99 turn
-  65:24 into 16:9 (the live-view message callers keep 65:24). Stubs at
+  65:24 into 16:9 (the live-view message callers keep 65:24) -- only with
+  --ratio16: that build (1.597) did not boot on the camera with Panorama
+  selected (black screen), so it is off by default. Stubs at
   0x600d5f00. RT_LST (a text listing "addr insn" of the stock runtime image)
   enables the check that no branch lands inside the hooked bytes.
 
@@ -681,7 +683,7 @@ def stage7(m):
             if isinstance(exit_, str):
                 code += bytes.fromhex(exit_)
             hook(site, stock, place(code))
-        for site, stock, regs, back in RATIO_CALLS:
+        for site, stock, regs, back in (RATIO_CALLS if "--ratio16" in sys.argv else []):
             call = bytes.fromhex(stock)
             check(call[0] == 0xcd, "ratio call site %#x is not call d16" % site)
             check(site + 3 + struct.unpack("<h", call[1:3])[0] - 2 == GETTER - 1 or True, "")
@@ -689,7 +691,7 @@ def stage7(m):
             body = assemble_syms(RATIO_SRC % regs, stub + 7, {"back": back})
             head = b"\xdd" + struct.pack("<i", GETTER - stub) + call[3:5]
             hook(site, stock, place(head + body))
-        print("  stage 7: %d tails, %d ratio calls hooked, stubs %#x-%#x" % (len(TAILS7), len(RATIO_CALLS), STUB7_LO, stub))
+        print("  stage 7: %d tails hooked%s, stubs %#x-%#x" % (len(TAILS7), " + ratio calls" if "--ratio16" in sys.argv else "", STUB7_LO, stub))
     stage6(m, more2)
 
 
