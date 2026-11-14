@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--labeltest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--labeltest|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -27,6 +27,10 @@ Label test (diagnostic): relabel the 4:3 entry of the three aspect option lists
   inside GUI blob B (0x611af064, 0x61206514, 0x61287cc8) from 0x124 "4:3" to
   0xf1 "Panorama", in place. Shows whether blob-B edits reach the camera and
   whether these lists label the Image Aspect menu.
+
+Title test (diagnostic): change the "Image Aspect" row title (string 0x46) to
+  0xf1 "Panorama" in every menu item record {u32 0x10d, u16 4, u16 0x46, u32 cond}
+  inside GUI blob B. Shows whether blob-B edits reach the running camera.
 
 --version sets the main block's header/trailer version (BCD) so the card
 updater does not skip the file as "same version as installed".
@@ -163,6 +167,24 @@ def labeltest(m):
     repack_b(m, gui, csz)
 
 
+def titletest(m):
+    import re
+    check(bytes(m[BLOB_B_OFF:BLOB_B_OFF + 11]) == b"olycompress", "blob B header not found")
+    csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
+    gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
+    check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
+          "stock blob B does not recompress identically")
+    pat = struct.pack("<IHH", 0x10d, 4, 0x46)
+    hits = [mm.start() for mm in re.finditer(re.escape(pat), bytes(gui))]
+    check(len(hits) >= 10, "expected many Image Aspect item records, found %d" % len(hits))
+    for o in hits:
+        cond = struct.unpack_from("<I", gui, o + 8)[0]
+        check(0x60000000 <= cond < 0x62000000, "item at %#x has no condition pointer" % (BLOB_B + o))
+        struct.pack_into("<H", gui, o + 6, PANORAMA)
+    print("  retitled %d Image Aspect item records" % len(hits))
+    repack_b(m, gui, csz)
+
+
 def main(argv):
     if len(argv) < 3:
         print(__doc__)
@@ -182,6 +204,8 @@ def main(argv):
         stage2b(m)
     elif "--labeltest" in argv:
         labeltest(m)
+    elif "--titletest" in argv:
+        titletest(m)
     else:
         check(False, "no stage selected")
     ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
