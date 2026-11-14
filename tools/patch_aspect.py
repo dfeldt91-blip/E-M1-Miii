@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -90,6 +90,9 @@ Stage 9: 8 + the AF/tracking ratio-pair globals 0xa27212e1/e2: after each of
 Stage 10: 9 + the AF module config struct (0x62192128, aspect at +21): its
   writer 0x60694d04 stores 6 as 3, so the AF driver's grid/window switches
   take the 16:9 case.
+
+Stage 11: 10 + GUI shared data item 48 (AF area info for the AF_AreaTarget /
+  REC_IMAGER_AF panels): the item setter 0x60ce7201 stores aspect 6 as 3.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -807,7 +810,7 @@ jmp back""" % AFCFG_BYTE
 STUB10 = 0x600d7700          # 0x600d7700-0x600d7800: after the readout table (0x600d7600..0x600d772e)
 
 
-def stage10(m):
+def stage10(m, more6=None):
     """9 + AF module config aspect 6 -> 3 (AF grid/windows of the AF driver)."""
     def more5(rt, put, hook):
         at = 0x600d7740
@@ -817,7 +820,43 @@ def stage10(m):
         rt[off(at):off(at) + len(code)] = code
         hook(AFCFG_SITE, AFCFG_STOCK, at)
         print("  stage 10: AF config aspect hook at %#x" % at)
+        if more6:
+            more6(rt, put, hook)
     stage9(m, more5)
+
+
+# GUI shared data items: set 0x60ce7201(d0 = id, a0 = src, d1 = size, a1), get 0x60ce71e9(d0, a0 = dst,
+# d1). Item 48 (36 B: +20 flag, +24 aspect) feeds the AF area panels (GCSubPanel_AF_AreaTarget_*,
+# REC_IMAGER_AF: ~18 aspect switches on obj+0x58c+24 with cases 1,2,3,4,9,10 only). The hook at the set
+# entry stores aspect 6 as 3 for item 48.
+ITEM_SET_SITE, ITEM_SET_STOCK = 0x60ce7202, "fca0e4bee861"      # mov (0x61e8bee4),a0
+ITEM48_SRC = """mov (0x61e8bee4),a0
+mov d1,mdr
+mov d0,d1
+exthu d1
+cmp 48,d1
+bne out
+mov (24,a2),d1
+cmp 6,d1
+bne out
+mov 3,d1
+mov d1,(24,a2)
+out:
+mov mdr,d1
+jmp back"""
+
+
+def stage11(m):
+    """10 + GUI data item 48 (AF area info): aspect 6 published as 3 (16:9)."""
+    def more6(rt, put, hook):
+        at = 0x600d7780
+        check(set(rt[off(at):off(at) + 0x40]) == {0xff}, "stage 11 stub slot not free")
+        code = assemble_syms(ITEM48_SRC, at, {"back": ITEM_SET_SITE + 6})
+        check(len(code) <= 0x40, "stage 11 stub too long")
+        rt[off(at):off(at) + len(code)] = code
+        hook(ITEM_SET_SITE, ITEM_SET_STOCK, at)
+        print("  stage 11: item-48 hook at %#x (%d bytes)" % (at, len(code)))
+    stage10(m, more6)
 
 
 def repack_b(m, gui, csz):
@@ -908,6 +947,8 @@ def main(argv):
         stage9(m)
     elif "--stage10" in argv:
         stage10(m)
+    elif "--stage11" in argv:
+        stage11(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
