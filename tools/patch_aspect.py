@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -46,6 +46,12 @@ Stage 2e: 2d + the setting restriction rules (record 0x60492f00 for 0x10d,
   0x602cb5f9 skips any value the check 0x602d51ee rejects with 0x100). Rule 12
   (IF setting 44 == 0, i.e. stills) maps 1,3,2,4,9,10 -> 1,3,2,4,9,1; value 6
   is not a target, so it is skipped. Its map is relocated with {6, 6} added.
+
+Stage 3: 2e + 65:24 capture geometry for id 6 (E-P7 ASPECT.md 1d / v5):
+  width/height size-class rows W 0x60549864 / H 0x60549a14 (row id 6): width =
+  max(4:3, 16:9) per class, height = width*24/65 rounded to 16 (L 5184x1920),
+  classes stock leaves 0 stay 0; ORF AspectFrame jump entry id 6 -> width-
+  limited case 0x6041f44b; LV/AF u8 ratio pair 0x6025ab44 7:6 -> 65:24.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -261,6 +267,39 @@ def stage2e(m):
     struct.pack_into("<H", m, r + 12, 7)
 
 
+W_TAB, H_TAB = 0x60549864, 0x60549a14   # u16[24] per aspect id 1..9 (48 B rows), size classes
+FRAME_JT = 0x60549770                    # ORF AspectFrame jump table, index id-1 (dispatch 0x6041f441)
+FRAME_WIDE, FRAME_TALL = 0x6041f44b, 0x6041f474
+RATIO_U8 = 0x6025ab38                    # u8 (w,h) per id 0..10, boot-copied .data (LV/AF ratio)
+XPAN_W, XPAN_H = 65, 24
+
+
+def row(m, tab, i):
+    return list(struct.unpack_from("<24H", m, off(tab + 48 * (i - 1))))
+
+
+def stage3(m):
+    """2e + 65:24 capture geometry for id 6 (E-P7 v5 recipe)."""
+    stage2e(m)
+    w1, w3, w6, h6 = row(m, W_TAB, 1), row(m, W_TAB, 3), row(m, W_TAB, 6), row(m, H_TAB, 6)
+    check(w1[0] == 5184 and w3[0] == 5184 and (w6[0], h6[0]) == (4544, 3888), "size tables differ")
+    nw, nh = [], []
+    for c in range(24):
+        if w6[c] == 0:
+            nw.append(0); nh.append(h6[c]); continue
+        w = max(w1[c], w3[c])
+        nw.append(w); nh.append(max(16, int(w * XPAN_H / XPAN_W / 16 + 0.5) * 16))
+    struct.pack_into("<24H", m, off(W_TAB + 48 * 5), *nw)
+    struct.pack_into("<24H", m, off(H_TAB + 48 * 5), *nh)
+    jt = list(struct.unpack_from("<9I", m, off(FRAME_JT)))
+    check(jt[5] == FRAME_TALL and jt[1] == jt[2] == FRAME_WIDE, "frame jump table differs")
+    struct.pack_into("<I", m, off(FRAME_JT) + 4 * 5, FRAME_WIDE)
+    r = list(m[off(RATIO_U8):off(RATIO_U8) + 22])
+    check(r == [0, 0, 4, 3, 3, 2, 16, 9, 6, 6, 5, 4, 7, 6, 6, 5, 7, 5, 3, 4, 17, 9], "ratio table differs")
+    m[off(RATIO_U8) + 12:off(RATIO_U8) + 14] = bytes([XPAN_W, XPAN_H])
+    print("  id 6 sizes: " + ", ".join("%dx%d" % (a, b) for a, b in zip(nw, nh) if a))
+
+
 def repack_b(m, gui, csz):
     c = olycompress.pack(bytes(gui))
     room = off(BLOB_END) - (BLOB_B_OFF + 32)
@@ -333,6 +372,8 @@ def main(argv):
         stage2d(m)
     elif "--stage2e" in argv:
         stage2e(m)
+    elif "--stage3" in argv:
+        stage3(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
