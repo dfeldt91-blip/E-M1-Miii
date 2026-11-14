@@ -115,6 +115,7 @@ MENU_DESCS = (0x611af718, 0x61206bc8, 0x6128837c)
 RULES, N_RULES = 0x60476160, 32
 NEW_ICONS = {0x36: 4436, 0x39: 4437}
 MENU_AT, MAPS_AT = 0x600d7800, 0x600d2500
+TOGGLES = 0x611cfbc0
 
 
 def patch_menu(main):
@@ -159,6 +160,17 @@ def patch_menu(main):
         struct.pack_into("<I", m, r + 8, maps[mp])
         struct.pack_into("<H", m, r + 12, 28)
     check(nxt <= 0x600d3000, "rule maps overflow")
+    if "--toggles" in sys.argv:
+        # step 3: the list builder 0x60df8fa1 keeps a value only if its {GUI value, ONOFF sid} entry in
+        # TOGGLES (26 x 8 B) has ONOFF == 1. 54/57 use COLOR_CREATOR_2_SET1_ONOFF 0x40e /
+        # MONOCHROME_CREATOR_SET1_ONOFF 0x411, which this body never sets; use Color Creator's 0x24a.
+        t = TOGGLES - BLOB_B
+        tog = [struct.unpack_from("<II", gui, t + 8 * k) for k in range(26)]
+        check(tog[0] == (7, 0x157) and tog[23] == (0x15, 0x24a) and tog[24] == (0x36, 0x40e)
+              and tog[25] == (0x39, 0x411), "toggle table differs")
+        struct.pack_into("<I", gui, t + 8 * 24 + 4, 0x24a)
+        struct.pack_into("<I", gui, t + 8 * 25 + 4, 0x24a)
+        print("  toggles: 54/57 -> ONOFF 0x24a")
     c = olycompress.pack(bytes(gui))
     check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
     old_end = BLOB_B_OFF + 32 + csz
