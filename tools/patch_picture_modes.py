@@ -5,6 +5,10 @@ E-M1 Mark III Picture Mode list (data-only patch, EXPERIMENTAL, UNTESTED ON A CA
 
   python3 tools/patch_picture_modes.py IN.BIN OUT.BIN [--report] [--version 0x1510]
 
+--aspect-test (diagnostic) drops 3:4 from the Image Aspect validator list
+(record 0x604dc954: byte count 5 -> 4, list [1,3,2,4,9] -> [1,3,2,4]) to show
+whether main-block validator edits reach the camera's menus.
+
 --version sets the version field (BCD, e.g. 0x1510 = 1.5.1.0) in the main code
 block's header and trailer, so a successful install can be told apart and so
 the camera does not treat the file as the version it already has.
@@ -43,6 +47,8 @@ NON_LIST, NON_ALT = 0x604c3df4, 0x604aefc4   # DIAL_NON list / alt list
 NEW_LIST, NEW_ALT = 0x600d7000, 0x600d7700
 FREE_LO, FREE_HI = 0x600d6ff0, 0x600d7800    # must be all 0xff (16-byte guard)
 ELEM, N_STOCK = 64, 26
+ASPECT_REC = 0x604dc954
+STOCK_ASPECT_REC = bytes.fromhex("0d018000da934d6000000000050001000001000000"[:40])
 STOCK_ALT = [7, 0, 1, 2, 5, 3, 6, 0x14, 0x1c, 0x15, 8, 9, 10, 11, 12, 13, 14,
              15, 16, 17, 18, 19, 0x1a, 0x1b, 0x3c, 0x3f]
 STOCK_MODES = [7, 1, 2, 3, 4, 5, 6, 8, 10, 9, 100, 101, 102, 103, 104, 105,
@@ -58,8 +64,16 @@ def check(cond, msg):
         sys.exit("refusing to patch: " + msg)
 
 
-def patch_main(main):
+def aspect_test(m):
+    check(bytes(m[off(ASPECT_REC):off(ASPECT_REC) + 20]) == STOCK_ASPECT_REC, "aspect record differs from stock")
+    check(list(m[off(0x604d93da):off(0x604d93da) + 5]) == [1, 3, 2, 4, 9], "aspect list differs from stock")
+    struct.pack_into("<H", m, off(ASPECT_REC) + 12, 4)
+
+
+def patch_main(main, aspect=False):
     m = bytearray(main)
+    if aspect:
+        aspect_test(m)
     check(m[off(REC):off(REC) + 20] == STOCK_REC, "validator record of 0x6f differs from stock")
     stock = [bytes(m[off(LIST) + ELEM * k:off(LIST) + ELEM * (k + 1)]) for k in range(N_STOCK)]
     check([e[0] for e in stock] == STOCK_MODES, "stock Picture Mode list differs")
@@ -96,7 +110,7 @@ def main(argv):
     b0 = blocks[0]
     check(b0["info"]["type"] == "OE" and b0["info"]["model"] == 0x1390 and b0["info"]["flags"] == 0x100,
           "first block is not the E-M1 III main code block")
-    new_main, nl, na = patch_main(b0["plain"])
+    new_main, nl, na = patch_main(b0["plain"], aspect="--aspect-test" in argv)
     ver = None
     if "--version" in argv:
         ver = int(argv[argv.index("--version") + 1], 0)
@@ -123,6 +137,8 @@ def main(argv):
     print("wrote %s  sha256 %s" % (dst, hashlib.sha256(out).hexdigest()))
     print("  0x6f record now: %s (list %#x, alt %#x, %d bytes)" % (rec.hex(" "), NEW_LIST, NEW_ALT, nl))
     print("  new list %d bytes at %#x, GUI values %d bytes at %#x" % (nl, NEW_LIST, na, NEW_ALT))
+    asp = struct.unpack_from("<H", again[0]["plain"], off(ASPECT_REC) + 12)[0]
+    print("  aspect validator bytes: %d %s" % (asp, "(3:4 removed)" if asp == 4 else "(stock)"))
     print("  main block version: %#06x" % struct.unpack_from("<H", again[0]["head"], 16)[0])
     if diff is not None:
         print("  file bytes changed: %d" % len(diff))
