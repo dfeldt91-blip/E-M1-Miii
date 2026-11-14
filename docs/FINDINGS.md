@@ -350,3 +350,33 @@ Candidate patch (E-P7 aspect method): give the 0x6f record a new list = the
 verified free space, and raise its byte count 1664 -> 2048. Open: how the GUI
 maps pipeline values to GUI 54-59 labels/icons, the alt-list meaning, and
 whether INFO opens the profile editor.
+
+## How the menus enumerate Picture Mode, and what INFO does (runtime image)
+
+- Settings core: count `0x602dbf80` = bytes(+12)/elem(+14) of the validator
+  record; value-by-index `0x602dc2c4` (type 6 -> pointer to the idx-th elem-byte
+  entry); compound get `0x602cbb47` fills a 64-byte struct with u32 values of the
+  component settings from table `0x60469774` (144 x 34 B `{u16 sid, u16 comp[], 3200}`).
+- Components: `0x6f` = {111 COLORTONE, 1711 FILTER}; DIAL_COLOR_CREATOR_2 =
+  {900, 1075 SELECT}; DIAL_MONOCHROME_CREATOR = {966, 1076 SELECT}; DIAL_NON = {901}.
+  So in the 0x6f list +4 is the mono FILTER, not a profile slot.
+- Alt lists = GUI value per entry (u32): 0x6f: 7,0,1,2,5,3,6,20,28,21,8..19,26,27,60,63
+  (Vivid 0, Natural 1, Muted 2, Monotone 3, Portrait 5, Custom 6, i-Finish 7,
+  e-Portrait 20, Color Creator 21, Underwater 28, Art 8..19/26 Vintage/27 Partial
+  Color/60/63). DIAL_NON adds {11}->54 Color Profile, {12}->57 Mono Profile;
+  dial CC2 -> 54,55,56; dial MONO -> 57,58,59.
+- Live Control Picture Mode row (`0x611fe03c`, 75 icons) already has GUI 54-59.
+
+**Patch design (data only):** new 0x6f list = 26 stock entries + {11,0} + {12,0};
+new alt list = stock 26 + 0x36 + 0x39; record `0x604da7bc`: list/alt pointers
+to the new copies, bytes 1664 -> 1792. Mirrors the stock DIAL_NON list. The
+preset used is then presumably MODE_COLOR_CREATOR_2_SELECT (0x386) /
+MODE_MONOCHROME_CREATOR_SELECT (0x3c7) (not yet confirmed).
+
+**INFO:** the SCP/Live Control INFO handler `0x60e7e4e1` opens editors only for
+row 111 values 27/51/52/53 (Partial Color -> setting 661) and 21 (Color Creator,
+`0x60ed7ee1(2)`); no branch for 54-59. No named GUI state for a Color/Mono
+Profile editor (152 named states; only RAW-edit Color Creator).
+`0x609ec110` packs per-kind picture-mode parameters (kind 5 = Color Profile:
+selector 902 then that preset's 12 saturations 933..) - display/metadata, not an
+editor. Whether a profile editor screen exists at all is still open.
