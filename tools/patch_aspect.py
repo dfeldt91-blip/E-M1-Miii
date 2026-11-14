@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -52,6 +52,14 @@ Stage 3: 2e + 65:24 capture geometry for id 6 (E-P7 ASPECT.md 1d / v5):
   max(4:3, 16:9) per class, height = width*24/65 rounded to 16 (L 5184x1920),
   classes stock leaves 0 stay 0; ORF AspectFrame jump entry id 6 -> width-
   limited case 0x6041f44b; LV/AF u8 ratio pair 0x6025ab44 7:6 -> 65:24.
+
+Stage 4: 3 + the rest of the E-P7 v5/v6 geometry and the AF fix:
+  every per-aspect (w,h) table (49, found with the E-P7 scanner; id 6 -> width
+  of the 4:3/16:9 rows, height to 16, ratio code 0x1841, centred rects), the
+  8 hard-coded live-view/playback box switches (id 6 -> 640x240 via small
+  blocks at 0x600d7500), and the 4 AF target lists at 0x611950e8 (id 6 gets
+  the 16:9 style and point mask; without it the AF screen shows NONE).
+  Needs MN10300_BIN (GNU binutils for mn10300-elf) to assemble the blocks.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -300,6 +308,134 @@ def stage3(m):
     print("  id 6 sizes: " + ", ".join("%dx%d" % (a, b) for a, b in zip(nw, nh) if a))
 
 
+BLOB_A_OFF = 0x7e1fe0                    # blob A header (runtime 0x60803000), unpacks up to blob B
+# Per-aspect (w,h) tables found by the E-P7 scanner (caduceus patches/aspect/scan_tables.py) run on
+# this image: (id-1 row address, layout). Layout: stride, struct, index of w, index of h.
+LAYOUTS = {"u16wh": (4, "<HH", 0, 1), "rect16": (16, "<8H", 2, 3), "u16id0wh": (8, "<4H", 2, 3),
+           "u16whcode": (6, "<3H", 0, 1), "u32idwh": (12, "<3I", 1, 2)}
+TABLES = [(a, "u16wh") for a in (
+    0x6020e578, 0x6020e5ac, 0x6020e5e0, 0x60284f38, 0x60284f60, 0x60284f88, 0x60284fb0, 0x60284fd8,
+    0x60285028, 0x60285050, 0x60285078, 0x602850a0, 0x602850c8, 0x602850f0, 0x602852d4, 0x602852f8,
+    0x6052e060)] + [(0x6053f374, "rect16"), (0x6053f424, "rect16")] + [(a, "u16id0wh") for a in (
+    0x60266d00, 0x60266d58, 0x60266da8, 0x60ba7e2c, 0x60ba7e7c, 0x60ba7ecc, 0x60ba7f1c, 0x60ba7fbc,
+    0x60ba805c, 0x60ba814c, 0x60ba81ec, 0x60ba823c, 0x60ba828c)] + [(a, "u16whcode") for a in (
+    0x604f88d2, 0x6052dcc2, 0x6052df7e, 0x6052dfc0)] + [(a, "u32idwh") for a in (
+    0x60c2d120, 0x60c2d198, 0x60c2d210, 0x60c2d378, 0x60c2d468, 0x60c2d5d0, 0x60c2d6c0, 0x60c2d738,
+    0x60c2d7b0, 0x60c2d828, 0x60c2d8a0, 0x60c2d9c0, 0x60c2da38)]
+XPAN_CODE = (XPAN_H << 8) | XPAN_W       # ratio code (H<<8)|W, 0x304 = 4:3 -> 0x1841
+
+# Live-view / playback box switches on the aspect id (0..10), each: jump table, stock id-6 case
+# (W = 560, then the shared H = 480 path), asm that sets 640x240 and the address after the H store.
+LV_SWITCHES = [
+    (0x60b9f204, 0x6092e34f, "mov 640,d0\nmov d0,(40,sp)\nmov 240,d0\nmov d0,(44,sp)", 0x6092e37c),
+    (0x60b9f230, 0x6092e55f, "mov 640,d0\nmov d0,(40,sp)\nmov 240,d0\nmov d0,(44,sp)", 0x6092e58c),
+    (0x60b9f25c, 0x6092e8e7, "mov 640,d0\nmov d0,(36,sp)\nmov 240,d0\nmov d0,(40,sp)", 0x6092e914),
+    (0x60ba207c, 0x60936a43, "mov 640,d3\nmov 240,d2", 0x60936a60),
+    (0x60ba20a8, 0x60936b39, "mov 640,d3\nmov 240,d2", 0x60936b56),
+    (0x60bab6cc, 0x60945721, "mov 640,d1\nmov 240,d0", 0x6094573e),
+    (0x60babc70, 0x609475e8, "mov 640,d0\nmov 240,d1", 0x60947605),
+    (0x60bbdad4, 0x60985604, "mov 640,a0\nmov 240,d2", 0x60985621),
+]
+AF_RECS = 0x611950e8      # 4 x {u32 key, u32 list, u32 count 6}: AF target lists {id, style, mask, 121}
+CODE_AT = NEW_LIST + 0x500
+
+
+def assemble(src, at, tgt):
+    import subprocess
+    import tempfile
+    gnu = os.environ.get("MN10300_BIN")
+    check(gnu, "set MN10300_BIN to the binutils mn10300-elf bin directory")
+    with tempfile.TemporaryDirectory() as t:
+        open(t + "/a.s", "w").write("\t.text\n\t.am33_2\n" + src + "\njmp tgt\n")
+        subprocess.run([gnu + "/mn10300-elf-as", "-o", t + "/a.o", t + "/a.s"], check=True)
+        subprocess.run([gnu + "/mn10300-elf-ld", "-Ttext=%#x" % at, "-e", "%#x" % at,
+                        "--defsym", "tgt=%#x" % tgt, "-o", t + "/a.elf", t + "/a.o"], check=True)
+        subprocess.run([gnu + "/mn10300-elf-objcopy", "-O", "binary", t + "/a.elf", t + "/a.bin"], check=True)
+        return open(t + "/a.bin", "rb").read()
+
+
+def xpan_rows(rt, a1, lay):
+    st, fmt, iw, ih = LAYOUTS[lay]
+    rows = [list(struct.unpack_from(fmt, rt, off(a1) + k * st)) for k in range(9)]
+    check(abs(rows[5][iw] / rows[5][ih] - 7 / 6) < 0.035, "table %#x id 6 is not 7:6" % a1)
+    W = max(rows[0][iw], rows[2][iw])
+    h = int(W * XPAN_H / XPAN_W / 16 + 0.5) * 16
+    r = list(rows[5])
+    r[iw], r[ih] = W, h
+    if lay == "u16whcode":
+        r[2] = XPAN_CODE
+    if lay in ("u32idwh", "u16id0wh"):
+        check(r[0] == 6, "table %#x row 6 id differs" % a1)
+    if lay == "rect16":   # E-P7 rule: centred band, second rect relative to the window origin, clipped
+        x0, y0 = rows[0][0], rows[0][1]
+        r[0], r[1] = x0, y0 + (rows[0][3] - h) // 2
+        orgx = rows[0][0] - rows[0][4]
+        r[4] = r[0] - orgx
+        r[5] = max(r[1] - y0, rows[0][5])
+        r[6] = r[0] + W - 1 - orgx
+        r[7] = min(r[1] + h - 1 - y0, rows[0][7])
+    return a1 + 5 * st, struct.pack(fmt, *rows[5]), struct.pack(fmt, *r)
+
+
+def stage4(m):
+    """3 + every 7:6 (w,h) table, the live-view box switches, the AF target lists."""
+    stage3(m)
+    blobs = []
+    rt = bytearray(m)
+    for bo in (BLOB_A_OFF, BLOB_B_OFF):
+        check(bytes(m[bo:bo + 11]) == b"olycompress", "blob header at %#x not found" % bo)
+        csz = struct.unpack_from("<I", m, bo + 16)[0]
+        raw = olycompress.unpack(m, bo)
+        check(olycompress.pack(raw) == bytes(m[bo + 32:bo + 32 + csz]), "blob %#x does not recompress identically" % bo)
+        blobs.append((bo, csz, len(raw)))
+        rt[bo:bo + len(raw)] = raw
+
+    def put(a, old, new):
+        check(bytes(rt[off(a):off(a) + len(old)]) == old, "stock bytes differ at %#x" % a)
+        rt[off(a):off(a) + len(new)] = new
+
+    n = 0
+    for a1, lay in TABLES:
+        a, old, new = xpan_rows(rt, a1, lay)
+        put(a, old, new)
+        n += 1
+    code = CODE_AT
+    for jt, case, src, tgt in LV_SWITCHES:
+        blk = assemble(src, code, tgt)
+        check(set(rt[off(code):off(code) + 16]) == {0xff} and len(blk) <= 16, "code slot %#x not free" % code)
+        rt[off(code):off(code) + len(blk)] = blk
+        put(jt + 4 * 6, struct.pack("<I", case), struct.pack("<I", code))
+        code += 16
+    free = NEW_LIST + 0x300
+    for k in range(4):
+        key, lp, cnt = struct.unpack_from("<III", rt, off(AF_RECS) + 12 * k)
+        check(cnt == 6, "AF record %d count differs" % k)
+        es = [struct.unpack_from("<4I", rt, off(lp) + 16 * j) for j in range(6)]
+        check([e[0] for e in es] == [1, 3, 2, 4, 9, 10] and all(e[3] == 121 for e in es), "AF list %#x differs" % lp)
+        new = es + [(6,) + es[1][1:]]            # 6 uses the 16:9 style and point mask
+        check(set(rt[off(free):off(free) + 0x70]) == {0xff}, "AF list target not free")
+        rt[off(free):off(free) + 0x70] = b"".join(struct.pack("<4I", *e) for e in new)
+        struct.pack_into("<II", rt, off(AF_RECS) + 12 * k + 4, free, 7)
+        free += 0x70
+    check(free <= CODE_AT, "AF lists overlap the code")
+    # write back: base part directly, blobs recompressed
+    lo = min(b[0] for b in blobs)
+    m[:lo] = rt[:lo]
+    for bo, csz, usz in blobs:
+        raw = bytes(rt[bo:bo + usz])
+        c = olycompress.pack(raw)
+        limit = BLOB_B_OFF if bo == BLOB_A_OFF else off(BLOB_END)
+        check(bo + 32 + len(c) <= limit, "blob %#x does not fit" % bo)
+        old_end = bo + 32 + csz
+        m[bo + 32:bo + 32 + len(c)] = c
+        if len(c) < csz:
+            m[bo + 32 + len(c):old_end] = b"\xff" * (old_end - bo - 32 - len(c))
+        struct.pack_into("<I", m, bo + 16, len(c))
+        check(olycompress.unpack(m, bo) == raw, "blob %#x round trip failed" % bo)
+        print("  blob %#x: %#x -> %#x compressed bytes" % (bo, csz, len(c)))
+    print("  %d size tables, %d LV switches, 4 AF lists patched" % (n, len(LV_SWITCHES)))
+
+
 def repack_b(m, gui, csz):
     c = olycompress.pack(bytes(gui))
     room = off(BLOB_END) - (BLOB_B_OFF + 32)
@@ -374,6 +510,8 @@ def main(argv):
         stage2e(m)
     elif "--stage3" in argv:
         stage3(m)
+    elif "--stage4" in argv:
+        stage4(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
