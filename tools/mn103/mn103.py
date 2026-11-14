@@ -59,7 +59,11 @@ def decode(buf,off,pc):
         txt=o.mn
         info={'mn':o.mn.split()[0],'regs':regs,'vals':vals}
         for name,(v,sv,w) in vals.items():
-            if name.startswith('d') and ('label' in o.mn or o.mn.split()[0] in ('CALL','JMP') or o.mn.split()[0].startswith('B')) and '(d' not in o.mn:
+            m0=o.mn.split()[0]
+            if name.startswith('d') and m0[0]=='B' and m0 not in ('BTST','BSET','BCLR') and ',PC)' in o.mn:
+                tgt=(pc+sv)&0xffffffff; info['target']=tgt
+                txt=txt.replace('(%s,PC)'%name,'0x%08x'%tgt)
+            elif name.startswith('d') and ('label' in o.mn or o.mn.split()[0] in ('CALL','JMP') or o.mn.split()[0].startswith('B')) and '(d' not in o.mn:
                 tgt=(pc+sv)&0xffffffff; info['target']=tgt; rep='0x%08x'%tgt
                 txt=txt.replace('label',rep)
             elif name.startswith('imm'):
