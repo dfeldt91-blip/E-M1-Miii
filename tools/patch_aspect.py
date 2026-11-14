@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -83,6 +83,9 @@ Stage 7: 6 + four more aspect switch tails (AF actuator ranges 0x60de0d9e,
 Stage 8: 7 + local remaps 6 -> 3 (16:9) right after the aspect read in the
   metering-mark lookup, the shooting-screen overlay (obj+300) and the
   Detail / Legacy_Detail SCP viewers (AF target, range frame).
+
+Stage 9: 8 + the AF/tracking ratio-pair globals 0xa27212e1/e2: after each of
+  the 3 stock writers, 65:24 becomes 16:9 there only (LV keeps 65:24).
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -726,7 +729,7 @@ jmp back"""
 STUB8_LO, STUB8_HI = 0x600d5f80, 0x600d6100
 
 
-def stage8(m):
+def stage8(m, more4=None):
     """7 (no ratio change) + local 6 -> 16:9 remaps for the shooting-screen AF point, metering mark
     and the SCP/AF target viewers."""
     def more3(rt, put, hook):
@@ -742,7 +745,47 @@ def stage8(m):
             hook(site, stock, stub)
             stub = (stub + len(code) + 15) & ~15
         print("  stage 8: %d remaps, stubs %#x-%#x" % (len(REMAPS8), STUB8_LO, stub))
+        if more4:
+            more4(rt, put, hook, stub)
     stage7(m, more3)
+
+
+# AF/tracking driver ratio-pair globals (W 0xa27212e1, H 0xa27212e2; dispatch e.g. 0x60612a7b with
+# cases 4:3, 16:9, 3:2, 6:6, 3:4, ... only). After each stock writer's H store, 65:24 becomes 16:9 in
+# the globals only (E-P7 ASPECT.md 1i pr_w1/2/3); the LV struct/message keep 65:24.
+PAIR_W, PAIR_H = 0xa27212e1, 0xa27212e2
+PAIR_WRITERS = [(0x60609a92, "fc82e21272a2"), (0x60616f31, "fc86e21272a2"), (0x6061c23b, "fc82e21272a2")]
+PAIR_SRC = """mov d0,mdr
+movbu (%#x),d0
+cmp 65,d0
+bne keep
+movbu (%#x),d0
+cmp 24,d0
+bne keep
+mov 16,d0
+movbu d0,(%#x)
+mov 9,d0
+movbu d0,(%#x)
+keep:
+mov mdr,d0
+jmp back""" % (PAIR_W, PAIR_H, PAIR_W, PAIR_H)
+STUB9_HI = 0x600d6100
+
+
+def stage9(m):
+    """8 + the AF/tracking ratio-pair globals 65:24 -> 16:9 (C-AF, tracking, AF frame display)."""
+    def more4(rt, put, hook, stub):
+        for site, stock in PAIR_WRITERS:
+            moved = bytes.fromhex(stock)
+            body = assemble_syms(PAIR_SRC, stub + len(moved), {"back": site + len(moved)})
+            code = moved + body
+            check(stub + len(code) <= STUB9_HI and set(rt[off(stub):off(stub) + len(code)]) == {0xff},
+                  "stage 9 stubs overflow")
+            rt[off(stub):off(stub) + len(code)] = code
+            hook(site, stock, stub)
+            stub = (stub + len(code) + 15) & ~15
+        print("  stage 9: %d ratio-pair writers hooked, stubs end %#x" % (len(PAIR_WRITERS), stub))
+    stage8(m, more4)
 
 
 def repack_b(m, gui, csz):
@@ -829,6 +872,8 @@ def main(argv):
         stage7(m)
     elif "--stage8" in argv:
         stage8(m)
+    elif "--stage9" in argv:
+        stage9(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
