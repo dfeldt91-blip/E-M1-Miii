@@ -8,6 +8,9 @@ Port of the E-P7 Caduceus "Live ND" route A (docs/LIVE_ND.md there), data only:
     new list [0, 2, 3, 4, 5] in free space;
   - the three menu option lists {0 Off, 2 "2f"} (descriptors 0x611af8b0 / 0x61206d60 / 0x61288514 in
     blob B) -> 5-entry copies with the stock labels "3f" 1430, "4f" 1431, "5f" 1899.
+Camera (1.601): the tab descriptors alone do not change the Number of Frames row. The row record
+(36 B: {u32 sid, u16 4, u16 title, u32 cond, u32 list1, u32 n1, u32 0, u32 cond, u32 list2, u32 n2};
+0x611bc7ac / 0x61271fd8 / 0x61280730) has two option lists of its own; both get the 5 entries too.
 The sequencer (0x609c7bff / 0x609c857c / 0x609c8da5) already counts to the setting, and its frame
 handle array is malloc(20) = 5 slots, so 5 is the ceiling. With Auto Gain On each frame gets 1/N
 (an average); with it Off the frames are summed, as stock does for 2.
@@ -25,9 +28,10 @@ BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 REC, STOCK_LIST = 0x604dc904, 0x604d93d2
 DESCS = (0x611af8b0, 0x61206d60, 0x61288514)
+ROWS = (0x611bc7ac, 0x61271fd8, 0x61280730)
 FRAMES = [0, 2, 3, 4, 5]
 LABELS = {3: 1430, 4: 1431, 5: 1899}
-FREE_LO, FREE_HI = 0x600d6d00, 0x600d6e00      # 0xff padding, unused by the aspect build
+FREE_LO, FREE_HI = 0x600d6d00, 0x600d6f80      # 0xff padding, unused by the aspect build
 
 
 def off(a):
@@ -68,6 +72,21 @@ def patch(main):
         m[off(free):off(free) + len(data)] = data
         struct.pack_into("<HI", gui, d - BLOB_B + 2, len(new), free)
         free += (len(data) + 15) & ~15
+    def ext(ptr):
+        nonlocal free
+        es = [struct.unpack_from("<IHHI", gui, ptr - BLOB_B + 12 * k) for k in range(2)]
+        check([e[0] for e in es] == [0, 2] and all(e[1] == 4 for e in es), "row list %#x differs" % ptr)
+        new = es + [(v, 4, LABELS[v], es[1][3]) for v in (3, 4, 5)]
+        data = b"".join(struct.pack("<IHHI", *e) for e in new)
+        m[off(free):off(free) + len(data)] = data
+        at = free
+        free += (len(data) + 15) & ~15
+        return at
+    for r in ROWS:
+        sid, t, l, c, l1, n1, z, c2, l2, n2 = struct.unpack_from("<IHHIIIIIII", gui, r - BLOB_B)
+        check((sid, t, n1, z, n2) == (0x10a, 4, 2, 0, 2), "row record %#x differs" % r)
+        struct.pack_into("<II", gui, r - BLOB_B + 12, ext(l1), len(FRAMES))
+        struct.pack_into("<II", gui, r - BLOB_B + 28, ext(l2), len(FRAMES))
     check(free <= FREE_HI, "free area overflow")
 
     c = olycompress.pack(bytes(gui))
