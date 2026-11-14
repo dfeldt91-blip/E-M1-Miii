@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -66,6 +66,10 @@ Stage 5: 4 + the SCP pixel-size readout (6-column copy of the table read by
   and the AF target position tables (19 pointer/count load sites in
   0x60ed1474..0x60ed168a; every 16:9 entry duplicated as id 6, tables moved
   to 0x600d3000.., counts raised).
+
+Stage 6: 5 + the AF cursor row/column range switches (0x60ecff4d, 0x60ed065b):
+  a miss left the ranges unset (cursor only moved left/up); value 6 now takes
+  the 16:9 case via small stubs at 0x600d7580 / 0x600d75c0 on the miss path.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -473,7 +477,7 @@ AF_SITES = [  # (pointer site, table, global, count site, stock count)
 AF_FREE_LO, AF_FREE_HI = 0x600d3000, 0x600d5f00
 
 
-def stage5(m):
+def stage5(m, more=None):
     """4 + SCP pixel-size readout for id 6 + AF target position tables for id 6."""
     def extra(rt, put):
         u16 = lambda a: struct.unpack_from("<H", rt, off(a))[0]          # noqa: E731
@@ -523,7 +527,66 @@ def stage5(m):
             counts[csite] = (n, nn)
             put(csite, bytes([0x80, n]), bytes([0x80, nn]))
         print("  AF tables: %d sites relocated, %d bytes used at %#x" % (len(AF_SITES), free - AF_FREE_LO, AF_FREE_LO))
+        if more:
+            more(rt, put)
     stage4(m, extra)
+
+
+def assemble_syms(src, at, syms):
+    import subprocess
+    import tempfile
+    gnu = os.environ.get("MN10300_BIN")
+    check(gnu, "set MN10300_BIN to the binutils mn10300-elf bin directory")
+    with tempfile.TemporaryDirectory() as t:
+        open(t + "/a.s", "w").write("\t.text\n\t.am33_2\n" + src + "\n")
+        ds = []
+        for k, v in syms.items():
+            ds += ["--defsym", "%s=%#x" % (k, v)]
+        subprocess.run([gnu + "/mn10300-elf-as", "-o", t + "/a.o", t + "/a.s"], check=True)
+        subprocess.run([gnu + "/mn10300-elf-ld", "-Ttext=%#x" % at, "-e", "%#x" % at] + ds +
+                       ["-o", t + "/a.elf", t + "/a.o"], check=True)
+        subprocess.run([gnu + "/mn10300-elf-objcopy", "-O", "binary", t + "/a.elf", t + "/a.bin"], check=True)
+        return open(t + "/a.bin", "rb").read()
+
+
+# AF cursor range switches (AF target position code, GetValue(0x10d) at 0x60ecff4d / 0x60ed065b): two
+# aspect switches per function; a miss skips them and the row/column ranges stay unset (cursor moves
+# only left/up). The tail `cmp 9,d0; beq case9; jmp|bra out` of each switch becomes `jmp stub` (+nops);
+# the stub redoes the 9 test and sends 6 to the 16:9 case. (site, stock tail, case 9, out, 16:9 case)
+AF_RANGE = [
+    (0x60ecff82, "a009c833cc9d00", 0x60ecffb7, 0x60ed0023, 0x60ecff95),
+    (0x60ecffdf, "a009c831ca40", 0x60ed0012, 0x60ed0023, 0x60ecffff),
+    (0x60ed0691, "a009c83bccaa00", 0x60ed06ce, 0x60ed073f, 0x60ed06a9),
+    (0x60ed06f6, "a009c833ca45", 0x60ed072b, 0x60ed073f, 0x60ed0718),
+]
+AF_RANGE_SRC = """cmp 9,d0
+bne n9
+jmp c9
+n9:
+cmp 6,d0
+bne miss
+jmp c169
+miss:
+jmp out"""
+AF_STUBS = NEW_LIST + 0x580          # 4 x 32 B, up to PIX_NEW
+
+
+def stage6(m):
+    """5 + AF cursor row/column ranges for id 6 (16:9 ranges)."""
+    def more(rt, put):
+        stub = AF_STUBS
+        for site, stock, c9, out, c169 in AF_RANGE:
+            code = assemble_syms(AF_RANGE_SRC, stub, {"c9": c9, "out": out, "c169": c169})
+            check(len(code) <= 32 and set(rt[off(stub):off(stub) + 32]) == {0xff}, "stub slot %#x not free" % stub)
+            rt[off(stub):off(stub) + len(code)] = code
+            old = bytes.fromhex(stock)
+            new = b"\xdc" + struct.pack("<i", stub - site)
+            new += b"\xcb" * (len(old) - len(new))          # nop
+            put(site, old, new)
+            stub += 32
+        check(stub <= PIX_NEW, "AF stubs overlap the readout table")
+        print("  AF cursor ranges: %d switch tails hooked" % len(AF_RANGE))
+    stage5(m, more)
 
 
 def repack_b(m, gui, csz):
@@ -604,6 +667,8 @@ def main(argv):
         stage4(m)
     elif "--stage5" in argv:
         stage5(m)
+    elif "--stage6" in argv:
+        stage6(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
