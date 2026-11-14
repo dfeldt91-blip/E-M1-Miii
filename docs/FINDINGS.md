@@ -279,3 +279,34 @@ come from property keys via `0x6005fa9c(key)` in `0x602c2d5e..` (e.g. key
 0xe8f1 -> +26090 CC hue, 0xe909 -> +26091 CC sat). +26087 is written directly
 only by the picture-bracket path `0x60411e22` (44-byte bracket entries); the
 normal-path writer is not identified yet (many `add 0x65e7` pointer sites).
+
+## SOLVED: the compressed regions ("olycompress" = LZ4)
+
+Header (32 bytes): `"olycompress"` + spaces (16 B), u32 compressed size,
+u32 uncompressed size, 8 zero bytes; then a **raw LZ4 block**. Verified:
+both main-block blobs consume exactly the compressed size and produce exactly
+the uncompressed size. `tools/olycompress.py list|unpack|runtime`.
+
+| Block | Offset | Runtime | Compressed | Unpacked | Load address |
+|---|---|---|---|---|---|
+| 0 main | `0x7e1fe0` | `0x60803000` | `0x220c23` | `0x469000` | in place, `0x60803000` (89 distinct known call targets match; next best 12) |
+| 0 main | `0xc4afe0` | `0x60c6c000` | `0x28959c` | `0x685000` | in place, `0x60c6c000` (105 vs 9) |
+| 1 OSD | `0x7e0` | | `0xc9cec` | `0x5a549e` | (OSD data) |
+| 1 OSD | `0x9f11e0` | | `0x13dd81` | `0x692cd4` | (OSD data) |
+
+`0x60803000 + 0x469000 = 0x60c6c000` and `0x60c6c000 + 0x685000 = 0x612f1000`
+(the reserved 0xff space). The runtime main image = block 0 with both blobs
+unpacked in place. Nothing in main code checks the magic (unpacked by boot
+ROM / another core / hardware).
+
+The runtime image contains the GUI that caduceus could not find on this body:
+`SsMenuLv_*`, `IGui_Controler`, `GPIInitPlatform`,
+`Cursor_Move_Set_Mode_Actuator`, `Lv_Control_Mode_Viewer`,
+`OlyApiSettingControllerController`, `ColorCreator_Entry/_HandleEvent/
+_EvtStChgJogDial/_EvtStChgCtrlRing`, `ColorCreatorScpEvent`,
+`MonochromeCreator`, `MONOCHROME_CREATOR_SET1..3`. E-P7-style menu option
+lists `{u32 value, u16 type, u16 string, u32 cond}` now appear (678 runs),
+including entries for "Color Profile 1/2" (string 0xb29/0xb2a).
+
+To patch GUI code: edit the unpacked image, LZ4-compress again (must fit the
+space before the next blob / padding), rewrite the header sizes.
