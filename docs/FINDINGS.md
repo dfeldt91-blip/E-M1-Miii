@@ -241,3 +241,28 @@ or base: compressed/encrypted data, possibly not code at all.
 Next lead: recursive disassembly reached only 27.6 % of block 0; much plain C++
 UI code is reachable only via vtables/handler tables. Extend seeding before
 assuming the Picture Mode list is inside the blobs.
+
+## Validator records (format from caduceus RE_SETTINGS.md)
+
+ROM `0x604da438`: 1375 x 20-byte records `{u16 sid, u16 attr, u32 list, u32 list2,
+u16 bytes, u16 elem, u8 ?, u8 type, u16 ?}`; type 1 u8 list, 2 s8, 3/4 s16,
+5 u16, 6 blob. Confirmed by `MODE_ASPECT_RATIO` = [1,3,2,4,9] (same as E-P7).
+On the E-P7, editing a setting's validator list changes what menus enumerate
+(caduceus ASPECT.md v4).
+
+- `MODE_COLORTONE_DIAL` 0x380 (u16): [0x381 NEUTRAL, 0x382 ART, 0x383 COLOR_CREATOR,
+  0x384 COLOR_CREATOR_2, 0x3c6 MONOCHROME_CREATOR]: profiles are valid values.
+- `MODE_COLOR_CREATOR_2_SELECT` 0x386, `MODE_MONOCHROME_CREATOR_SELECT` 0x3c7: [0,1,2,3].
+- Profile picture-mode toggles 0x40e-0x413: [0,1] (same as all `*_ONOFF`).
+- `MODE_EVF_FN` 0x1b4 (Multi Function, u16): [1,6,11,12,2,3,9,10] (8 items).
+  Debug value names (`MODE_EVF_FN_NONE .. _WB`, 12 names) are not in value order.
+- `MODE_COLORTONE` 0x6f: type 6, 26 x 64-byte blobs at `0x604c5ef4` (not decoded).
+
+## Menu option lists not in plain form
+
+E-P7 menu lists are 12-byte `{u32 value, u16 type, u16 string, u32 cond}`
+entries under `{u16 sid, u16 count, u32 list}` descriptors. No such lists exist
+in E-M1 III block 0, and no table holds the Color/Mono Profile string-ID trios
+(0xabb.., 0xac3.., 0xb29..) at any stride in blocks 0/1/2/4. Consistent with
+caduceus: the E-M1 III GUI tables/code sit in the compressed blobs. The E-P7
+section table shape `(start, flash src, dst)` is absent too.
