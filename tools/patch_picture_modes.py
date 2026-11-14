@@ -205,6 +205,27 @@ def patch_menu(main):
     return bytes(m)
 
 
+# --dial-cc2 (test): the hidden PEN-F/E-P7 creative-dial setting MODE_COLORTONE_DIAL 0x380
+# (record 0x604debc8, u16 list [0x381 neutral, 0x382 art, 0x383 CC, 0x384 CC2, 0x3c6 mono]) gets
+# the one-value list [0x384], so the only legal dial position is Color Profile.
+DIAL_REC, DIAL_LIST = 0x604debc8, 0x604d9d84
+DIAL_NEW = 0x600d6b80
+
+
+def dial_cc2(main):
+    m = bytearray(main)
+    r = off(DIAL_REC)
+    sid, fl, lp, ap, nb, el = struct.unpack_from("<HHIIHH", m, r)
+    check((sid, lp, nb, el) == (0x380, DIAL_LIST, 10, 2), "dial record differs")
+    check(list(struct.unpack_from("<5H", m, off(lp))) == [0x381, 0x382, 0x383, 0x384, 0x3c6], "dial list differs")
+    check(set(m[off(DIAL_NEW - 16):off(DIAL_NEW + 16)]) == {0xff}, "dial list area not free")
+    struct.pack_into("<H", m, off(DIAL_NEW), 0x384)
+    struct.pack_into("<I", m, r + 4, DIAL_NEW)
+    struct.pack_into("<H", m, r + 12, 2)
+    print("  dial 0x380: list -> [0x384] at %#x" % DIAL_NEW)
+    return bytes(m)
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__)
@@ -216,7 +237,12 @@ def main(argv):
     b0 = blocks[0]
     check(b0["info"]["type"] == "OE" and b0["info"]["model"] == 0x1390 and b0["info"]["flags"] == 0x100,
           "first block is not the E-M1 III main code block")
-    new_main, nl, na = patch_main(b0["plain"], aspect="--aspect-test" in argv)
+    if "--dial-cc2" in argv and "--repurpose" not in argv and "--low" not in argv:
+        new_main, nl, na = b0["plain"], 0, 0
+    else:
+        new_main, nl, na = patch_main(b0["plain"], aspect="--aspect-test" in argv)
+    if "--dial-cc2" in argv:
+        new_main = dial_cc2(new_main)
     if "--menu" in argv:
         new_main = patch_menu(new_main)
     ver = None
