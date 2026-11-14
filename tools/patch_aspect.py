@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--stage13|--stage14|--stage15|--stage16|--stage17|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--stage13|--stage14|--stage15|--stage16|--stage17|--stage18|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -967,19 +967,20 @@ def stage13(m):
     def more8(rt, put, hook):
         stub = STUB13_LO
         check(set(rt[off(STUB13_LO):off(STUB13_HI)]) == {0xff}, "stage 13 stub area not free")
-        s16 = any(x in sys.argv for x in ("--stage16", "--stage17"))
-        for site, stock, plen, where, pre in REMAPS13 + (REMAPS14 if any(x in sys.argv for x in ("--stage14", "--stage15", "--stage16", "--stage17")) else []) + (REMAPS16 if s16 else []):
+        s16 = any(x in sys.argv for x in ("--stage16", "--stage17", "--stage18"))
+        for site, stock, plen, where, pre in REMAPS13 + (REMAPS14 if any(x in sys.argv for x in ("--stage14", "--stage15", "--stage16", "--stage17", "--stage18")) else []) + (REMAPS16 if s16 else []):
             b = bytes.fromhex(stock)
             prefix, call = b[:plen], b[plen:]
             check(len(call) == 7 and call[0] == 0xdd, "site %#x: not call d32" % site)
             check(site + plen + struct.unpack("<i", call[1:5])[0] == GETTER2, "site %#x: call target differs" % site)
             ncall = b"\xdd" + struct.pack("<i", GETTER2 - (stub + plen)) + call[5:]
             src = REMAP_SRC % (pre or "", where, where)
-            if "--stage17" in sys.argv and site in [r[0] for r in REMAPS14]:
+            if any(x in sys.argv for x in ("--stage17", "--stage18")) and site in [r[0] for r in REMAPS14]:
                 # stage 17: these pick the aspect frame-line bitmap; 16:9 drew 16:9 lines over the
                 # 65:24 view, so use the 4:3 (full frame, no inner lines) part instead
                 check(src.count("mov 3,d0") == 1, "remap template changed")
-                src = src.replace("mov 3,d0", "mov 1,d0")
+                # stage 18: 4:3 lines cut into the 65:24 image; 3:2 lines sit at the display edge
+                src = src.replace("mov 3,d0", "mov 2,d0" if "--stage18" in sys.argv else "mov 1,d0")
             body = assemble_syms(src, stub + plen + 7, {"back": site + len(b)})
             code = prefix + ncall + body
             check(stub + len(code) <= STUB13_HI, "stage 13 stubs overflow")
@@ -1106,7 +1107,7 @@ def main(argv):
         stage11(m)
     elif "--stage12" in argv:
         stage12(m)
-    elif any(x in argv for x in ("--stage13", "--stage14", "--stage15", "--stage16", "--stage17")):
+    elif any(x in argv for x in ("--stage13", "--stage14", "--stage15", "--stage16", "--stage17", "--stage18")):
         stage13(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
