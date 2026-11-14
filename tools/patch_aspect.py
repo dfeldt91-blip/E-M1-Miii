@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--labeltest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -22,6 +22,11 @@ Stage 2b: stage 2a + option-list entries so value 6 is selectable and labelled.
   menu gets {6, type 4, string 0xf1 "Panorama"} before 17:9, the SCP lists get
   value 6 with the 16:9 icons. Blob B is recompressed with LZ4 HC level 12
   (reproduces the stock blobs byte for byte) and verified by decoding.
+
+Label test (diagnostic): relabel the 4:3 entry of the three aspect option lists
+  inside GUI blob B (0x611af064, 0x61206514, 0x61287cc8) from 0x124 "4:3" to
+  0xf1 "Panorama", in place. Shows whether blob-B edits reach the camera and
+  whether these lists label the Image Aspect menu.
 
 --version sets the main block's header/trailer version (BCD) so the card
 updater does not skip the file as "same version as installed".
@@ -129,6 +134,35 @@ def stage2b(m):
     print("  blob B: %#x -> %#x compressed bytes" % (csz, len(c)))
 
 
+LISTS_IN_B = (0x611af064, 0x61206514, 0x61287cc8)
+
+
+def repack_b(m, gui, csz):
+    c = olycompress.pack(bytes(gui))
+    room = off(BLOB_END) - (BLOB_B_OFF + 32)
+    check(len(c) <= room, "recompressed blob does not fit")
+    old_end = BLOB_B_OFF + 32 + csz
+    m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + len(c)] = c
+    if len(c) < csz:
+        m[BLOB_B_OFF + 32 + len(c):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(c))
+    struct.pack_into("<I", m, BLOB_B_OFF + 16, len(c))
+    check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "recompressed blob does not decode to the edit")
+    print("  blob B: %#x -> %#x compressed bytes" % (csz, len(c)))
+
+
+def labeltest(m):
+    check(bytes(m[BLOB_B_OFF:BLOB_B_OFF + 11]) == b"olycompress", "blob B header not found")
+    csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
+    gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
+    check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
+          "stock blob B does not recompress identically")
+    for p in LISTS_IN_B:
+        v, t, sid, cond = struct.unpack_from("<IHHI", gui, p - BLOB_B)
+        check((v, t, sid) == (1, 4, 0x124), "list %#x does not start with the 4:3 entry" % p)
+        struct.pack_into("<H", gui, p - BLOB_B + 6, PANORAMA)
+    repack_b(m, gui, csz)
+
+
 def main(argv):
     if len(argv) < 3:
         print(__doc__)
@@ -146,6 +180,8 @@ def main(argv):
         stage2a(m)
     elif "--stage2b" in argv:
         stage2b(m)
+    elif "--labeltest" in argv:
+        labeltest(m)
     else:
         check(False, "no stage selected")
     ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
