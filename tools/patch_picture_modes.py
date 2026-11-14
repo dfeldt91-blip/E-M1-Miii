@@ -94,6 +94,16 @@ def patch_main(main, aspect=False):
     check(non_alt[k11[0]] == 0x36 and non_alt[k12[0]] == 0x39, "DIAL_NON GUI values are not 54/57")
     check(set(m[off(FREE_LO):off(FREE_HI)]) == {0xff}, "target area is not free 0xff padding")
 
+    if "--repurpose" in sys.argv:
+        # the menus/SCP ignore this list's membership (diag 1.594), so instead re-point two existing
+        # entries in place: Custom (GUI 6, pipeline 6) -> Color Profile (11),
+        # e-Portrait (GUI 20, pipeline 8) -> Monochrome Profile (12). Record, alt list, rules unchanged.
+        kc, ke = STOCK_ALT.index(6), STOCK_ALT.index(20)
+        check(stock[kc][0] == 6 and stock[ke][0] == 8, "Custom / e-Portrait entries differ")
+        m[off(LIST) + ELEM * kc:off(LIST) + ELEM * (kc + 1)] = e11
+        m[off(LIST) + ELEM * ke:off(LIST) + ELEM * (ke + 1)] = e12
+        print("  repurpose: Custom -> pipeline 11 (Color Profile), e-Portrait -> pipeline 12 (Mono Profile)")
+        return bytes(m), 0, 0
     ents_, alts_ = stock + [e11, e12], STOCK_ALT + [0x36, 0x39]
     if "--diag" in sys.argv:
         # diagnostic: drop Muted (GUI 2) from the validator list
