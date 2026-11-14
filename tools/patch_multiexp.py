@@ -32,6 +32,25 @@ ROWS = (0x611bc7ac, 0x61271fd8, 0x61280730)
 FRAMES = [0, 2, 3, 4]          # camera: 5 froze and restarted the camera (1.602); 4 works
 LABELS = {3: 1430, 4: 1431, 5: 1899}
 FREE_LO, FREE_HI = 0x600d6d00, 0x600d6f80      # 0xff padding, unused by the aspect build
+# Live overlay between shots (camera 1.602: shown after shot 1 only). rcvOperationSuccessIn_EXECUTE
+# (blob A) merges each shot into the accumulator, then refreshes the display with isForbidCallback =
+# (take count == 1); 0 takes the last-shot path and drops the overlay. Make it (take count < frames).
+BLOB_A, BLOB_A_OFF = 0x60803000, 0x7e1fe0
+OVL_SITE = 0x609c8ca8
+OVL_STOCK = bytes.fromhex("1da501c914fccca9f8bc60420400ddcf61e4ffa00c8a01")   # exthu d1 .. mov 1,d2
+OVL_BACK = 0x609c8cbf
+OVL_STUB = 0x600d6f80
+OVL_SRC = """exthu d1
+mov d1,d2
+mov 266,d0
+call getv,[],4
+cmp d0,d2
+bcc last
+mov 1,d2
+jmp back
+last:
+clr d2
+jmp back"""
 
 
 def off(a):
@@ -88,6 +107,25 @@ def patch(main):
         struct.pack_into("<II", gui, r - BLOB_B + 12, ext(l1), len(FRAMES))
         struct.pack_into("<II", gui, r - BLOB_B + 28, ext(l2), len(FRAMES))
     check(free <= FREE_HI, "free area overflow")
+
+    import patch_aspect
+    check(set(m[off(OVL_STUB):off(OVL_STUB + 0x40)]) == {0xff}, "overlay stub area not free")
+    acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
+    a = bytearray(olycompress.unpack(m, BLOB_A_OFF))
+    check(bytes(a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)]) == OVL_STOCK, "overlay site differs")
+    stub = patch_aspect.assemble_syms(OVL_SRC, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8})
+    m[off(OVL_STUB):off(OVL_STUB) + len(stub)] = stub
+    a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
+        b"\xdc" + struct.pack("<i", OVL_STUB - OVL_SITE) + b"\xcb" * (len(OVL_STOCK) - 5))
+    ca = olycompress.pack(bytes(a))
+    check(len(ca) <= BLOB_B_OFF - (BLOB_A_OFF + 32), "blob A does not fit")
+    old_a = BLOB_A_OFF + 32 + acsz
+    m[BLOB_A_OFF + 32:BLOB_A_OFF + 32 + len(ca)] = ca
+    if len(ca) < acsz:
+        m[BLOB_A_OFF + 32 + len(ca):old_a] = b"\xff" * (old_a - BLOB_A_OFF - 32 - len(ca))
+    struct.pack_into("<I", m, BLOB_A_OFF + 16, len(ca))
+    check(olycompress.unpack(m, BLOB_A_OFF) == bytes(a), "blob A does not decode to the edit")
+    print("  overlay hook %#x -> stub %#x (%d B); blob A %#x -> %#x" % (OVL_SITE, OVL_STUB, len(stub), acsz, len(ca)))
 
     c = olycompress.pack(bytes(gui))
     check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
