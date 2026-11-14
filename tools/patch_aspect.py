@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -60,6 +60,12 @@ Stage 4: 3 + the rest of the E-P7 v5/v6 geometry and the AF fix:
   blocks at 0x600d7500), and the 4 AF target lists at 0x611950e8 (id 6 gets
   the 16:9 style and point mask; without it the AF screen shows NONE).
   Needs MN10300_BIN (GNU binutils for mn10300-elf) to assemble the blocks.
+
+Stage 5: 4 + the SCP pixel-size readout (6-column copy of the table read by
+  0x60ee1756, immediates for column count 5->6, stride 22->26, h offset 12->14)
+  and the AF target position tables (19 pointer/count load sites in
+  0x60ed1474..0x60ed168a; every 16:9 entry duplicated as id 6, tables moved
+  to 0x600d3000.., counts raised).
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -377,7 +383,7 @@ def xpan_rows(rt, a1, lay):
     return a1 + 5 * st, struct.pack(fmt, *rows[5]), struct.pack(fmt, *r)
 
 
-def stage4(m):
+def stage4(m, extra=None):
     """3 + every 7:6 (w,h) table, the live-view box switches, the AF target lists."""
     stage3(m)
     blobs = []
@@ -418,6 +424,8 @@ def stage4(m):
         struct.pack_into("<II", rt, off(AF_RECS) + 12 * k + 4, free, 7)
         free += 0x70
     check(free <= CODE_AT, "AF lists overlap the code")
+    if extra:
+        extra(rt, put)
     # write back: base part directly, blobs recompressed
     lo = min(b[0] for b in blobs)
     m[:lo] = rt[:lo]
@@ -434,6 +442,88 @@ def stage4(m):
         check(olycompress.unpack(m, bo) == raw, "blob %#x round trip failed" % bo)
         print("  blob %#x: %#x -> %#x compressed bytes" % (bo, csz, len(c)))
     print("  %d size tables, %d LV switches, 4 AF lists patched" % (n, len(LV_SWITCHES)))
+
+
+# SCP pixel-size readout 0x60ee1756 (d0 = aspect, d1 = size key): u16 ids[5] = 1,3,2,4,9 at
+# 0x612b4074, then 11 rows {u16 key, u16 w[5], u16 h[5]} (22 B) at 0x612b407e. A miss leaves the
+# caller's w/h unset (garbage on screen). New 6-column copy (id 6 added), immediates patched.
+PIX_IDS, PIX_ROWS, PIX_N = 0x612b4074, 0x612b407e, 11
+PIX_NEW = NEW_LIST + 0x600                # ids (12 B), rows at +0x10 (11 x 26 B)
+PIX_IMM32 = [(0x60ee1763, "fcac", 0x612b4080, 2), (0x60ee176d, "fcac", 0x612b408a, 14),
+             (0x60ee17a5, "fcdc", 0x612b407e, 0), (0x60ee17b8, "fcdd", 0x612b4074, None),
+             (0x60ee17ed, "fcd2", 0x612b407e, 0)]
+PIX_IMM8 = [(0x60ee17cd, "20", 12, 14), (0x60ee17dc, "a5", 5, 6), (0x60ee17e2, "20", 22, 26),
+            (0x60ee17e8, "f902", 22, 26), (0x60ee1801, "22", 12, 14)]
+
+# AF target position tables (getConflictedHomeTargetPosition etc., 0x60ed1474..0x60ed168a): each mode
+# stores {pointer, u16 count} pairs into globals 0x61ea10a0.. with `mov imm32,d0` / `mov imm8,d0`.
+# Entries are keyed by aspect (u32); 16:9 (3) entries are duplicated as 6. Missing entries -> "NONE".
+AF_KEYOFF = {0x61ea10a8: (32, 8), 0x61ea10a0: (28, 8), 0x61ea10b0: (20, 4), 0x61ea10b8: (8, 0)}
+AF_SITES = [  # (pointer site, table, global, count site, stock count)
+    (0x60ed1474, 0x612a680c, 0x61ea10a8, None, 27), (0x60ed1488, 0x612a5670, 0x61ea10a0, None, 24),
+    (0x60ed149c, 0x612a73d4, 0x61ea10b0, None, 28), (0x60ed14b0, 0x612a7894, 0x61ea10b8, 0x60ed15b9, 6),
+    (0x60ed14f3, 0x612a620c, 0x61ea10a8, None, 27), (0x60ed1507, 0x612a5910, 0x61ea10a0, None, 24),
+    (0x60ed151b, 0x612a6f74, 0x61ea10b0, None, 28), (0x60ed152f, 0x612a7834, 0x61ea10b8, 0x60ed15b9, 6),
+    (0x60ed1571, 0x612a650c, 0x61ea10a8, None, 27), (0x60ed1585, 0x612a5bb0, 0x61ea10a0, None, 24),
+    (0x60ed1599, 0x612a71a4, 0x61ea10b0, None, 28), (0x60ed15ad, 0x612a7864, 0x61ea10b8, 0x60ed15b9, 6),
+    # 0x60ed1602/1616/162a (movie: 16:9 / 17:9 only) are left stock
+    (0x60ed163a, 0x612a6b0c, 0x61ea10a8, None, 27),
+    (0x60ed164e, 0x612a5e50, 0x61ea10a0, None, 24), (0x60ed1662, 0x612a78c4, 0x61ea10b8, 0x60ed166e, 6),
+    (0x60ed1676, 0x612a7604, 0x61ea10b0, None, 28)]
+AF_FREE_LO, AF_FREE_HI = 0x600d3000, 0x600d5f00
+
+
+def stage5(m):
+    """4 + SCP pixel-size readout for id 6 + AF target position tables for id 6."""
+    def extra(rt, put):
+        u16 = lambda a: struct.unpack_from("<H", rt, off(a))[0]          # noqa: E731
+        # --- readout
+        check([u16(PIX_IDS + 2 * k) for k in range(5)] == [1, 3, 2, 4, 9], "readout ids differ")
+        rows = [struct.unpack_from("<11H", rt, off(PIX_ROWS) + 22 * r) for r in range(PIX_N)]
+        check(rows[0][:2] == (0, 5184), "readout rows differ")
+        check(set(rt[off(PIX_NEW):off(PIX_NEW) + 0x10 + 26 * PIX_N]) == {0xff}, "readout target not free")
+        rt[off(PIX_NEW):off(PIX_NEW) + 12] = struct.pack("<6H", 1, 3, 2, 4, 9, 6)
+        for r, row in enumerate(rows):
+            w = list(row[1:6]); h = list(row[6:11])
+            W = max(w[0], w[1])
+            w.append(W); h.append(int(W * XPAN_H / XPAN_W / 16 + 0.5) * 16)
+            rt[off(PIX_NEW + 0x10 + 26 * r):off(PIX_NEW + 0x10 + 26 * (r + 1))] = struct.pack("<13H", row[0], *(w + h))
+        for a, opc, old, add in PIX_IMM32:
+            new = PIX_NEW if add is None else PIX_NEW + 0x10 + add
+            put(a, bytes.fromhex(opc) + struct.pack("<I", old), bytes.fromhex(opc) + struct.pack("<I", new))
+        for a, opc, old, new in PIX_IMM8:
+            put(a, bytes.fromhex(opc) + bytes([old]), bytes.fromhex(opc) + bytes([new]))
+        # --- AF target position tables
+        free = AF_FREE_LO
+        check(set(rt[off(AF_FREE_LO):off(AF_FREE_HI)]) == {0xff}, "AF table area not free")
+        counts = {}
+        for site, tab, glob, csite, n in AF_SITES:
+            st, ko = AF_KEYOFF[glob]
+            check(bytes(rt[off(site):off(site) + 2]) == b"\xfc\xcc" and struct.unpack_from("<I", rt, off(site) + 2)[0] == tab,
+                  "AF pointer site %#x differs" % site)
+            if rt[off(site) + 6] == 0xfc:      # direct store; else a jump to the shared b8 store
+                check(struct.unpack_from("<I", rt, off(site) + 8)[0] == glob, "AF site %#x global differs" % site)
+            es = [bytes(rt[off(tab) + st * k:off(tab) + st * (k + 1)]) for k in range(n)]
+            keys = [struct.unpack_from("<I", e, ko)[0] for e in es]
+            check(set(keys) <= {1, 2, 3, 4, 9, 10} and 6 not in keys, "AF table %#x keys unexpected" % tab)
+            add = [e[:ko] + struct.pack("<I", 6) + e[ko + 4:] for e, k in zip(es, keys) if k == 3]
+            new = b"".join(es + add)
+            free = (free + 3) & ~3
+            check(free + len(new) <= AF_FREE_HI, "AF tables overflow the free area")
+            rt[off(free):off(free) + len(new)] = new
+            put(site + 2, struct.pack("<I", tab), struct.pack("<I", free))
+            free += len(new)
+            nn = n + len(add)
+            check(nn < 128, "count too large for mov imm8")
+            if csite is None:
+                csite = site + 12          # mov imm32,d0 (6) ; mov d0,(abs32) (6) ; mov imm8,d0
+            if csite in counts:
+                check(counts[csite] == (n, nn), "shared count site %#x gets different counts" % csite)
+                continue
+            counts[csite] = (n, nn)
+            put(csite, bytes([0x80, n]), bytes([0x80, nn]))
+        print("  AF tables: %d sites relocated, %d bytes used at %#x" % (len(AF_SITES), free - AF_FREE_LO, AF_FREE_LO))
+    stage4(m, extra)
 
 
 def repack_b(m, gui, csz):
@@ -512,6 +602,8 @@ def main(argv):
         stage3(m)
     elif "--stage4" in argv:
         stage4(m)
+    elif "--stage5" in argv:
+        stage5(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
