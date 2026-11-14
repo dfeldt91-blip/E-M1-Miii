@@ -3,7 +3,11 @@
 patch_picture_modes.py - add Color Profile and Monochrome Profile to the
 E-M1 Mark III Picture Mode list (data-only patch, EXPERIMENTAL, UNTESTED ON A CAMERA).
 
-  python3 tools/patch_picture_modes.py IN.BIN OUT.BIN [--report]
+  python3 tools/patch_picture_modes.py IN.BIN OUT.BIN [--report] [--version 0x1510]
+
+--version sets the version field (BCD, e.g. 0x1510 = 1.5.1.0) in the main code
+block's header and trailer, so a successful install can be told apart and so
+the camera does not treat the file as the version it already has.
 
 What it changes (main code block, component 0x100, all addresses = runtime
 addresses, block offset = address - 0x60021020):
@@ -93,10 +97,21 @@ def main(argv):
     check(b0["info"]["type"] == "OE" and b0["info"]["model"] == 0x1390 and b0["info"]["flags"] == 0x100,
           "first block is not the E-M1 III main code block")
     new_main, nl, na = patch_main(b0["plain"])
+    ver = None
+    if "--version" in argv:
+        ver = int(argv[argv.index("--version") + 1], 0)
+        check(0 < ver <= 0x9999 and all(((ver >> s) & 0xf) <= 9 for s in (0, 4, 8, 12)),
+              "--version must be BCD, e.g. 0x1510")
     out = bytearray()
     for i, b in enumerate(blocks):
         plain = new_main if i == 0 else b["plain"]
-        out += olyfw.build_block(b["head"], plain, b["tail"])
+        head, tail = bytearray(b["head"]), bytearray(b["tail"])
+        if i == 0 and ver is not None:
+            check(struct.unpack_from("<H", head, 16)[0] == 0x1500 and
+                  struct.unpack_from("<H", tail, 16)[0] == 0x1500, "main block version is not 0x1500")
+            struct.pack_into("<H", head, 16, ver)
+            struct.pack_into("<H", tail, 16, ver)
+        out += olyfw.build_block(bytes(head), plain, bytes(tail))
     check(len(out) == len(fw), "size changed")
     diff = [i for i in range(len(fw)) if fw[i] != out[i]] if "--report" in argv else None
     with open(dst, "wb") as fh:
@@ -108,6 +123,7 @@ def main(argv):
     print("wrote %s  sha256 %s" % (dst, hashlib.sha256(out).hexdigest()))
     print("  0x6f record now: %s (list %#x, alt %#x, %d bytes)" % (rec.hex(" "), NEW_LIST, NEW_ALT, nl))
     print("  new list %d bytes at %#x, GUI values %d bytes at %#x" % (nl, NEW_LIST, na, NEW_ALT))
+    print("  main block version: %#06x" % struct.unpack_from("<H", again[0]["head"], 16)[0])
     if diff is not None:
         print("  file bytes changed: %d" % len(diff))
     return 0
