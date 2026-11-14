@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--stage13|--stage14|--stage15|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--stage9|--stage10|--stage11|--stage12|--stage13|--stage14|--stage15|--stage16|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -104,9 +104,13 @@ Stage 13: 12 + local remaps 6 -> 3 after the aspect read (getter 0x60d00909)
 Stage 14: 13 + the same remap in three more Rec_Info_Viewer part selectors
   (0x60e56d40, 0x60e56fa1, 0x60e5710e).
 
-Stage 15: 14 + the same remap at every remaining aspect read in the AF target
-  actuator, AF target position and shooting-info modules (16 sites), so all
-  AF display code sees 16:9 consistently.
+Stage 15 (REJECTED on camera: adds 16:9 frame lines and a 16:9 indicator on
+  the shooting display, does not fix the small C-AF point): 14 + the same
+  remap at every remaining aspect read in the AF target actuator, AF target
+  position and shooting-info modules (16 sites).
+
+Stage 16: 14 (not 15) + the SCP current-value cell map 0x611f2424 looked up
+  with 6 as 3, so the cell shows the 16:9 icon instead of 4:3.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -923,6 +927,11 @@ REMAPS14 = [
     (0x60e56fa1, "2c0d01dd6599eafff01c", 3, "(16,sp)", None),
     (0x60e5710e, "2c0d013c2010ddf597eafff01c", 6, "(16,sp)", None),
 ]
+# stage 16: SCP current-value cell (Func_Detail_Scp_Viewer): value -> cell index map 0x611f2424
+# (1,3,2,4,9,10 -> 2,6,3,5,4,7); a miss shows index 0 = 4:3. 6 is looked up as 3 (16:9 icon).
+REMAPS16 = [
+    (0x60e1b2ef, "2c0d01dd1756eefff01c", 3, "(8,sp)", None),
+]
 STUB13_LO, STUB13_HI = 0x600d6200, 0x600d6400
 
 
@@ -958,7 +967,7 @@ def stage13(m):
     def more8(rt, put, hook):
         stub = STUB13_LO
         check(set(rt[off(STUB13_LO):off(STUB13_HI)]) == {0xff}, "stage 13 stub area not free")
-        for site, stock, plen, where, pre in REMAPS13 + (REMAPS14 if ("--stage14" in sys.argv or "--stage15" in sys.argv) else []):
+        for site, stock, plen, where, pre in REMAPS13 + (REMAPS14 if any(x in sys.argv for x in ("--stage14", "--stage15", "--stage16")) else []) + (REMAPS16 if "--stage16" in sys.argv else []):
             b = bytes.fromhex(stock)
             prefix, call = b[:plen], b[plen:]
             check(len(call) == 7 and call[0] == 0xdd, "site %#x: not call d32" % site)
@@ -1090,7 +1099,7 @@ def main(argv):
         stage11(m)
     elif "--stage12" in argv:
         stage12(m)
-    elif "--stage13" in argv or "--stage14" in argv or "--stage15" in argv:
+    elif any(x in argv for x in ("--stage13", "--stage14", "--stage15", "--stage16")):
         stage13(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
