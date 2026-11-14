@@ -67,6 +67,12 @@ def lz4_block(src):
     return bytes(out)
 
 
+def pack(raw):
+    """LZ4 HC level 12 raw block: reproduces the stock blobs byte for byte."""
+    import lz4.block
+    return lz4.block.compress(raw, mode="high_compression", compression=12, store_size=False)
+
+
 def headers(data):
     for m in re.finditer(re.escape(MAGIC), data):
         o = m.start()
