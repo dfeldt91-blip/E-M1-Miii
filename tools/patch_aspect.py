@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -33,6 +33,13 @@ Stage 2c: stage 2a + the real menu label list (screen record 0x61294774, shared
   test 2): its 17:9 entry {10, 4, 0xcbd} becomes {6, 4, 0xf1 "Panorama"} in place
   (17:9 is never offered for stills: 10 is not in the validator list). Plus the
   SCP/Live Control row {0x10d, 5 -> 6} with value 6 using the 16:9 icons.
+
+Stage 2d: everything at once. Camera results showed the main menu enumerates
+  the option lists of the menu descriptors (2b) but takes the label from list
+  0x612941d4 (2c); a value missing from either shows blank/unselectable or not
+  at all. 2d = 2a + the 2b option lists + the 2c label + the LV row + the SCP
+  item table row 17 at 0x611eeedc ({17, A, B, 5}, icon lists in order
+  1,3,2,9,4; the E-P7 "row 16" equivalent), each given value 6 with 16:9 icons.
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -177,6 +184,58 @@ def stage2c(m):
     repack_b(m, gui, csz)
 
 
+SCP_ROW17 = 0x611eeedc         # {u32 17, A, B, u32 count 5}: SCP item table row for aspect
+
+
+def stage2d(m):
+    """2a + menu option lists (2b) + menu label list (2c) + both SCP icon tables."""
+    stage2a(m)
+    check(bytes(m[BLOB_B_OFF:BLOB_B_OFF + 11]) == b"olycompress", "blob B header not found")
+    csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
+    gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
+    check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
+          "stock blob B does not recompress identically")
+    g = lambda a: a - BLOB_B          # noqa: E731
+    free = NEW_LIST + 0x10
+    # menu option lists: insert {6, 4, Panorama} before 17:9
+    for d in MENU_DESCS:
+        sid, n, p = struct.unpack_from("<HHI", gui, g(d))
+        check((sid, n) == (0x10d, 6), "menu descriptor %#x differs" % d)
+        es = ents(gui, BLOB_B, p, n)
+        check([e[0] for e in es] == [1, 3, 2, 4, 9, 10] and all(e[1] == 4 for e in es), "menu list %#x differs" % p)
+        new = es[:5] + [(6, 4, PANORAMA, es[0][3])] + es[5:]
+        m[off(free):off(free) + 84] = pack_ents(new)
+        struct.pack_into("<HI", gui, g(d) + 2, len(new), free)
+        free += 0x60
+    # menu label list (screen record 0x61294774): 17:9 entry -> Panorama
+    es = ents(gui, BLOB_B, MENU_LABELS, 6)
+    check([e[0] for e in es] == [1, 2, 3, 4, 9, 10] and all(e[1] == 4 for e in es), "menu label list differs")
+    check(es[5][2] == 0xcbd, "17:9 entry differs")
+    struct.pack_into("<IHHI", gui, g(MENU_LABELS) + 12 * 5, 6, 4, PANORAMA, es[5][3])
+    # SCP / Live Control row {0x10d, 5, A, B}
+    sid, n, pa, pb = struct.unpack_from("<HHII", gui, g(LV_ROW))
+    check((sid, n) == (0x10d, 5), "LV row differs")
+    for i, p in enumerate((pa, pb)):
+        e = ents(gui, BLOB_B, p, n)
+        check([x[0] for x in e] == [1, 3, 2, 4, 9] and all(x[1] == 3 for x in e), "LV list %#x differs" % p)
+        m[off(free):off(free) + 72] = pack_ents(e + [(6, 3, e[1][2], e[1][3])])
+        struct.pack_into("<I", gui, g(LV_ROW) + 4 + 4 * i, free)
+        free += 0x50
+    struct.pack_into("<H", gui, g(LV_ROW) + 2, 6)
+    # SCP item table row 17 {17, A, B, 5} (values 1,3,2,9,4)
+    key, pa, pb, n = struct.unpack_from("<IIII", gui, g(SCP_ROW17))
+    check((key, n) == (17, 5), "SCP row 17 differs")
+    for i, p in enumerate((pa, pb)):
+        e = ents(gui, BLOB_B, p, n)
+        check([x[0] for x in e] == [1, 3, 2, 9, 4] and all(x[1] == 3 for x in e), "SCP row-17 list %#x differs" % p)
+        m[off(free):off(free) + 72] = pack_ents(e + [(6, 3, e[1][2], e[1][3])])
+        struct.pack_into("<I", gui, g(SCP_ROW17) + 4 + 4 * i, free)
+        free += 0x50
+    struct.pack_into("<I", gui, g(SCP_ROW17) + 12, 6)
+    check(free <= FREE_HI, "new lists overflow the free area")
+    repack_b(m, gui, csz)
+
+
 def repack_b(m, gui, csz):
     c = olycompress.pack(bytes(gui))
     room = off(BLOB_END) - (BLOB_B_OFF + 32)
@@ -245,6 +304,8 @@ def main(argv):
         stage2b(m)
     elif "--stage2c" in argv:
         stage2c(m)
+    elif "--stage2d" in argv:
+        stage2d(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
