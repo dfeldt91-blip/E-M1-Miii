@@ -27,8 +27,16 @@ Model id `0x1390`, main code version `0x1500`. Load address includes the
   bytes (`fc cc`, `fc dc`, `fa fe`…) look like MN103. Strings: `am2arm`, `arm2am`.
 - An ARM Cortex-A9 coprocessor is booted by the AM core with Linux or ITRON
   (`ARM Cortex-A9 start`, `load arm linux`, `load arm itron`).
-- Disassembly needs an MN10300/AM33 disassembler: GNU binutils built with
-  `--target=mn10300-elf` (`objdump -m am33-2`), or Ghidra/IDA with an MN103 module.
+- The main code is plain MN1030-family code: `tools/disasm.py` (opcode table
+  generated from the manual in this repo) decodes all of block 0 except ~30 KB.
+- **Block 0 runs at `0x60021020`** (not the header's `0x40800000`), same as
+  E-M1 II / PEN-F. Found by matching `MOV imm32` pointers against string offsets.
+- `0x6002372a`: debug printf (4073 callers).
+- `0x47001165` / `0x47001059`: memset / memcpy (boot ROM, outside the firmware;
+  pattern `a0=buf, d0=0|src, d1=len`). Many `0x380` immediates are sizes passed
+  to these, not the colour-tone-dial setting ID.
+- Candidate setting accessors (called after `MOV <setting id>,d0` with many
+  different IDs): `0x605f6378`, `0x60689723`, `0x6145225c`, `0x602eeec8`. Unverified.
 
 ## Setting-name table (block 2, offset `0x20403f0`)
 
@@ -52,6 +60,15 @@ The code is already in the firmware, driven by a "colour-tone dial" setting
   (granular, shading, tone control, monotone filter/colour, SET1–3)
 - `MODE_CURSOR_SELECT_CONTROLES_{COLOR_CREATOR,COLOR_CREATOR_2,MONOCHROME_CREATOR}`
 - Block 0 strings `colorprofile`, `monochromeprofile`
+
+Multi Function menu: `MODE_EVF_FN` plus on/off items
+`MODE_EVF_FN_ONOFF_{TONE_CONTROL,LV_MAGNIFY,ASPECT_RATIO,COLOR_CREATOR,WB_ISO,ISO_WB,PEAKING,NATURAL_VIEW,ISO,WB}`
+(IDs `0x27f`–`0x284`, `0x2ff`, `0x532`, `0x5b6`, `0x5b7`). Classic Color Creator
+already appears to be a Multi Function item; the dial-only modes are
+`COLOR_CREATOR_2` (Color Profile) and `MONOCHROME_CREATOR` (Monochrome Profile).
+
+Note: the name table has gaps and some misaligned entries later on, so
+"index = setting ID" is only verified as plausible near the start.
 
 Likely approach: find the code that reads the (absent) dial position into
 `MODE_COLORTONE_DIAL` and the button-function assignment table, then add a
