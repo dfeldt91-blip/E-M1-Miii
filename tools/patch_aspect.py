@@ -3,7 +3,7 @@
 patch_aspect.py - E-M1 Mark III aspect-ratio experiments (toward XPan 65:24).
 EXPERIMENTAL, NOT TESTED ON A CAMERA.
 
-  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--labeltest|--labeltest2|--titletest [--version 0x1530]
+  python3 tools/patch_aspect.py IN.BIN OUT.BIN --stage1|--stage2a|--stage2b|--stage2c|--stage2d|--stage2e|--stage3|--stage4|--stage5|--stage6|--stage7|--stage8|--labeltest|--labeltest2|--titletest [--version 0x1530]
 
 Stage 1 (diagnostic): drop 3:4 from the Image Aspect validator list.
   Record 0x604dc954 (setting 0x10d MODE_ASPECT_RATIO), u8 list 0x604d93da =
@@ -79,6 +79,10 @@ Stage 7: 6 + four more aspect switch tails (AF actuator ranges 0x60de0d9e,
   selected (black screen), so it is off by default. Stubs at
   0x600d5f00. RT_LST (a text listing "addr insn" of the stock runtime image)
   enables the check that no branch lands inside the hooked bytes.
+
+Stage 8: 7 + local remaps 6 -> 3 (16:9) right after the aspect read in the
+  metering-mark lookup, the shooting-screen overlay (obj+300) and the
+  Detail / Legacy_Detail SCP viewers (AF target, range frame).
 
 Label test 2 (diagnostic): same as the label test, for the value-ordered list
   0x612941d4 (values 1,2,3,4,9,10, referenced by the screen record at 0x61294774).
@@ -648,7 +652,7 @@ def branch_targets_into(rt_lst, lo, hi):
     return hits
 
 
-def stage7(m):
+def stage7(m, more3=None):
     """6 + more AF/display aspect switches and the AF/tracking ratio pair -> 16:9 for id 6."""
     lst = os.environ.get("RT_LST")
 
@@ -692,7 +696,53 @@ def stage7(m):
             head = b"\xdd" + struct.pack("<i", GETTER - stub) + call[3:5]
             hook(site, stock, place(head + body))
         print("  stage 7: %d tails hooked%s, stubs %#x-%#x" % (len(TAILS7), " + ratio calls" if "--ratio16" in sys.argv else "", STUB7_LO, stub))
+        if more3:
+            more3(rt, put, hook)
     stage6(m, more2)
+
+
+# Local remap 6 -> 3 (16:9) right after GetValue(0x10d) in display/AF code that only uses the aspect
+# for geometry (E-P7 ASPECT.md 1i "L" fixes): the stub replays the moved instructions (position
+# independent), rewrites the value where the getter stored it, keeps the getter's d0 in MDR.
+# (site, stock bytes moved to the stub, where the value is, what it is)
+REMAPS8 = [
+    (0x60e32995, "2c0d01f0f2", "(12,sp)", "metering / AEL mark lists 0x6120ddcc.."),
+    (0x60e0f215, "252c01f16df0f2", "(300,a0)", "shooting-screen overlay obj+300 (lists 0x611e55b4..)"),
+    (0x60e2189d, "2c0d01f0f2", "(24,sp)", "Detail SCP viewer (AF)"),
+    (0x60e24e07, "2c0d01f0f2", "(44,sp)", "Legacy_Detail_Scp_Viewer"),
+    (0x60e251c3, "2c0d01f0f2", "(8,sp)", "Legacy_Detail_Scp_Viewer"),
+    (0x60e26e5c, "2c0d01f0f2", "(a3)", "Legacy_Detail_Scp_Viewer::Range_frame_Moving (AF)"),
+]
+REMAP_SRC = """mov d0,mdr
+%s
+mov %s,d0
+cmp 6,d0
+bne keep
+mov 3,d0
+mov d0,%s
+keep:
+mov mdr,d0
+jmp back"""
+STUB8_LO, STUB8_HI = 0x600d5f80, 0x600d6100
+
+
+def stage8(m):
+    """7 (no ratio change) + local 6 -> 16:9 remaps for the shooting-screen AF point, metering mark
+    and the SCP/AF target viewers."""
+    def more3(rt, put, hook):
+        stub = STUB8_LO
+        check(set(rt[off(STUB8_LO):off(STUB8_HI)]) == {0xff}, "stage 8 stub area not free")
+        for site, stock, where, _ in REMAPS8:
+            moved = bytes.fromhex(stock)
+            pre = "mov d3,a0" if where == "(300,a0)" else ""
+            body = assemble_syms(REMAP_SRC % (pre, where, where), stub + len(moved), {"back": site + len(moved)})
+            code = moved + body
+            check(stub + len(code) <= STUB8_HI, "stage 8 stubs overflow")
+            rt[off(stub):off(stub) + len(code)] = code
+            hook(site, stock, stub)
+            stub = (stub + len(code) + 15) & ~15
+        print("  stage 8: %d remaps, stubs %#x-%#x" % (len(REMAPS8), STUB8_LO, stub))
+    stage7(m, more3)
 
 
 def repack_b(m, gui, csz):
@@ -777,6 +827,8 @@ def main(argv):
         stage6(m)
     elif "--stage7" in argv:
         stage7(m)
+    elif "--stage8" in argv:
+        stage8(m)
     elif "--labeltest2" in argv:
         labeltest(m, (0x612941d4,))
     elif "--labeltest" in argv:
