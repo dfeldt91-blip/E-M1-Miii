@@ -310,3 +310,43 @@ including entries for "Color Profile 1/2" (string 0xb29/0xb2a).
 
 To patch GUI code: edit the unpacked image, LZ4-compress again (must fit the
 space before the next blob / padding), rewrite the header sizes.
+
+## Picture Mode lists: why Color/Mono Profile are missing (runtime image)
+
+String IDs: real ID = my English-section index + 2 (checked on the aspect menu:
+0x124 "4:3", 0x123 "16:9", 0x125 "3:2", 0x6fa "1:1", 0x127 "3:4", 0xcbd
+"17:9"). Corrected: Color Creator 0x4f6, Color Profile 1-3 0xabd-0xabf
+(iconed 0xac0-0xac2), Monochrome Profile 1-3 0xac5-0xac7 (iconed
+0xac8-0xaca), short "Color/Mono Profile 1-3" 0xb2b-0xb30.
+
+Menu/LV descriptors `{u16 sid, u16 count, u32 list}` (e.g. table `0x611af710`:
+AE, COLORTONE 54 icons, ASPECT 6, QUALITY 31 ...; three copies at 0x611af...,
+0x61206..., 0x61287...). Live Control select array (24-B rows `{sid, n, listA,
+listB, ...}`): COLORTONE row `0x611fe03c`, 75 icon entries incl. GUI values
+54-59 (= Color Profile 1-3, Mono Profile 1-3 per the E-P7 GUI enum) and
+`mode | variant<<16` art types. (Correction: 26 = Vintage, 27 = Partial Color,
+from the picture-bracket list builder `0x60a09d51`.)
+
+Validator lists for picture modes are 64-byte entries `{+0 pipeline mode,
++4 profile slot}`:
+
+| sid | list | entries |
+|---|---|---|
+| 0x6f MODE_COLORTONE (used on this body) | `0x604bc4f4`, 26 | 7,1,2,3,4,5(+4=1),6,8,10,9,100-109,119-124 |
+| 0x385 DIAL_NON | `0x604c3df4`, 26 | 7,1..6,8,9,11?,12?.. (differs slightly) |
+| 0x381 DIAL_NEUTRAL | 8 | 7,1..6,8 |
+| 0x383 DIAL_COLOR_CREATOR | 2 | 2, 9 |
+| 0x384 DIAL_COLOR_CREATOR_2 | 4 | 2, 11/1, 11/2, 11/3 |
+| 0x3c6 DIAL_MONOCHROME_CREATOR | 4 | 2, 12/1, 12/2, 12/3 |
+
+Pipeline types 11/12 = Color/Mono Profile (the imgpro builder handles both).
+Record for 0x6f: `0x604da7bc` `{0x6f, 0x80, list 0x604bc4f4, alt 0x604ae834,
+1664 B, elem 64, type 6}`. Alt lists: CC2 `0x604aefa4` = {1,0x36}, {0x15,0x36};
+MONO `0x604aefb4` = {1,0x39}, {9,0xa} (0x36 = GUI 54 Color Profile 1, 0x39 =
+GUI 57 Mono Profile 1).
+
+Candidate patch (E-P7 aspect method): give the 0x6f record a new list = the
+26 stock entries + {11,1},{11,2},{11,3},{12,1},{12,2},{12,3} (2048 B) placed in
+verified free space, and raise its byte count 1664 -> 2048. Open: how the GUI
+maps pipeline values to GUI 54-59 labels/icons, the alt-list meaning, and
+whether INFO opens the profile editor.
