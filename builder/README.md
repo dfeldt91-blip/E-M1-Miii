@@ -12,7 +12,24 @@ your own download.
 
 **Unofficial. Flashing modified firmware is at your own risk.**
 
-## Run it
+## Mac app
+
+GitHub builds a ready-to-run Mac app on every change (workflow `.github/workflows/mac-app.yml`), with
+Python, tkinter and lz4 inside, so nothing else needs installing:
+
+1. On GitHub, open **Actions → Mac app**, pick the latest successful run and download
+   `E-M1-III-Mod-Builder-mac-apple-silicon` (M1/M2/M3/M4 Macs) or `…-intel`.
+2. Unzip it (double-click). Move **E-M1 III Mod Builder.app** to Applications if you like.
+3. The app is not signed by Apple, so the first time: right-click (or Control-click) the app → **Open** →
+   **Open**. If macOS still refuses (newer macOS versions), open **System Settings → Privacy & Security**,
+   scroll down and click **Open Anyway**. Or run once in Terminal:
+   `xattr -dr com.apple.quarantine "/Applications/E-M1 III Mod Builder.app"`
+
+After a build, Finder opens with `E1399999.BIN` selected.
+
+To build the app yourself on a Mac: `bash builder/mac/build_app.sh` (needs Python 3 from python.org).
+
+## Run it as a script
 
 Needs Python 3.8 or newer, tkinter (included with the python.org installers for Windows and macOS),
 and the `lz4` package:

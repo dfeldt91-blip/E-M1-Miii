@@ -2,3 +2,6 @@
 *.unpacked/
 unpacked/
 __pycache__/
+build/
+dist/
+*.spec

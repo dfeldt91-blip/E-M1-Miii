@@ -1,0 +1,39 @@
+name: Mac app
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "builder/**"
+      - "tools/modcore.py"
+      - "tools/olyfw.py"
+      - "tools/olycompress.py"
+      - ".github/workflows/mac-app.yml"
+
+jobs:
+  mac-app:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-latest      # Apple silicon
+            arch: apple-silicon
+          - runner: macos-15-intel    # Intel Macs
+            arch: intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the app
+        run: bash builder/mac/build_app.sh
+      - name: Check that the app starts its command-line mode
+        run: |
+          "dist/E-M1 III Mod Builder.app/Contents/MacOS/E-M1 III Mod Builder" --list
+      - uses: actions/upload-artifact@v4
+        with:
+          name: E-M1-III-Mod-Builder-mac-${{ matrix.arch }}
+          path: dist/E-M1-III-Mod-Builder-mac.zip
+          if-no-files-found: error

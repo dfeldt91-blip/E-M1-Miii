@@ -20,7 +20,8 @@ import sys
 import threading
 import traceback
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+# packaged app (PyInstaller): data files and the tools modules sit in sys._MEIPASS
+HERE = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "tools"))
 
 APP = "E-M1 Mark III mod builder"
@@ -42,6 +43,18 @@ def missing_dependency():
     except ImportError:
         return "The lz4 package is missing. Install it with:  %s -m pip install lz4" % os.path.basename(sys.executable)
     return None
+
+
+def reveal(path):
+    """Show the built file in Finder (macOS) or the folder in the file manager."""
+    import subprocess
+    try:
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", path])
+        elif sys.platform.startswith("win"):
+            subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
+    except OSError:
+        pass
 
 
 def load_settings():
@@ -339,6 +352,7 @@ def gui():
                         save_settings(s)
                         ver.set(next_version(s))
                         messagebox.showinfo(APP, "Saved %s\n\n%s" % (val[1], INSTALL))
+                        reveal(val[1])
                     refresh_fw()
         except queue.Empty:
             pass

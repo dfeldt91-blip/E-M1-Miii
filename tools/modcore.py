@@ -36,6 +36,20 @@ REQUEST = ("<?xml version='1.0' encoding='utf-8'?><firmware_demand><revision>000
            "<serial_no>000000000</serial_no></hardware_info></hardwares></firmware_demand>")
 
 
+def _ssl_context():
+    """A packaged app (PyInstaller, macOS especially) may not see the system certificates: use
+    certifi's there. Plain Python keeps its normal certificate store."""
+    import ssl
+    import sys
+    if not getattr(sys, "frozen", False):
+        return None
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return None
+
+
 class BuildError(Exception):
     pass
 
@@ -52,7 +66,7 @@ def catalog_entry(timeout=30):
     req = urllib.request.Request(
         CATALOG, data=(REQUEST % datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")).encode(),
         headers={"Content-Type": "text/xml; Charset=UTF-8", "User-Agent": "Olympus"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as r:
         root = ET.fromstring(r.read())
     for info in root.iter("firmware_info"):
         if info.findtext("model_id") == "1390":
@@ -67,7 +81,8 @@ def download_stock(path, progress=None, timeout=60):
     h = hashlib.sha256()
     done = 0
     req = urllib.request.Request(url, headers={"User-Agent": "Olympus"})
-    with urllib.request.urlopen(req, timeout=timeout) as r, open(path + ".part", "wb") as fh:
+    with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as r, \
+            open(path + ".part", "wb") as fh:
         total = int(r.headers.get("Content-Length") or size or STOCK_SIZE)
         while True:
             chunk = r.read(1 << 20)
