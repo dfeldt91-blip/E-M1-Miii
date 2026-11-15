@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """Allow the flash setting in Handheld High Res Shot (EXPERIMENTAL).
-  python3 tools/patch_hhrs_flash.py IN.BIN OUT.BIN [--version 0x1620]
+  python3 tools/patch_hhrs_flash.py IN.BIN OUT.BIN [--version 0x1621]
 
-Setting restriction rules (record table 0x6049299c, 20-byte records {u16 sid, u16 flags,
+Setting restriction rules (record table 0x604920dc, 20-byte records {u16 sid, u16 flags,
 u32 rules, u16 count}; rules {u32 cond, u16 n, u32 map, u16 n}; cond terms {u16 sid, u16 value,
 u32 0}; map {s16 from, s16 to}). MODE_STB_GENERAL (0x6d0, flash enable) has 7 rules, all using
 the shared "force 0" map 0x60470fc0 {0->0, 1->0}. Rule 3 is
   IF MODE_PIXSHIFT_SR (0x2f2) == 1 AND MODE_PIXSHIFT_SR_HANDHELD (0x68f) == 1 -> flash off.
 Its map pointer (rule entry 0x6048a958 + 8) is pointed at the existing identity map 0x60480ee4
 {0->0, 1->1} instead. The condition record and both maps are shared, so they stay unchanged.
-Tripod High Res has no such rule (flash already allowed there, with Charge Time).
+Camera 1.620 (that change alone): flash option still not available.
+
+The rule record table really starts at 0x604920dc (284 records; MODE_STROBE 0x10 has 455 rules,
+record 0x60492988). MODE_STROBE rule 46 (entry 0x6047f42c) is the same handheld condition with
+map 0x6047efe0 {5,6,7,30,8,10,28 -> 10} (every flash mode -> off). Tripod High Res rules 29-45
+(handheld == 0) mostly use map 0x6047effc {all -> 5, 10 -> 10}; rule 46 is pointed there, so
+handheld High Res gets the same flash modes tripod High Res offers in the common case.
 """
 import hashlib
 import os
@@ -22,6 +28,8 @@ import olyfw  # noqa: E402
 BASE = 0x60021020
 RULE3 = 0x6048a958
 COND, FORCE0, IDENT = 0x60474170, 0x60470fc0, 0x60480ee4
+STROBE46, STB_OFF, STB_TRIPOD = 0x6047f42c, 0x6047efe0, 0x6047effc
+FLASH_VALUES = [5, 6, 7, 30, 8, 10, 28]
 
 
 def check(cond, msg):
@@ -44,6 +52,14 @@ def patch_main(main):
     check([struct.unpack_from("<hh", m, off(IDENT) + 4 * j) for j in range(2)] == [(0, 0), (1, 1)],
           "identity map differs")
     struct.pack_into("<I", m, off(RULE3) + 8, IDENT)
+    cp, cn, mp, mn = struct.unpack_from("<IHxxIHxx", m, off(STROBE46))
+    check((cp, cn, mp, mn) == (COND, 2, STB_OFF, 7), "rule 46 of MODE_STROBE differs")
+    check([struct.unpack_from("<hh", m, off(STB_OFF) + 4 * j) for j in range(7)] ==
+          [(v, 10) for v in FLASH_VALUES], "flash-off map differs")
+    check([struct.unpack_from("<hh", m, off(STB_TRIPOD) + 4 * j) for j in range(7)] ==
+          [(v, 10 if v == 10 else 5) for v in FLASH_VALUES], "tripod flash map differs")
+    struct.pack_into("<I", m, off(STROBE46) + 8, STB_TRIPOD)
+    print("  MODE_STROBE rule 46 (handheld high res -> flash off) map %#x -> %#x" % (STB_OFF, STB_TRIPOD))
     print("  MODE_STB_GENERAL rule 3 (handheld high res -> flash off) map %#x -> %#x" % (FORCE0, IDENT))
     return bytes(m)
 
