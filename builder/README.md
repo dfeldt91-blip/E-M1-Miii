@@ -14,11 +14,12 @@ your own download.
 
 ## Mac app
 
-GitHub builds a ready-to-run Mac app on every change (workflow `.github/workflows/mac-app.yml`), with
+GitHub builds a ready-to-run Mac app (workflow `.github/workflows/mac-app.yml`), with
 Python, tkinter and lz4 inside, so nothing else needs installing:
 
-1. On GitHub, open **Actions → Mac app**, pick the latest successful run and download
-   `E-M1-III-Mod-Builder-mac-apple-silicon` (M1/M2/M3/M4 Macs) or `…-intel`.
+1. Download the newest release from the repository's **Releases** page
+   (https://github.com/dfeldt91-blip/E-M1-Miii/releases/latest):
+   `E-M1-III-Mod-Builder-mac-apple-silicon.zip` (M1/M2/M3/M4 Macs) or `…-mac-intel.zip`.
 2. Unzip it (double-click). Move **E-M1 III Mod Builder.app** to Applications if you like.
 3. The app is not signed by Apple, so the first time: right-click (or Control-click) the app → **Open** →
    **Open**. If macOS still refuses (newer macOS versions), open **System Settings → Privacy & Security**,
