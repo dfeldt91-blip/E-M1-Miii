@@ -57,6 +57,19 @@ MODS = [
 ]
 
 
+# Generated at build time by the app (tools/modcore.py GENERATORS): id, title, description, status,
+# requires, options {name: {label, default, min, max}}
+GENERATED = [
+    ("white_frame", "Frame art effect: plain white border",
+     "The Frame art effect becomes a clean white border instead of the grungy film edge.",
+     "Worked on the camera (1.6 build 1.664).", [],
+     {"width_pct": {"label": "Border width (% of the short side)", "default": 3, "min": 0.5, "max": 20}}),
+    ("white_frame_panorama", "White frame in Panorama",
+     "Adds the white-border Frame masks for the Panorama aspect (stock has none there: the camera froze).",
+     "Worked on the camera (1.6 build 1.665).", ["panorama", "white_frame"], {}),
+]
+
+
 def run_tool(tool, args, src, dst):
     r = subprocess.run([sys.executable, os.path.join(HERE, tool), src, dst] + args,
                        capture_output=True, text=True)
@@ -109,6 +122,9 @@ def main(argv):
         if chain != [bytes(x) for x in merged]:
             sys.exit("merged edit lists differ from the chained tools")
         print("merged edit lists == chained tools")
+    for mid, title, desc, status, req, opts in GENERATED:
+        pack["mods"].append({"id": mid, "title": title, "description": desc, "camera": status, "requires": req,
+                             "generator": mid, "options": opts})
     with open(dst, "w") as fh:
         json.dump(pack, fh, indent=1)
         fh.write("\n")

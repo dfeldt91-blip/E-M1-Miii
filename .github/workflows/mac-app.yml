@@ -13,6 +13,7 @@ on:
       - "tools/modcore.py"
       - "tools/olyfw.py"
       - "tools/olycompress.py"
+      - "tools/patch_frame_white.py"
       - ".github/workflows/mac-app.yml"
 
 jobs:

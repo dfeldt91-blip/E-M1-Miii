@@ -1087,6 +1087,34 @@
      "002f0d"
     ]
    ]
+  },
+  {
+   "id": "white_frame",
+   "title": "Frame art effect: plain white border",
+   "description": "The Frame art effect becomes a clean white border instead of the grungy film edge.",
+   "camera": "Worked on the camera (1.6 build 1.664).",
+   "requires": [],
+   "generator": "white_frame",
+   "options": {
+    "width_pct": {
+     "label": "Border width (% of the short side)",
+     "default": 3,
+     "min": 0.5,
+     "max": 20
+    }
+   }
+  },
+  {
+   "id": "white_frame_panorama",
+   "title": "White frame in Panorama",
+   "description": "Adds the white-border Frame masks for the Panorama aspect (stock has none there: the camera froze).",
+   "camera": "Worked on the camera (1.6 build 1.665).",
+   "requires": [
+    "panorama",
+    "white_frame"
+   ],
+   "generator": "white_frame_panorama",
+   "options": {}
   }
  ]
 }

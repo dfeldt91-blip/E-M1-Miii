@@ -168,8 +168,38 @@ def load_pack(path):
         pack = json.load(fh)
     check(pack.get("format") == 1, "unknown mods.json format")
     for mod in pack["mods"]:
-        mod["edits"] = [(int(b), int(a, 16), bytes.fromhex(n)) for b, a, n in mod["edits"]]
+        mod["edits"] = [(int(b), int(a, 16), bytes.fromhex(n)) for b, a, n in mod.get("edits", [])]
+        mod.setdefault("generator", None)
+        mod.setdefault("options", {})
     return pack
+
+
+# ---------------------------------------------------------------- generated mods
+# Mods whose bytes are made at build time (images drawn to a chosen size). Each gets the expanded main
+# image, the plain blocks and the option values, and edits them in place.
+
+def _frame(img, plains, opts, log, panorama):
+    import patch_frame_white as fw
+    fw.LOG = log
+    pct = float(opts.get("width_pct", 3))
+    check(0.5 <= pct <= 20, "frame width must be between 0.5 and 20 %")
+    try:
+        if not panorama:
+            plains[2][:] = fw.patch_images(bytes(plains[2]), pct, "l0")
+        else:
+            plains[2][:], ids = fw.panorama_images(bytes(plains[2]), pct, "l0")
+            m = bytearray(img[:fw.ROWS + 12 * 11 - BASE])
+            m = fw.panorama_row(bytes(m), ids)
+            o = fw.ROWS + 12 * fw.PAN_ROW - BASE
+            img[o:o + 12] = m[o:o + 12]
+    except SystemExit as e:                       # the tool's own refusal
+        raise BuildError(str(e))
+
+
+GENERATORS = {
+    "white_frame": lambda img, plains, opts, log: _frame(img, plains, opts, log, False),
+    "white_frame_panorama": lambda img, plains, opts, log: _frame(img, plains, opts, log, True),
+}
 
 
 def bcd_version(text):
@@ -179,8 +209,10 @@ def bcd_version(text):
     return int(t, 16)
 
 
-def build(stock, pack, selected, version, log=print):
-    """Return the camera file bytes: official 1.6 + the mods in SELECTED (ids), main version VERSION."""
+def build(stock, pack, selected, version, log=print, options=None):
+    """Return the camera file bytes: official 1.6 + the mods in SELECTED (ids), main version VERSION.
+    OPTIONS: {mod id: {option: value}} for generated mods (defaults from mods.json)."""
+    options = options or {}
     verify_stock(stock)
     mods = {m["id"]: m for m in pack["mods"]}
     chosen = [m for m in pack["mods"] if m["id"] in selected]
@@ -194,8 +226,9 @@ def build(stock, pack, selected, version, log=print):
     plains = [bytearray(b["plain"]) for b in blocks]
     owner = {}
     for m in chosen:
-        check(stock_digest(img, m["edits"], plains) == m["stock_sha256"],
-              "'%s' does not match this firmware" % m["title"])
+        if m["edits"]:
+            check(stock_digest(img, m["edits"], plains) == m["stock_sha256"],
+                  "'%s' does not match this firmware" % m["title"])
     for m in chosen:
         for blk, a, new in m["edits"]:
             if blk == 0:
@@ -209,7 +242,15 @@ def build(stock, pack, selected, version, log=print):
             for x in range(o, o + len(new)):
                 owner[(blk, x)] = m["id"]
             buf[o:o + len(new)] = new
-        log("  + %s (%d edits)" % (m["title"], len(m["edits"])))
+        if m["edits"]:
+            log("  + %s (%d edits)" % (m["title"], len(m["edits"])))
+    for m in chosen:                       # generated mods last; they check their own targets
+        if m["generator"]:
+            check(m["generator"] in GENERATORS, "unknown generator %s" % m["generator"])
+            opts = {k: v["default"] for k, v in m["options"].items()}
+            opts.update(options.get(m["id"], {}))
+            log("  + %s %s" % (m["title"], " ".join("%s=%s" % kv for kv in sorted(opts.items()))))
+            GENERATORS[m["generator"]](img, plains, opts, log)
     out_main = bytearray(main)
     blob_lo = BLOBS[0][1]
     out_main[:blob_lo - BASE] = img[:blob_lo - BASE]                   # main part before the blobs

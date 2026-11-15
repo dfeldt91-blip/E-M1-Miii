@@ -57,6 +57,9 @@ IMAGES = [
 ]
 
 
+LOG = print          # the mod builder points this at its own log
+
+
 def check(cond, msg):
     if not cond:
         sys.exit("refusing to patch: " + msg)
@@ -116,9 +119,16 @@ def render(orig, w, h, layer, pct, fill=None, b=None):
     return out.getvalue(), b
 
 
+def is_clean(jpg, w, h, b, inner, edge):
+    """The decoded JPEG equals the intended band image within 2 grey levels."""
+    from PIL import Image, ImageChops, ImageDraw
+    want = Image.new("L", (w, h), edge)
+    ImageDraw.Draw(want).rectangle((b, b, w - b - 1, h - b - 1), fill=inner)
+    got = Image.open(io.BytesIO(jpg)).convert("L")
+    return got.size == (w, h) and ImageChops.difference(got, want).getextrema()[1] <= 2
+
+
 def patch_images(blk2, pct, fill=None):
-    from PIL import Image
-    import numpy as np
     d = bytearray(blk2)
     for off, w, h, aw, ah, layer in IMAGES:
         hdr = bytes(d[off - 0x40:off - 0x30])
@@ -132,13 +142,9 @@ def patch_images(blk2, pct, fill=None):
         check(set(pad) == {0}, "no zero padding after the image at %#x" % off)
         new, b = render(bytes(d[off:off + n]), w, h, layer, pct, fill)
         check(len(new) <= n, "new image at %#x is larger than the old one" % off)
-        g = np.asarray(Image.open(io.BytesIO(new)).convert("L")).astype(int)
-        inner, edge = colours(layer, fill)
-        want = np.full((h, w), edge)
-        want[b:h - b, b:w - b] = inner
-        check(np.abs(g - want).max() <= 2, "re-encoded image at %#x is not clean" % off)
+        check(is_clean(new, w, h, b, *colours(layer, fill)), "re-encoded image at %#x is not clean" % off)
         d[off:off + n] = new + bytes(n - len(new))
-        print("  %dx%d %d:%d layer %d: band %d px, %d -> %d bytes" % (w, h, aw, ah, layer, b, n, len(new)))
+        LOG("  %dx%d %d:%d layer %d: band %d px, %d -> %d bytes" % (w, h, aw, ah, layer, b, n, len(new)))
     return bytes(d)
 
 
@@ -168,13 +174,14 @@ def panorama_images(blk2, pct, fill):
     for k, (w, h, layer) in enumerate(PAN_IMAGES):
         b = band(w, w * 9 // 16, pct)                                # same band as 16:9 at this width
         jpg, _ = render(src, w, h, layer, 0, fill, b)
+        check(is_clean(jpg, w, h, b, *colours(layer, fill)), "Panorama image %dx%d is not clean" % (w, h))
         blob = hdr[:7] + bytes([65, 24, layer]) + hdr[10:] + jpg
         size = (len(blob) + 0x1ff) & ~0x1ff
         check(at + size <= FREE_HI, "archive full")
         d[at:at + len(blob)] = blob
         struct.pack_into("<II", d, DIR + 16 * (n + k), ARCH_FLASH + at, size)
         ids.append(n + k)
-        print("  Panorama %dx%d layer %d: entry %d at %#x, band %d px, %d bytes" % (w, h, layer, n + k, at, b, len(jpg)))
+        LOG("  Panorama %dx%d layer %d: entry %d at %#x, band %d px, %d bytes" % (w, h, layer, n + k, at, b, len(jpg)))
         at += size
     return bytes(d), ids
 
@@ -184,7 +191,7 @@ def panorama_row(main, ids):
     o = ROWS + 12 * PAN_ROW - BASE
     check(struct.unpack_from("<6H", m, o) == (0xffff,) * 4 + (0, 0), "Frame mask row for aspect 6 differs")
     struct.pack_into("<6H", m, o, *ids, 1024, 384)
-    print("  Frame mask row %d -> entries %s" % (PAN_ROW, ids))
+    LOG("  Frame mask row %d -> entries %s" % (PAN_ROW, ids))
     return bytes(m)
 
 

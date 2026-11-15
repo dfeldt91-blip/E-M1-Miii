@@ -32,10 +32,10 @@ To build the app yourself on a Mac: `bash builder/mac/build_app.sh` (needs Pytho
 ## Run it as a script
 
 Needs Python 3.8 or newer, tkinter (included with the python.org installers for Windows and macOS),
-and the `lz4` package:
+and the `lz4` and `pillow` packages (Pillow draws the frame images):
 
 ```bash
-python3 -m pip install lz4
+python3 -m pip install lz4 pillow
 ```
 
 ```bash
@@ -71,6 +71,8 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `preset_labels` | C2/C3/C4 shown as ISO / SS / Aperture (needs `hold_presets`) | not tested |
 | `hhrs_flash` | Flash in handheld High Res | worked (1.5 build) |
 | `hires_art` | Art filters in High Res (colour/tone only) | worked (1.5 build) |
+| `white_frame` | Frame art effect as a plain white border; width setting (% of the short side) | worked (1.6, 1.664) |
+| `white_frame_panorama` | White frame in Panorama (needs `panorama` and `white_frame`) | worked (1.6, 1.665) |
 
 All mods were developed and tested on a 1.5-based file. For 1.6 each one was checked byte by byte:
 every changed byte, the code and data around it, and every firmware address the new code uses are

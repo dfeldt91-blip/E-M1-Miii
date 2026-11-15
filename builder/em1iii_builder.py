@@ -8,7 +8,8 @@ in this program: the mods are edit lists (builder/mods.json) applied to your own
   python3 builder/em1iii_builder.py                    window
   python3 builder/em1iii_builder.py --list             list the mods
   python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
-                                    [--stock FILE]     no window ('--mods all' / '--mods none')
+                                    [--stock FILE] [--frame-width 3]
+                                                       no window ('--mods all' / '--mods none')
 
 Needs Python 3.8+ and the lz4 package (pip install lz4). The window needs tkinter.
 UNOFFICIAL. Flashing modified firmware is at your own risk.
@@ -40,8 +41,9 @@ The camera skips a file with the same version as the one installed, so each buil
 def missing_dependency():
     try:
         import lz4.block  # noqa: F401
+        import PIL  # noqa: F401
     except ImportError:
-        return "The lz4 package is missing. Install it with:  %s -m pip install lz4" % os.path.basename(sys.executable)
+        return "lz4 or Pillow is missing. Install them with:  %s -m pip install lz4 pillow" % os.path.basename(sys.executable)
     return None
 
 
@@ -90,11 +92,11 @@ def read_stock(path):
     return data
 
 
-def do_build(stock, pack, selected, version_text, out_dir, log):
+def do_build(stock, pack, selected, version_text, out_dir, log, options=None):
     import modcore
     ver = modcore.bcd_version(version_text)
     log("Building version %s with %d mod(s)..." % (version_text, len(selected)))
-    data = modcore.build(stock, pack, selected, ver, log=log)
+    data = modcore.build(stock, pack, selected, ver, log=log, options=options)
     os.makedirs(out_dir, exist_ok=True)
     dst = os.path.join(out_dir, modcore.CARD_NAME)
     with open(dst + ".part", "wb") as fh:
@@ -104,7 +106,9 @@ def do_build(stock, pack, selected, version_text, out_dir, log):
         fh.write("Built by %s\nBase: official %s\nVersion: %s\nMods:\n" % (APP, modcore.STOCK_NAME, version_text))
         for m in pack["mods"]:
             if m["id"] in selected:
-                fh.write("  - %s  (%s)\n" % (m["title"], m["camera"]))
+                opts = (options or {}).get(m["id"], {})
+                extra = "".join(", %s %s" % (m["options"][k]["label"], v) for k, v in opts.items())
+                fh.write("  - %s%s  (%s)\n" % (m["title"], extra, m["camera"]))
         if not selected:
             fh.write("  (none: stock 1.6 with a new version number)\n")
         import hashlib
@@ -151,7 +155,10 @@ def cli(argv):
             modcore.download_stock(path, prog)
         stock = read_stock(path)
         version = arg("--version") or next_version(s)
-        do_build(stock, pack, selected, version, arg("--out", os.getcwd()), print)
+        options = {}
+        if arg("--frame-width"):
+            options["white_frame"] = {"width_pct": float(arg("--frame-width"))}
+        do_build(stock, pack, selected, version, arg("--out", os.getcwd()), print, options)
     except (modcore.BuildError, OSError) as e:
         print("error:", e)
         return 1
@@ -230,6 +237,7 @@ def gui():
                 if mid in m["requires"]:
                     vars_[m["id"]].set(False)
 
+    opt_vars = {}
     for i, m in enumerate(pack["mods"]):
         v = tk.BooleanVar(value=m["id"] in chosen)
         vars_[m["id"]] = v
@@ -240,6 +248,14 @@ def gui():
             note += "  Needs: " + ", ".join(by_id[r]["title"] for r in m["requires"]) + "."
         ttk.Label(inner, text=note, foreground="#555", wraplength=640, justify="left").grid(
             row=2 * i + 1, column=0, sticky="w", padx=(24, 0))
+        if m["options"]:
+            of = ttk.Frame(inner)
+            of.grid(row=2 * i, column=0, sticky="e", padx=(0, 8))
+            for name, o in m["options"].items():
+                var = tk.StringVar(value=str(s.get("options", {}).get(m["id"], {}).get(name, o["default"])))
+                opt_vars[(m["id"], name)] = var
+                ttk.Label(of, text=o["label"] + ":").pack(side="left")
+                ttk.Spinbox(of, textvariable=var, from_=o["min"], to=o["max"], increment=0.5, width=5).pack(side="left", padx=4)
 
     def set_all(val):
         for v in vars_.values():
@@ -320,10 +336,18 @@ def gui():
         sel = {k for k, v in vars_.items() if v.get()}
         if not sel and not messagebox.askyesno(APP, "No mods selected. Build plain stock 1.6 with a new version number?"):
             return
+        options = {}
+        try:
+            for (mid, name), var in opt_vars.items():
+                options.setdefault(mid, {})[name] = float(var.get())
+        except ValueError:
+            messagebox.showerror(APP, "Please enter a number for the options.")
+            return
         s["mods"] = sorted(sel)
         s["out"] = out.get()
+        s["options"] = options
         save_settings(s)
-        work(lambda: ("built", do_build(state["stock"], pack, sel, ver.get(), out.get(), say)))
+        work(lambda: ("built", do_build(state["stock"], pack, sel, ver.get(), out.get(), say, options)))
 
     b_dl.config(command=lambda: work(download))
     b_pick.config(command=pick)
