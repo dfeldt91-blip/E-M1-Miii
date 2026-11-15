@@ -3,6 +3,8 @@ name: Mac app
 on:
   workflow_dispatch:
   push:
+    tags:
+      - "mod-builder-*"
     paths:
       - "builder/**"
       - "tools/modcore.py"
@@ -37,3 +39,33 @@ jobs:
           name: E-M1-III-Mod-Builder-mac-${{ matrix.arch }}
           path: dist/E-M1-III-Mod-Builder-mac.zip
           if-no-files-found: error
+
+  release:
+    # A pushed tag "mod-builder-<version>" publishes both app zips as a GitHub Release.
+    if: startsWith(github.ref, 'refs/tags/mod-builder-')
+    needs: mac-app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Name the files
+        run: |
+          mkdir out
+          cp artifacts/E-M1-III-Mod-Builder-mac-apple-silicon/E-M1-III-Mod-Builder-mac.zip out/E-M1-III-Mod-Builder-mac-apple-silicon.zip
+          cp artifacts/E-M1-III-Mod-Builder-mac-intel/E-M1-III-Mod-Builder-mac.zip out/E-M1-III-Mod-Builder-mac-intel.zip
+          ls -la out
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: E-M1 III Mod Builder ${{ github.ref_name }}
+          files: out/*.zip
+          body: |
+            Mac app that downloads the official E-M1 Mark III firmware 1.6 from OM, lets you pick mods and writes E1399999.BIN.
+
+            **Download:** `E-M1-III-Mod-Builder-mac-apple-silicon.zip` for M1/M2/M3/M4 Macs, `E-M1-III-Mod-Builder-mac-intel.zip` for Intel Macs.
+
+            **First start:** the app is not signed by Apple. Right-click it, choose Open, then Open again. If macOS still blocks it: System Settings, Privacy & Security, Open Anyway.
+
+            Unofficial. Flashing modified firmware is at your own risk. Instructions: builder/README.md.
