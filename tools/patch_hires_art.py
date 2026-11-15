@@ -9,6 +9,9 @@ which keeps 7, 0, 1, 2, 5, 3, 6, 28, 21 and maps 20 (e-Portrait), 8-19, 26, 27, 
 filters) to 1. That map is shared by 10 rules (bracketing, focus stacking, fisheye ...), so rule 7
 gets its own identity map over the same 26 values at 0x600d2f00 (0xff padding in the
 boot-copied base section; read-only data only).
+Camera 1.622: art filters selectable with High Res, no freezes; the JPEG gets the filter's colour/tone
+but not the effect pass (soft focus, white edge, other effects): the High Res sequence
+(iseq_pixshift_sr) has no art-effect step. Kept as is.
 """
 import hashlib
 import os
