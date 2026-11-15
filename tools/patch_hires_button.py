@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """High Res Shot as a button function (EXPERIMENTAL, E-M1 Mark III 1.6).
 
-  MN10300_BIN=... python3 tools/patch_hires_button.py IN.BIN OUT.BIN [--version 0x1667]
+  MN10300_BIN=... python3 tools/patch_hires_button.py IN.BIN OUT.BIN [--version 0x1671]
 
 A button's setting value is a function code. Stock has no code for High Res Shot; this patch makes
-770 (0x302, the Shooting Menu "High Res Shot" switch, values 0/1; tripod or handheld stays
-MODE_PIXSHIFT_SR_HANDHELD 0x68f)
-one, offered on the full custom buttons right after Live ND. Pressing the button switches High Res
-on or off, like Live ND's on/off setting.
+770 (the sid of the Shooting Menu "High Res Shot" item, used here only as the picker code) one,
+offered on the full custom buttons right after Live ND. Pressing the button sets the drive mode
+to High Res Shot; pressing again sets Single. Tripod or handheld stays as set in the menu.
 
 Code 284 ("Backlit LCD", a function for bodies with a backlit top LCD) is in every button table
 but in no button's list on this body. Its slots are reused, so no table moves or grows:
   function table 0x60f2343c {code, action, alt}, row 17: (284, 29, 69) -> (770, 99, 3200)
   press jump table 0x60f37cdc[action - 1]: action 102 is a no-op (0x60cc4aab, the dispatcher's
-      RET) -> stub in the base section, which toggles 0x302 with the GUI setting API
+      RET) -> stub in the base section, which switches the drive mode (0xcc1) between High Res (18) and Single (0) with the GUI setting API
       (get 0x60cb1b1e, set 0x60cb1a73) and jumps to that RET
   label tables {u32 code, u16 type, u16 label, u32 cond} (type 3 icon, type 4 string):
       0x611d8a64 / 0x61296124 (icons) and 0x61295f20 (names): -> (770, 4, "High Res Shot")
@@ -28,7 +27,11 @@ press table.
 1.668/1.669 toggled 0x2f2 (754, MODE_PIXSHIFT_SR): the High Res icon came on, but the camera froze
 on the shot. 0x2f2 is the internal flag the camera derives from the menu switch 0x302 (770) once
 the capture is set up (menu tables list 770 as "High Res Shot", next to Live ND 0x690; the E-P7
-has the same pair as 775 / 758). The button now toggles 770.
+has the same pair as 775 / 758). 1.670 toggled 770 (MODE_PIXSHIFT_SR_MENU): the button did nothing
+visible and High Res disappeared from the SCP drive list. On this body High Res Shot is a drive
+mode: drive setting 0xcc1 (3265, "drivemode" in the Wi-Fi property table 0x614dd95c), value 18
+(drive labels 0x611eb038: 0 Single, 1/2 Sequential H/L, ..., 20/21 Pro Capture, 18 High Res Shot).
+1.671 sets drive 18, and the next press sets Single (0). The picker code stays 770 (labels only).
 """
 import hashlib
 import os
@@ -66,15 +69,15 @@ STOCK39 = [3209] + STOCK38
 SRC = """call busy,[d2,a2],20
 cmp 0,d0
 bne refresh
-mov 0x302,d0
+mov 0xcc1,d0
 call get,[d2,a2],24
-cmp 0,d0
-bne off
-mov 0x302,d0
-mov 1,d1
+cmp 18,d0
+beq off
+mov 0xcc1,d0
+mov 18,d1
 bra store
 off:
-mov 0x302,d0
+mov 0xcc1,d0
 clr d1
 store:
 call set,[d2,a2],20

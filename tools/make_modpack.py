@@ -56,9 +56,9 @@ MODS = [
      "Worked on the camera (1.5 build), colour only.", []),
     ("hires_button", "patch_hires_button.py", [], "High Res Shot button function",
      "Adds 'High Res Shot' to the Button Function lists of the full custom buttons (Fn, AEL, "
-     "record and so on). Pressing the button switches High Res Shot on or off; tripod or handheld "
-     "stays as set in the menu.",
-     "1.668/1.669 toggled the internal flag and froze on the shot; 1.670 toggles the menu setting, not tested yet.", []),
+     "record and so on). Pressing the button sets the drive mode to High Res Shot; pressing again "
+     "sets Single. Tripod or handheld stays as set in the menu.",
+     "1.668-1.670 did not work; 1.671 sets the High Res drive mode, not tested yet.", []),
 ]
 
 
