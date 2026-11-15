@@ -58,7 +58,7 @@ MODS = [
      "Adds 'High Res Shot' to the Button Function lists of the full custom buttons (Fn, AEL, "
      "record and so on). Pressing the button switches High Res Shot on or off; tripod or handheld "
      "stays as set in the menu.",
-     "Not tested on the camera yet (test build 1.667).", []),
+     "1.667 switched the card slot (wrong action); fixed in test build 1.668, not tested yet.", []),
 ]
 
 

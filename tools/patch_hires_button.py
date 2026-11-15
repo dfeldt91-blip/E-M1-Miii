@@ -10,7 +10,7 @@ on or off, like Live ND's on/off setting.
 
 Code 284 ("Backlit LCD", a function for bodies with a backlit top LCD) is in every button table
 but in no button's list on this body. Its slots are reused, so no table moves or grows:
-  function table 0x60f2343c {code, action, alt}, row 17: (284, 29, 69) -> (754, 102, 3200)
+  function table 0x60f2343c {code, action, alt}, row 17: (284, 29, 69) -> (754, 99, 3200)
   press jump table 0x60f37cdc[action - 1]: action 102 is a no-op (0x60cc4aab, the dispatcher's
       RET) -> stub in the base section, which toggles 0x2f2 with the GUI setting API
       (get 0x60cb1b1e, set 0x60cb1a73) and jumps to that RET
@@ -20,6 +20,10 @@ but in no button's list on this body. Its slots are reused, so no table moves or
 Button lists (validator records {u16 sid, u16 0x80, u32 list, u32, u16 nbytes, u16 2}): the 17
 full-button lists (16 x 38 codes, 1 x 39) get 754 after 1680 (Live ND); two new shared lists in
 base-section free space.
+
+Camera 1.667 used action 102: the picker showed High Res Shot, but the button switched the card
+slot. 102 is a type-1 action (0x60f22cfc), handled by another dispatcher (0x60cd32d7), not the
+press table.
 """
 import hashlib
 import os
@@ -32,8 +36,9 @@ import olycompress  # noqa: E402
 
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
-CODE, OLD_CODE, ACTION = 754, 284, 102
-FUNC_ROW, FUNC_STOCK, FUNC_NEW = 0x60f2343c + 12 * 17, (284, 29, 69), (754, 102, 3200)
+CODE, OLD_CODE, ACTION = 754, 284, 99
+ACTION_TYPES = 0x60f22cfc     # {u32 action, u32 type, u32 name}: type 2 -> press jump table
+FUNC_ROW, FUNC_STOCK, FUNC_NEW = 0x60f2343c + 12 * 17, (284, 29, 69), (754, 99, 3200)
 PRESS_TAB, NOOP = 0x60f37cdc, 0x60cc4aab
 NAME, HELP = 0x986, 0x987                       # "High Res Shot", "Takes and combines eight ..."
 LABELS = [  # (entry, stock type, stock label, new type, new label)
@@ -109,6 +114,10 @@ def patch(main):
     codes = [struct.unpack_from("<I", gui, g(t) + 12 * k)[0] for k in range(62)]
     check(CODE not in codes, "754 already in the function table")
     struct.pack_into("<3I", gui, g(FUNC_ROW), *FUNC_NEW)
+    check(struct.unpack_from("<2I", gui, g(ACTION_TYPES) + 12 * ACTION) == (ACTION, 2),
+          "action %d is not a type-2 (press table) action" % ACTION)
+    check(ACTION not in [struct.unpack_from("<I", gui, g(t) + 12 * k + 4)[0] for k in range(62) if k != 17],
+          "action %d is used by a function" % ACTION)
     p = g(PRESS_TAB) + 4 * (ACTION - 1)
     check(struct.unpack_from("<I", gui, p)[0] == NOOP, "press action %d is not free" % ACTION)
     struct.pack_into("<I", gui, p, STUB)
