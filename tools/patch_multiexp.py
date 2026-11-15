@@ -46,11 +46,19 @@ mov 266,d0
 call getv,[],4
 cmp d0,d2
 bcc last
+cmp 2,d2
+bcs keep
+mov a3,a0
+call sdf,[d2,a2,a3],24
+keep:
 mov 1,d2
 jmp back
 last:
 clr d2
 jmp back"""
+# Camera (1.605): still none. The display handle is built while shots 1 and 2 are held and then
+# points at freed buffers once they are merged, so the OVL stub (after freeTakeBufferAll, before
+# setMesState(4)) now also rebuilds it with ScaleDispForce(this) when this is not the last shot.
 # Camera (1.604): still no overlay after shot 2. ScaleDispForce (0x609c7b57) builds the overlay from
 # the held shots array[1..hdl_count] (0x609450f6 loops k = 1..n). With 3-4 frames the combine runs
 # once two shots are held: the result goes to array[0] (edit buffer made in entryEXECUTE 0x609c86c7)
@@ -151,7 +159,7 @@ def patch(main):
     a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)] = (
         b"\xdc" + struct.pack("<i", SDF_STUB - SDF_SITE) + b"\xcb" * (len(SDF_STOCK) - 5))
     print("  ScaleDispForce hook %#x -> stub %#x (%d B)" % (SDF_SITE, SDF_STUB, len(stub2)))
-    stub = patch_aspect.assemble_syms(OVL_SRC, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8})
+    stub = patch_aspect.assemble_syms(OVL_SRC, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
     m[off(OVL_STUB):off(OVL_STUB) + len(stub)] = stub
     a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
         b"\xdc" + struct.pack("<i", OVL_STUB - OVL_SITE) + b"\xcb" * (len(OVL_STOCK) - 5))
