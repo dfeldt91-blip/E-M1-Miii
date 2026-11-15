@@ -55,18 +55,29 @@ STOCK38 = [3333, 44, 106, 84, 85, 3297, 88, 22, 3279, 3348, 3349, 3350, 3351, 33
            3352, 472, 603, 6, 9, 436, 567, 3408, 452, 765, 1139, 1292, 1072, 157, 3428, 1680, 3431,
            241, 36, 1872, 3200]
 STOCK39 = [3209] + STOCK38
-SRC = """mov 0x2f2,d0
+# Same steps as the stock Live ND toggle 0x60cc4ace (key table 0x60f5846c): skip the change while
+# busy (0x60ccaf7d != 0), toggle, then 0x60cb498e(8) (back to the shooting screen, which re-applies
+# the shooting mode). 1.668 toggled without that last call: the camera restarted on the shot.
+SRC = """call busy,[d2,a2],20
+cmp 0,d0
+bne refresh
+mov 0x2f2,d0
 call get,[d2,a2],24
 cmp 0,d0
 bne off
 mov 0x2f2,d0
 mov 1,d1
-call set,[d2,a2],20
-jmp back
+bra store
 off:
 mov 0x2f2,d0
 clr d1
+store:
 call set,[d2,a2],20
+refresh:
+mov 8,d0
+mov a3,a1
+mov a2,a0
+call shoot,[d2,d3,a2,a3],124
 jmp back"""
 
 
@@ -99,7 +110,8 @@ def patch(main):
             struct.pack_into("<I", m, off(rec) + 4, at)
             struct.pack_into("<H", m, off(rec) + 12, 2 * len(new))
     check(LIST38 + 2 * 39 <= LIST39 and LIST39 + 2 * 40 <= STUB, "lists overlap")
-    stub = patch_aspect.assemble_syms(SRC, STUB, {"back": NOOP, "get": 0x60cb1b1e, "set": 0x60cb1a73})
+    stub = patch_aspect.assemble_syms(SRC, STUB, {"back": NOOP, "get": 0x60cb1b1e, "set": 0x60cb1a73,
+                                                      "busy": 0x60ccaf7d, "shoot": 0x60cb498e})
     check(STUB + len(stub) <= FREE_HI, "stub too long")
     m[off(STUB):off(STUB) + len(stub)] = stub
     # blob B tables

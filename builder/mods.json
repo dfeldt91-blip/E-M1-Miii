@@ -1092,9 +1092,9 @@
    "id": "hires_button",
    "title": "High Res Shot button function",
    "description": "Adds 'High Res Shot' to the Button Function lists of the full custom buttons (Fn, AEL, record and so on). Pressing the button switches High Res Shot on or off; tripod or handheld stays as set in the menu.",
-   "camera": "1.667 switched the card slot (wrong action); fixed in test build 1.668, not tested yet.",
+   "camera": "1.668 switched High Res on/off but restarted on the shot; 1.669 refreshes like Live ND, not tested yet.",
    "requires": [],
-   "stock_sha256": "b9146f6506f752a49214bc76b46e2bf83374a889723f569c28b91a197b7a2ec2",
+   "stock_sha256": "dc8e0600672588b4290af5b682b923bca92a1bd10fac8d8ed5eafc88cbc194ff",
    "edits": [
     [
      0,
@@ -1109,7 +1109,7 @@
     [
      0,
      "0x600d69e0",
-     "2cf202dd3bb1bd00a018a000c9132cf2028501dd80b0bd00a014dcb1e0be002cf20204dd70b0bd00a014dca1e0be00"
+     "dd9d45bf00a014a000c9222cf202dd30b1bd00a018a000c9092cf2028501ca062cf20204dd6fb0bd00a01480089d98dd7fdfbd00f07cdc95e0be00"
     ],
     [
      0,
