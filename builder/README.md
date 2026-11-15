@@ -71,6 +71,7 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `preset_labels` | C2/C3/C4 shown as ISO / SS / Aperture (needs `hold_presets`) | not tested |
 | `hhrs_flash` | Flash in handheld High Res | worked (1.5 build) |
 | `hires_art` | Art filters in High Res (colour/tone only) | worked (1.5 build) |
+| `hires_button` | High Res Shot as a button function (press switches it on/off) | not tested (1.667) |
 | `white_frame` | Frame art effect as a plain white border; width setting (% of the short side) | worked (1.6, 1.664) |
 | `white_frame_panorama` | White frame in Panorama (needs `panorama` and `white_frame`) | worked (1.6, 1.665) |
 | `xpan_icon` | "XPAN" icons for Panorama on the SCP (needs `panorama`) | 1.666: XPAN in the option lists; main SCP cell shows a 17:9 label |
