@@ -70,7 +70,7 @@ GENERATED = [
     ("xpan_icon", "XPAN icon for Panorama on the SCP",
      "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value "
      "cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
-     "Not tested on the camera yet.", ["panorama"], {}),
+     "Camera 1.666: XPAN in the SCP option lists; the main SCP cell shows a 17:9 label.", ["panorama"], {}),
 ]
 
 
