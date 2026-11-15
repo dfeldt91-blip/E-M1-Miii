@@ -10,6 +10,12 @@ the cached generator 0x6039ae27 for a mask sized to the image; 0x6039c4fb fills 
 16 words of it into the blend stage with mode 0x500.
 
 --probe1: the five 128 values (and so the two halves) -> 255 (`mov 128,d0` at 0x6039c674).
+  (Not flashed: White Edge is a radial fade, so a hard version would be an oval, not a rectangle.)
+
+--frame-white: Frame (Art Effect 3, job flag 0x8000) has a rectangular film-border mask; its stage
+setup 0x6038873b loads two mask layers and blend mode 0x300 (768), where White Edge uses 0x500
+(1280, toward white). Give Frame mode 0x500 on both paths (stage +1838 at 0x60388777, +656 at
+0x603887ae) to see whether the mode sets the colour.
 """
 import hashlib
 import os
@@ -22,6 +28,8 @@ import olyfw  # noqa: E402
 BASE = 0x60021020
 PROBES = {
     "--probe1": [(0x6039c674, bytes.fromhex("2c8000"), bytes.fromhex("2cff00"))],
+    "--frame-white": [(0x60388777, bytes.fromhex("2c0003"), bytes.fromhex("2c0005")),
+                      (0x603887ae, bytes.fromhex("2c0003"), bytes.fromhex("2c0005"))],
 }
 
 
