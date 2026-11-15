@@ -155,9 +155,10 @@ def patch(main):
 
     acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
     a = bytearray(olycompress.unpack(m, BLOB_A_OFF))
-    check(bytes(a[PREP_SITE - BLOB_A:PREP_SITE - BLOB_A + 4]) == PREP_STOCK, "prepare site differs")
-    a[PREP_SITE - BLOB_A:PREP_SITE - BLOB_A + 4] = PREP_NEW
-    print("  overlay prepare after every shot: %#x -> cmp 0,d0; beq out" % PREP_SITE)
+    if "--prep" in sys.argv:          # camera 1.609: no visible effect, so opt-in only
+        check(bytes(a[PREP_SITE - BLOB_A:PREP_SITE - BLOB_A + 4]) == PREP_STOCK, "prepare site differs")
+        a[PREP_SITE - BLOB_A:PREP_SITE - BLOB_A + 4] = PREP_NEW
+        print("  overlay prepare after every shot: %#x -> cmp 0,d0; beq out" % PREP_SITE)
     stub = b""
     if "--old-hooks" in sys.argv:
         import patch_aspect
