@@ -56,6 +56,13 @@ jmp back
 last:
 clr d2
 jmp back"""
+# Camera (1.608 freeze probe): the success handler runs only after shot frames-1. The GUI at
+# 0x60a2d2ff posts the merge-and-overlay request (0x30000040) only when count+1 >= frames, i.e.
+# before the last shot (stock 2f: after shot 1). PREP_SITE: that `bcs` -> 2 nops, so the request is
+# posted after every shot. The OVL/SDF hooks below ("--old-hooks") were built on a wrong reading of
+# the count (with Overlay on the handler counts +1) and are off by default.
+# Done as `inc d0; cmp d1,d0; bcs out` -> `cmp 0,d0; beq out` (skip only when no shot is held).
+PREP_SITE, PREP_STOCK, PREP_NEW = 0x60a2d319, bytes.fromhex("40a4c42c"), bytes.fromhex("a000c82c")
 # Camera (1.605): still none. The display handle is built while shots 1 and 2 are held and then
 # points at freed buffers once they are merged, so the OVL stub (after freeTakeBufferAll, before
 # setMesState(4)) now also rebuilds it with ScaleDispForce(this) when this is not the last shot.
@@ -146,36 +153,41 @@ def patch(main):
         struct.pack_into("<II", gui, r - BLOB_B + 28, ext(l2), len(FRAMES))
     check(free <= FREE_HI, "free area overflow")
 
-    import patch_aspect
-    check(set(m[off(OVL_STUB):off(OVL_STUB + 0x40)]) == {0xff}, "overlay stub area not free")
     acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
     a = bytearray(olycompress.unpack(m, BLOB_A_OFF))
-    check(bytes(a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)]) == OVL_STOCK, "overlay site differs")
-    check(set(m[off(SDF_STUB):off(SDF_STUB + 0x40)]) == {0xff}, "overlay stub 2 area not free")
-    check(bytes(a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)]) == SDF_STOCK, "ScaleDispForce differs")
-    stub2 = patch_aspect.assemble_syms(SDF_SRC, SDF_STUB, {"back": SDF_BACK, "disp": 0x609450f6})
-    check(len(stub2) <= 0x40, "stub 2 too long")
-    m[off(SDF_STUB):off(SDF_STUB) + len(stub2)] = stub2
-    a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)] = (
-        b"\xdc" + struct.pack("<i", SDF_STUB - SDF_SITE) + b"\xcb" * (len(SDF_STOCK) - 5))
-    print("  ScaleDispForce hook %#x -> stub %#x (%d B)" % (SDF_SITE, SDF_STUB, len(stub2)))
-    src = OVL_SRC
-    if "--diag-freeze" in sys.argv:
-        # diagnostic: freeze (endless loop) when the per-shot success handler runs for shot >= 2 of
-        # a 3-4 frame sequence, to learn whether that path runs at all. Battery pull recovers.
-        src = src.replace("mov a3,a0\ncall sdf,[d2,a2,a3],24", "spin:\nbra spin")
-        check("spin:" in src, "diag replace failed")
-        print("  DIAGNOSTIC: freezes in the success handler at shot >= 2 (not the last shot)")
-    if "--diag-freeze2" in sys.argv:
-        # diagnostic 2: freeze whenever the success handler runs with the frame setting >= 3,
-        # whatever the take count; the shot after which it freezes tells when the merge runs.
-        src = src.replace("call getv,[],4\n", "call getv,[],4\ncmp 3,d0\nbcs nod\nspin2:\nbra spin2\nnod:\n")
-        check("spin2:" in src, "diag2 replace failed")
-        print("  DIAGNOSTIC 2: freezes in the success handler whenever frames >= 3")
-    stub = patch_aspect.assemble_syms(src, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
-    m[off(OVL_STUB):off(OVL_STUB) + len(stub)] = stub
-    a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
-        b"\xdc" + struct.pack("<i", OVL_STUB - OVL_SITE) + b"\xcb" * (len(OVL_STOCK) - 5))
+    check(bytes(a[PREP_SITE - BLOB_A:PREP_SITE - BLOB_A + 4]) == PREP_STOCK, "prepare site differs")
+    a[PREP_SITE - BLOB_A:PREP_SITE - BLOB_A + 4] = PREP_NEW
+    print("  overlay prepare after every shot: %#x -> cmp 0,d0; beq out" % PREP_SITE)
+    stub = b""
+    if "--old-hooks" in sys.argv:
+        import patch_aspect
+        check(set(m[off(OVL_STUB):off(OVL_STUB + 0x40)]) == {0xff}, "overlay stub area not free")
+        check(bytes(a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)]) == OVL_STOCK, "overlay site differs")
+        check(set(m[off(SDF_STUB):off(SDF_STUB + 0x40)]) == {0xff}, "overlay stub 2 area not free")
+        check(bytes(a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)]) == SDF_STOCK, "ScaleDispForce differs")
+        stub2 = patch_aspect.assemble_syms(SDF_SRC, SDF_STUB, {"back": SDF_BACK, "disp": 0x609450f6})
+        check(len(stub2) <= 0x40, "stub 2 too long")
+        m[off(SDF_STUB):off(SDF_STUB) + len(stub2)] = stub2
+        a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)] = (
+            b"\xdc" + struct.pack("<i", SDF_STUB - SDF_SITE) + b"\xcb" * (len(SDF_STOCK) - 5))
+        print("  ScaleDispForce hook %#x -> stub %#x (%d B)" % (SDF_SITE, SDF_STUB, len(stub2)))
+        src = OVL_SRC
+        if "--diag-freeze" in sys.argv:
+            # diagnostic: freeze (endless loop) when the per-shot success handler runs for shot >= 2 of
+            # a 3-4 frame sequence, to learn whether that path runs at all. Battery pull recovers.
+            src = src.replace("mov a3,a0\ncall sdf,[d2,a2,a3],24", "spin:\nbra spin")
+            check("spin:" in src, "diag replace failed")
+            print("  DIAGNOSTIC: freezes in the success handler at shot >= 2 (not the last shot)")
+        if "--diag-freeze2" in sys.argv:
+            # diagnostic 2: freeze whenever the success handler runs with the frame setting >= 3,
+            # whatever the take count; the shot after which it freezes tells when the merge runs.
+            src = src.replace("call getv,[],4\n", "call getv,[],4\ncmp 3,d0\nbcs nod\nspin2:\nbra spin2\nnod:\n")
+            check("spin2:" in src, "diag2 replace failed")
+            print("  DIAGNOSTIC 2: freezes in the success handler whenever frames >= 3")
+        stub = patch_aspect.assemble_syms(src, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
+        m[off(OVL_STUB):off(OVL_STUB) + len(stub)] = stub
+        a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
+            b"\xdc" + struct.pack("<i", OVL_STUB - OVL_SITE) + b"\xcb" * (len(OVL_STOCK) - 5))
     ca = olycompress.pack(bytes(a))
     check(len(ca) <= BLOB_B_OFF - (BLOB_A_OFF + 32), "blob A does not fit")
     old_a = BLOB_A_OFF + 32 + acsz
@@ -184,7 +196,7 @@ def patch(main):
         m[BLOB_A_OFF + 32 + len(ca):old_a] = b"\xff" * (old_a - BLOB_A_OFF - 32 - len(ca))
     struct.pack_into("<I", m, BLOB_A_OFF + 16, len(ca))
     check(olycompress.unpack(m, BLOB_A_OFF) == bytes(a), "blob A does not decode to the edit")
-    print("  overlay hook %#x -> stub %#x (%d B); blob A %#x -> %#x" % (OVL_SITE, OVL_STUB, len(stub), acsz, len(ca)))
+    print("  blob A %#x -> %#x%s" % (acsz, len(ca), " (old hooks %d B)" % len(stub) if stub else ""))
 
     c = olycompress.pack(bytes(gui))
     check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
