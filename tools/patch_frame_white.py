@@ -13,6 +13,11 @@ u8 layer, zeros}; no size is stored, the JPEG runs to its EOI and is followed by
 black inside, layer 1 black band / white inside, band = WIDTH % of the short side rounded to the
 16x8 JPEG block grid (so the edges stay exact). Same size, baseline 4:2:2, same quantisation tables.
 
+--layer1-white: layer 1 all white instead of the band. Camera 1.661 (both layers as bands + mode 0x500):
+white shows, but as a "transparent T" with white at the top and lower left/right, so 0x500 reads
+Frame's two-layer setup differently. Stock reading (mode 0x300): layer 1 = colour (black band), layer 0 =
+how much of it (the ragged rim). So 1.663 keeps 0x300 (--no-white) and makes layer 1 all white.
+
 Colour: the stage setup 0x6038873b gives Frame blend mode 0x300; White Edge uses 0x500 (toward
 white). Unless --no-white, both Frame paths get 0x500 (0x60388777 and 0x603887ae, same in 1.6).
 """
@@ -85,11 +90,11 @@ def band(w, h, pct):
     return b
 
 
-def render(orig, w, h, layer, pct):
+def render(orig, w, h, layer, pct, fill1=False):
     from PIL import Image, ImageDraw
     src = Image.open(io.BytesIO(orig))
     b = band(w, h, pct)
-    inner, edge = (0, 255) if layer == 0 else (255, 0)
+    inner, edge = (0, 255) if layer == 0 else (255, 255) if fill1 else (255, 0)
     im = Image.new("L", (w, h), edge)
     ImageDraw.Draw(im).rectangle((b, b, w - b - 1, h - b - 1), fill=inner)
     out = io.BytesIO()
@@ -98,7 +103,7 @@ def render(orig, w, h, layer, pct):
     return out.getvalue(), b
 
 
-def patch_images(blk2, pct):
+def patch_images(blk2, pct, fill1=False):
     from PIL import Image
     import numpy as np
     d = bytearray(blk2)
@@ -112,10 +117,10 @@ def patch_images(blk2, pct):
               "image at %#x is not %dx%d 4:2:2" % (off, w, h))
         pad = d[off + n:off + n + 4]
         check(set(pad) == {0}, "no zero padding after the image at %#x" % off)
-        new, b = render(bytes(d[off:off + n]), w, h, layer, pct)
+        new, b = render(bytes(d[off:off + n]), w, h, layer, pct, fill1)
         check(len(new) <= n, "new image at %#x is larger than the old one" % off)
         g = np.asarray(Image.open(io.BytesIO(new)).convert("L")).astype(int)
-        want = np.full((h, w), 255 if layer == 0 else 0)
+        want = np.full((h, w), 255 if layer == 0 or fill1 else 0)
         want[b:h - b, b:w - b] = 0 if layer == 0 else 255
         check(np.abs(g - want).max() <= 2, "re-encoded image at %#x is not clean" % off)
         d[off:off + n] = new + bytes(n - len(new))
@@ -143,7 +148,7 @@ def main(argv):
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
     plains = [b["plain"] for b in blocks]
-    plains[2] = patch_images(plains[2], pct)
+    plains[2] = patch_images(plains[2], pct, "--layer1-white" in argv)
     if "--no-white" not in argv:
         plains[0] = patch_main(plains[0])
     ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
