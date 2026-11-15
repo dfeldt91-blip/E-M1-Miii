@@ -26,9 +26,10 @@ MOVIE = [(0x604db928, 0x604d8d38), (0x604db93c, 0x604d8d46), (0x604db964, 0x604d
 STILL_STOCK = [3341, 16, 3265, 6, 9, 425, 3409, 88, 3200]
 MOVIE_STOCK = [3341, 6, 9, 425, 3409, 88, 3200]
 # RAW, digital tele, peaking, HDR, BKT, keystone, fisheye, Live ND, IS, face, natural view (S-OVF),
-# lens info, focus limiter, preset MF, focus ring lock, LV state, 3428 (level [I])
-STILL_ADD = [22, 34, 567, 472, 603, 682, 1431, 1680, 157, 241, 765, 1072, 1139, 1292, 1872, 452, 3428]
-MOVIE_ADD = [34, 567, 241, 1072, 1292, 1872, 452, 3428]
+# lens info, focus limiter, preset MF, focus ring lock, LV state (452 -> CHANGE_LV_STATE), level
+# (3408 -> FINDER_WATER_LEVEL; function table 0x60f23444 {fallback, code, action}, names 0x60f22cfc)
+STILL_ADD = [22, 34, 567, 472, 603, 682, 1431, 1680, 157, 241, 765, 1072, 1139, 1292, 1872, 452, 3408]
+MOVIE_ADD = [34, 567, 241, 1072, 1292, 1872, 452, 3408]
 
 
 def off(a):
