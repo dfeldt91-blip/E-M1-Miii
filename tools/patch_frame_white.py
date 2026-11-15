@@ -17,6 +17,9 @@ black inside, layer 1 black band / white inside, band = WIDTH % of the short sid
 white shows, but as a "transparent T" with white at the top and lower left/right, so 0x500 reads
 Frame's two-layer setup differently. Stock reading (mode 0x300): layer 1 = colour (black band), layer 0 =
 how much of it (the ragged rim). So 1.663 keeps 0x300 (--no-white) and makes layer 1 all white.
+Camera 1.663: no frame at all. So with 0x300 layer 1 is WHERE (black = frame, white = photo) and layer 0
+is WHAT is painted there (stock: white ragged rim fading to black inside the band).
+--layer0-white: layer 0 all white, layer 1 the clean black band (1.664) -> white band of WIDTH %.
 
 Colour: the stage setup 0x6038873b gives Frame blend mode 0x300; White Edge uses 0x500 (toward
 white). Unless --no-white, both Frame paths get 0x500 (0x60388777 and 0x603887ae, same in 1.6).
@@ -90,11 +93,18 @@ def band(w, h, pct):
     return b
 
 
-def render(orig, w, h, layer, pct, fill1=False):
+def colours(layer, fill):
+    """(inside, band) grey levels of LAYER; FILL = 'l1' (layer 1 all white) or 'l0' (layer 0 all white)."""
+    if layer == 0:
+        return (255, 255) if fill == "l0" else (0, 255)
+    return (255, 255) if fill == "l1" else (255, 0)
+
+
+def render(orig, w, h, layer, pct, fill=None):
     from PIL import Image, ImageDraw
     src = Image.open(io.BytesIO(orig))
     b = band(w, h, pct)
-    inner, edge = (0, 255) if layer == 0 else (255, 255) if fill1 else (255, 0)
+    inner, edge = colours(layer, fill)
     im = Image.new("L", (w, h), edge)
     ImageDraw.Draw(im).rectangle((b, b, w - b - 1, h - b - 1), fill=inner)
     out = io.BytesIO()
@@ -103,7 +113,7 @@ def render(orig, w, h, layer, pct, fill1=False):
     return out.getvalue(), b
 
 
-def patch_images(blk2, pct, fill1=False):
+def patch_images(blk2, pct, fill=None):
     from PIL import Image
     import numpy as np
     d = bytearray(blk2)
@@ -117,11 +127,12 @@ def patch_images(blk2, pct, fill1=False):
               "image at %#x is not %dx%d 4:2:2" % (off, w, h))
         pad = d[off + n:off + n + 4]
         check(set(pad) == {0}, "no zero padding after the image at %#x" % off)
-        new, b = render(bytes(d[off:off + n]), w, h, layer, pct, fill1)
+        new, b = render(bytes(d[off:off + n]), w, h, layer, pct, fill)
         check(len(new) <= n, "new image at %#x is larger than the old one" % off)
         g = np.asarray(Image.open(io.BytesIO(new)).convert("L")).astype(int)
-        want = np.full((h, w), 255 if layer == 0 or fill1 else 0)
-        want[b:h - b, b:w - b] = 0 if layer == 0 else 255
+        inner, edge = colours(layer, fill)
+        want = np.full((h, w), edge)
+        want[b:h - b, b:w - b] = inner
         check(np.abs(g - want).max() <= 2, "re-encoded image at %#x is not clean" % off)
         d[off:off + n] = new + bytes(n - len(new))
         print("  %dx%d %d:%d layer %d: band %d px, %d -> %d bytes" % (w, h, aw, ah, layer, b, n, len(new)))
@@ -148,7 +159,8 @@ def main(argv):
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
     plains = [b["plain"] for b in blocks]
-    plains[2] = patch_images(plains[2], pct, "--layer1-white" in argv)
+    fill = "l1" if "--layer1-white" in argv else "l0" if "--layer0-white" in argv else None
+    plains[2] = patch_images(plains[2], pct, fill)
     if "--no-white" not in argv:
         plains[0] = patch_main(plains[0])
     ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
