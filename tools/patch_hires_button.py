@@ -4,26 +4,31 @@
   MN10300_BIN=... python3 tools/patch_hires_button.py IN.BIN OUT.BIN [--version 0x1667]
 
 A button's setting value is a function code. Stock has no code for High Res Shot; this patch makes
-754 (MODE_PIXSHIFT_SR, 0x2f2: 0 off / 1 on; tripod or handheld stays MODE_PIXSHIFT_SR_HANDHELD)
+770 (0x302, the Shooting Menu "High Res Shot" switch, values 0/1; tripod or handheld stays
+MODE_PIXSHIFT_SR_HANDHELD 0x68f)
 one, offered on the full custom buttons right after Live ND. Pressing the button switches High Res
 on or off, like Live ND's on/off setting.
 
 Code 284 ("Backlit LCD", a function for bodies with a backlit top LCD) is in every button table
 but in no button's list on this body. Its slots are reused, so no table moves or grows:
-  function table 0x60f2343c {code, action, alt}, row 17: (284, 29, 69) -> (754, 99, 3200)
+  function table 0x60f2343c {code, action, alt}, row 17: (284, 29, 69) -> (770, 99, 3200)
   press jump table 0x60f37cdc[action - 1]: action 102 is a no-op (0x60cc4aab, the dispatcher's
-      RET) -> stub in the base section, which toggles 0x2f2 with the GUI setting API
+      RET) -> stub in the base section, which toggles 0x302 with the GUI setting API
       (get 0x60cb1b1e, set 0x60cb1a73) and jumps to that RET
   label tables {u32 code, u16 type, u16 label, u32 cond} (type 3 icon, type 4 string):
-      0x611d8a64 / 0x61296124 (icons) and 0x61295f20 (names): -> (754, 4, "High Res Shot")
-      0x6129649c (help): -> (754, 4, "Takes and combines eight pictures ...")
+      0x611d8a64 / 0x61296124 (icons) and 0x61295f20 (names): -> (770, 4, "High Res Shot")
+      0x6129649c (help): -> (770, 4, "Takes and combines eight pictures ...")
 Button lists (validator records {u16 sid, u16 0x80, u32 list, u32, u16 nbytes, u16 2}): the 17
-full-button lists (16 x 38 codes, 1 x 39) get 754 after 1680 (Live ND); two new shared lists in
+full-button lists (16 x 38 codes, 1 x 39) get 770 after 1680 (Live ND); two new shared lists in
 base-section free space.
 
 Camera 1.667 used action 102: the picker showed High Res Shot, but the button switched the card
 slot. 102 is a type-1 action (0x60f22cfc), handled by another dispatcher (0x60cd32d7), not the
 press table.
+1.668/1.669 toggled 0x2f2 (754, MODE_PIXSHIFT_SR): the High Res icon came on, but the camera froze
+on the shot. 0x2f2 is the internal flag the camera derives from the menu switch 0x302 (770) once
+the capture is set up (menu tables list 770 as "High Res Shot", next to Live ND 0x690; the E-P7
+has the same pair as 775 / 758). The button now toggles 770.
 """
 import hashlib
 import os
@@ -36,9 +41,9 @@ import olycompress  # noqa: E402
 
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
-CODE, OLD_CODE, ACTION = 754, 284, 99
+CODE, OLD_CODE, ACTION = 770, 284, 99
 ACTION_TYPES = 0x60f22cfc     # {u32 action, u32 type, u32 name}: type 2 -> press jump table
-FUNC_ROW, FUNC_STOCK, FUNC_NEW = 0x60f2343c + 12 * 17, (284, 29, 69), (754, 99, 3200)
+FUNC_ROW, FUNC_STOCK, FUNC_NEW = 0x60f2343c + 12 * 17, (284, 29, 69), (770, 99, 3200)
 PRESS_TAB, NOOP = 0x60f37cdc, 0x60cc4aab
 NAME, HELP = 0x986, 0x987                       # "High Res Shot", "Takes and combines eight ..."
 LABELS = [  # (entry, stock type, stock label, new type, new label)
@@ -61,15 +66,15 @@ STOCK39 = [3209] + STOCK38
 SRC = """call busy,[d2,a2],20
 cmp 0,d0
 bne refresh
-mov 0x2f2,d0
+mov 0x302,d0
 call get,[d2,a2],24
 cmp 0,d0
 bne off
-mov 0x2f2,d0
+mov 0x302,d0
 mov 1,d1
 bra store
 off:
-mov 0x2f2,d0
+mov 0x302,d0
 clr d1
 store:
 call set,[d2,a2],20
@@ -124,7 +129,7 @@ def patch(main):
     check(struct.unpack_from("<3I", gui, g(FUNC_ROW)) == FUNC_STOCK, "function table row differs")
     t = 0x60f2343c
     codes = [struct.unpack_from("<I", gui, g(t) + 12 * k)[0] for k in range(62)]
-    check(CODE not in codes, "754 already in the function table")
+    check(CODE not in codes, "%d already in the function table" % CODE)
     struct.pack_into("<3I", gui, g(FUNC_ROW), *FUNC_NEW)
     check(struct.unpack_from("<2I", gui, g(ACTION_TYPES) + 12 * ACTION) == (ACTION, 2),
           "action %d is not a type-2 (press table) action" % ACTION)
@@ -144,7 +149,7 @@ def patch(main):
         m[BLOB_B_OFF + 32 + len(c):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(c))
     struct.pack_into("<I", m, BLOB_B_OFF + 16, len(c))
     check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "recompressed blob does not decode to the edit")
-    print("  17 button lists + 754; stub %#x (%d B); blob B %#x -> %#x" % (STUB, len(stub), csz, len(c)))
+    print("  17 button lists + %d; stub %#x (%d B); blob B %#x -> %#x" % (CODE, STUB, len(stub), csz, len(c)))
     return bytes(m)
 
 

@@ -1092,24 +1092,24 @@
    "id": "hires_button",
    "title": "High Res Shot button function",
    "description": "Adds 'High Res Shot' to the Button Function lists of the full custom buttons (Fn, AEL, record and so on). Pressing the button switches High Res Shot on or off; tripod or handheld stays as set in the menu.",
-   "camera": "1.668 switched High Res on/off but restarted on the shot; 1.669 refreshes like Live ND, not tested yet.",
+   "camera": "1.668/1.669 toggled the internal flag and froze on the shot; 1.670 toggles the menu setting, not tested yet.",
    "requires": [],
    "stock_sha256": "dc8e0600672588b4290af5b682b923bca92a1bd10fac8d8ed5eafc88cbc194ff",
    "edits": [
     [
      0,
      "0x600d6900",
-     "050d2c006a0054005500e10c58001600cf0c140d150d160d170d0d0d2200aa029705180dd8015b0206000900b4013702500dc401fd0273040c0530049d00640d9006f202670df10024005007800c"
+     "050d2c006a0054005500e10c58001600cf0c140d150d160d170d0d0d2200aa029705180dd8015b0206000900b4013702500dc401fd0273040c0530049d00640d90060203670df10024005007800c"
     ],
     [
      0,
      "0x600d6960",
-     "890c050d2c006a0054005500e10c58001600cf0c140d150d160d170d0d0d2200aa029705180dd8015b0206000900b4013702500dc401fd0273040c0530049d00640d9006f202670df10024005007800c"
+     "890c050d2c006a0054005500e10c58001600cf0c140d150d160d170d0d0d2200aa029705180dd8015b0206000900b4013702500dc401fd0273040c0530049d00640d90060203670df10024005007800c"
     ],
     [
      0,
      "0x600d69e0",
-     "dd9d45bf00a014a000c9222cf202dd30b1bd00a018a000c9092cf2028501ca062cf20204dd6fb0bd00a01480089d98dd7fdfbd00f07cdc95e0be00"
+     "dd9d45bf00a014a000c9222c0203dd30b1bd00a018a000c9092c02038501ca062c020304dd6fb0bd00a01480089d98dd7fdfbd00f07cdc95e0be00"
     ],
     [
      0,
@@ -1199,7 +1199,7 @@
     [
      0,
      "0x60f23508",
-     "f202000063000000800c"
+     "0203000063000000800c"
     ],
     [
      0,
@@ -1209,22 +1209,22 @@
     [
      0,
      "0x611d8a64",
-     "f202000004008609"
+     "0203000004008609"
     ],
     [
      0,
      "0x61295f20",
-     "f202000004008609"
+     "0203000004008609"
     ],
     [
      0,
      "0x61296124",
-     "f202000004008609"
+     "0203000004008609"
     ],
     [
      0,
      "0x6129649c",
-     "f202000004008709"
+     "0203000004008709"
     ]
    ]
   },

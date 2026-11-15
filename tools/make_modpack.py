@@ -58,7 +58,7 @@ MODS = [
      "Adds 'High Res Shot' to the Button Function lists of the full custom buttons (Fn, AEL, "
      "record and so on). Pressing the button switches High Res Shot on or off; tripod or handheld "
      "stays as set in the menu.",
-     "1.668 switched High Res on/off but restarted on the shot; 1.669 refreshes like Live ND, not tested yet.", []),
+     "1.668/1.669 toggled the internal flag and froze on the shot; 1.670 toggles the menu setting, not tested yet.", []),
 ]
 
 
