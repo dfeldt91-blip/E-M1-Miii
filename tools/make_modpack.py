@@ -54,11 +54,6 @@ MODS = [
      "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the colour and tone, "
      "not the effect pass (no soft focus, frames or edges).",
      "Worked on the camera (1.5 build), colour only.", []),
-    ("hires_button", "patch_hires_button.py", [], "High Res Shot button function",
-     "Adds 'High Res Shot' to the Button Function lists of the full custom buttons (Fn, AEL, "
-     "record and so on). Pressing the button sets the drive mode to High Res Shot; pressing again "
-     "sets Single. Tripod or handheld stays as set in the menu.",
-     "1.668-1.670 did not work; 1.671 sets the High Res drive mode, not tested yet.", []),
 ]
 
 

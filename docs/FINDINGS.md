@@ -440,3 +440,18 @@ format, not decoded yet. Aspect icons: SCP list A 0x1ee0-0x1ee4 (50x38; 16:9 = 0
 ## Frame art effect masks (block 2): see tools/patch_frame_white.py
 Icon pixel format 14 decoded and re-encoded byte for byte for all 6816 icons; the XPAN icons
 (tools/patch_xpan_icon.py) extend the table to 10353 entries and move blob 0 to flash 0x43000000.
+
+## High Res Shot as a button function (attempted, removed)
+
+Tried in test builds 1.667-1.671 and dropped; notes for a later attempt:
+- Button function table 0x60f2343c {code, action, alt} (62 rows); action types 0x60f22cfc
+  {action, type, name}: only type-2 actions go through the press jump table 0x60f37cdc
+  (action 102 is type 1 and switched the card slot; 99 is a free type-2 no-op).
+- Code 284 (Backlit LCD) has a function row and labels in all four picker label tables but is in no
+  button list: its slots can carry a new function without moving tables.
+- 0x2f2 MODE_PIXSHIFT_SR is derived: setting it directly showed the High Res icon but froze on the shot.
+  0x302 MODE_PIXSHIFT_SR_MENU is the Shooting Menu 2 item; toggling it hid High Res from the drive list.
+- Drive is sid 0xcc1 (3265, "drivemode" in the Wi-Fi property table 0x614dd95c). Its validator
+  (0x604da438) allows 0,12,30,1,31,38,11,23,32,39,5,17,33,4,16,34,24,25,35,36; the SCP label list
+  value 18 ("High Res Shot", 0x611eb134) is a display value, not a stored drive value: setting
+  0xcc1 = 18 gave Single. How the SCP applies its High Res choice is still unknown.
