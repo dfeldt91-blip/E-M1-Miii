@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+"""E-M1 Mark III mod builder.
+
+Downloads the official E-M1 Mark III firmware 1.6 from OM Digital Solutions' update server, lets you
+pick mods and writes E1399999.BIN for the camera's card updater. Nothing of OM's firmware is stored
+in this program: the mods are edit lists (builder/mods.json) applied to your own download.
+
+  python3 builder/em1iii_builder.py                    window
+  python3 builder/em1iii_builder.py --list             list the mods
+  python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
+                                    [--stock FILE]     no window ('--mods all' / '--mods none')
+
+Needs Python 3.8+ and the lz4 package (pip install lz4). The window needs tkinter.
+UNOFFICIAL. Flashing modified firmware is at your own risk.
+"""
+import json
+import os
+import queue
+import sys
+import threading
+import traceback
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "tools"))
+
+APP = "E-M1 Mark III mod builder"
+PACK = os.path.join(HERE, "mods.json")
+DATA_DIR = os.path.join(os.path.expanduser("~"), ".em1iii-mod-builder")
+SETTINGS = os.path.join(DATA_DIR, "settings.json")
+
+INSTALL = """How to install
+1. Charge the battery fully.
+2. Copy E1399999.BIN to the SD card as DCOLYMP/E1399999.BIN (a folder named DCOLYMP at the top level of the card, next to DCIM). It must be the only E139....BIN file on the card.
+3. With the camera off, hold OK and switch it on to start the card update. Wait until the light stops (it may blink or simply go out), then switch the camera off and on.
+4. Delete DCOLYMP/E1399999.BIN from the card afterwards.
+The camera skips a file with the same version as the one installed, so each build gets a new version. To go back to stock, build with no mods ticked and install that file the same way."""
+
+
+def missing_dependency():
+    try:
+        import lz4.block  # noqa: F401
+    except ImportError:
+        return "The lz4 package is missing. Install it with:  %s -m pip install lz4" % os.path.basename(sys.executable)
+    return None
+
+
+def load_settings():
+    try:
+        with open(SETTINGS) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_settings(s):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(SETTINGS, "w") as fh:
+        json.dump(s, fh, indent=1)
+
+
+def next_version(s):
+    """1.651, 1.652 ... (BCD in the file header), one more than the last build. Starts at 51 because
+    the test builds made during development used 1.610-1.622."""
+    n = max(int(s.get("last_build", 0)) + 1, 51)
+    return "1.6%02d" % min(n, 99)
+
+
+def stock_path(s):
+    return s.get("stock") or os.path.join(DATA_DIR, "OLY_E_139_1600_0000_0000.BIN")
+
+
+def read_stock(path):
+    import modcore
+    with open(path, "rb") as fh:
+        data = fh.read()
+    modcore.verify_stock(data)
+    return data
+
+
+def do_build(stock, pack, selected, version_text, out_dir, log):
+    import modcore
+    ver = modcore.bcd_version(version_text)
+    log("Building version %s with %d mod(s)..." % (version_text, len(selected)))
+    data = modcore.build(stock, pack, selected, ver, log=log)
+    os.makedirs(out_dir, exist_ok=True)
+    dst = os.path.join(out_dir, modcore.CARD_NAME)
+    with open(dst + ".part", "wb") as fh:
+        fh.write(data)
+    os.replace(dst + ".part", dst)
+    with open(os.path.join(out_dir, "E1399999_mods.txt"), "w") as fh:
+        fh.write("Built by %s\nBase: official %s\nVersion: %s\nMods:\n" % (APP, modcore.STOCK_NAME, version_text))
+        for m in pack["mods"]:
+            if m["id"] in selected:
+                fh.write("  - %s  (%s)\n" % (m["title"], m["camera"]))
+        if not selected:
+            fh.write("  (none: stock 1.6 with a new version number)\n")
+        import hashlib
+        fh.write("sha256: %s\n\n%s\n" % (hashlib.sha256(data).hexdigest(), INSTALL))
+    log("Wrote %s" % dst)
+    return dst
+
+
+# ---------------------------------------------------------------- command line
+
+def cli(argv):
+    import modcore
+    err = missing_dependency()
+    if err:
+        print(err)
+        return 1
+    pack = modcore.load_pack(PACK)
+    ids = [m["id"] for m in pack["mods"]]
+    if "--list" in argv:
+        for m in pack["mods"]:
+            req = ("  needs: " + ", ".join(m["requires"])) if m["requires"] else ""
+            print("%-15s %s\n%17s%s\n%17s%s%s" % (m["id"], m["title"], "", m["description"], "", m["camera"], req))
+        return 0
+    arg = lambda k, d=None: argv[argv.index(k) + 1] if k in argv else d   # noqa: E731
+    s = load_settings()
+    sel = arg("--mods", "")
+    selected = set(ids) if sel == "all" else set() if sel in ("", "none") else set(sel.split(","))
+    unknown = selected - set(ids)
+    if unknown:
+        print("unknown mod(s): %s  (see --list)" % ", ".join(sorted(unknown)))
+        return 1
+    path = arg("--stock") or stock_path(s)
+    try:
+        if not os.path.exists(path):
+            print("Downloading the official firmware from OM Digital Solutions...")
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            last = [-1]
+
+            def prog(done, total):
+                p = done * 100 // max(total, 1)
+                if p // 10 != last[0]:
+                    last[0] = p // 10
+                    print("  %d%%" % p)
+            modcore.download_stock(path, prog)
+        stock = read_stock(path)
+        version = arg("--version") or next_version(s)
+        do_build(stock, pack, selected, version, arg("--out", os.getcwd()), print)
+    except (modcore.BuildError, OSError) as e:
+        print("error:", e)
+        return 1
+    if not arg("--version"):
+        s["last_build"] = int(version.split(".")[1]) - 600
+    if not arg("--stock"):
+        s["stock"] = path
+    save_settings(s)
+    print("\n" + INSTALL)
+    return 0
+
+
+# ---------------------------------------------------------------- window
+
+def gui():
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, ttk
+    import modcore
+
+    root = tk.Tk()
+    root.title(APP)
+    root.minsize(760, 560)
+    s = load_settings()
+    pack = modcore.load_pack(PACK)
+    events = queue.Queue()
+    state = {"stock": None, "busy": False}
+
+    outer = ttk.Frame(root, padding=10)
+    outer.pack(fill="both", expand=True)
+    ttk.Label(outer, text=APP, font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
+    ttk.Label(outer, foreground="#a33", wraplength=720, text=(
+        "Unofficial. Builds a modified firmware from OM's official 1.6 file. Flashing it is at your own "
+        "risk; mods marked 'not tested' have never run on a camera.")).pack(anchor="w", pady=(2, 8))
+
+    # 1. firmware
+    f1 = ttk.LabelFrame(outer, text="1. Official firmware 1.6", padding=8)
+    f1.pack(fill="x")
+    fw_status = ttk.Label(f1, text="", wraplength=720)
+    fw_status.pack(anchor="w")
+    r1 = ttk.Frame(f1)
+    r1.pack(fill="x", pady=(4, 0))
+    b_dl = ttk.Button(r1, text="Download from OM")
+    b_dl.pack(side="left")
+    b_pick = ttk.Button(r1, text="Use a file I already have...")
+    b_pick.pack(side="left", padx=6)
+    bar = ttk.Progressbar(r1, length=260, mode="determinate")
+    bar.pack(side="left", padx=6)
+
+    # 2. mods
+    f2 = ttk.LabelFrame(outer, text="2. Choose mods", padding=8)
+    f2.pack(fill="both", expand=True, pady=8)
+    canvas = tk.Canvas(f2, highlightthickness=0, height=260)
+    sb = ttk.Scrollbar(f2, orient="vertical", command=canvas.yview)
+    inner = ttk.Frame(canvas)
+    inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.create_window((0, 0), window=inner, anchor="nw")
+    canvas.configure(yscrollcommand=sb.set)
+    canvas.pack(side="left", fill="both", expand=True)
+    sb.pack(side="right", fill="y")
+
+    def wheel(e):
+        step = -1 if (getattr(e, "num", 0) == 4 or getattr(e, "delta", 0) > 0) else 1
+        canvas.yview_scroll(step * (1 if abs(getattr(e, "delta", 0)) < 120 else abs(e.delta) // 120), "units")
+    for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+        canvas.bind_all(seq, wheel)
+    chosen = set(s.get("mods", []))
+    vars_ = {}
+    by_id = {m["id"]: m for m in pack["mods"]}
+
+    def toggled(mid):
+        if vars_[mid].get():
+            for r in by_id[mid]["requires"]:
+                vars_[r].set(True)
+        else:
+            for m in pack["mods"]:
+                if mid in m["requires"]:
+                    vars_[m["id"]].set(False)
+
+    for i, m in enumerate(pack["mods"]):
+        v = tk.BooleanVar(value=m["id"] in chosen)
+        vars_[m["id"]] = v
+        ttk.Checkbutton(inner, text=m["title"], variable=v, command=lambda k=m["id"]: toggled(k)).grid(
+            row=2 * i, column=0, sticky="w", pady=(6, 0))
+        note = m["description"] + "\n" + m["camera"]
+        if m["requires"]:
+            note += "  Needs: " + ", ".join(by_id[r]["title"] for r in m["requires"]) + "."
+        ttk.Label(inner, text=note, foreground="#555", wraplength=640, justify="left").grid(
+            row=2 * i + 1, column=0, sticky="w", padx=(24, 0))
+
+    def set_all(val):
+        for v in vars_.values():
+            v.set(val)
+    ttk.Button(inner, text="Select all", command=lambda: set_all(True)).grid(row=2 * len(pack["mods"]), column=0, sticky="w", pady=8)
+    ttk.Button(inner, text="Select none (stock 1.6)", command=lambda: set_all(False)).grid(
+        row=2 * len(pack["mods"]), column=0, sticky="w", padx=(100, 0), pady=8)
+
+    # 3. output
+    f3 = ttk.LabelFrame(outer, text="3. Build", padding=8)
+    f3.pack(fill="x")
+    ttk.Label(f3, text="Version:").grid(row=0, column=0, sticky="w")
+    ver = tk.StringVar(value=next_version(s))
+    ttk.Entry(f3, textvariable=ver, width=8).grid(row=0, column=1, sticky="w")
+    ttk.Label(f3, text="(must differ from the version on the camera)", foreground="#555").grid(row=0, column=2, sticky="w")
+    ttk.Label(f3, text="Save to:").grid(row=1, column=0, sticky="w", pady=4)
+    out = tk.StringVar(value=s.get("out") or os.path.join(os.path.expanduser("~"), "E-M1III-firmware"))
+    ttk.Entry(f3, textvariable=out, width=60).grid(row=1, column=1, columnspan=2, sticky="we")
+    ttk.Button(f3, text="Browse...", command=lambda: out.set(filedialog.askdirectory() or out.get())).grid(row=1, column=3, padx=6)
+    b_build = ttk.Button(f3, text="Build E1399999.BIN")
+    b_build.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
+    log = tk.Text(outer, height=7, wrap="word")
+    log.pack(fill="both", pady=(8, 0))
+
+    def say(msg):
+        events.put(("log", msg))
+
+    def refresh_fw():
+        p = stock_path(s)
+        if state["stock"] is not None:
+            fw_status.config(text="Ready: %s (checksum verified)" % p, foreground="#262")
+        elif os.path.exists(p):
+            fw_status.config(text="Found %s, checking..." % p, foreground="#555")
+        else:
+            fw_status.config(text="Not downloaded yet.", foreground="#555")
+        busy = state["busy"]
+        b_build.state(["disabled"] if busy or state["stock"] is None else ["!disabled"])
+        b_dl.state(["disabled"] if busy or state["stock"] is not None else ["!disabled"])
+        b_pick.state(["disabled"] if busy else ["!disabled"])
+
+    def work(fn, *a):
+        state["busy"] = True
+        refresh_fw()
+
+        def run():
+            try:
+                events.put(("done", fn(*a)))
+            except modcore.BuildError as e:
+                events.put(("error", str(e)))
+            except Exception as e:      # network errors, disk full, ...
+                events.put(("error", "%s: %s" % (type(e).__name__, e)))
+                traceback.print_exc()
+        threading.Thread(target=run, daemon=True).start()
+
+    def load(path):
+        data = read_stock(path)
+        state["stock"] = data
+        s["stock"] = path
+        save_settings(s)
+        say("Firmware ready: %s" % path)
+        return None
+
+    def download():
+        p = os.path.join(DATA_DIR, modcore.STOCK_NAME)
+        os.makedirs(DATA_DIR, exist_ok=True)
+        say("Asking OM's update server for the E-M1 Mark III firmware...")
+        modcore.download_stock(p, lambda d, t: events.put(("progress", d * 100.0 / max(t, 1))))
+        say("Downloaded and verified.")
+        return load(p)
+
+    def pick():
+        p = filedialog.askopenfilename(title="Official E-M1 Mark III 1.6 firmware",
+                                       filetypes=[("Firmware", "*.BIN *.bin"), ("All files", "*")])
+        if p:
+            work(load, p)
+
+    def build():
+        sel = {k for k, v in vars_.items() if v.get()}
+        if not sel and not messagebox.askyesno(APP, "No mods selected. Build plain stock 1.6 with a new version number?"):
+            return
+        s["mods"] = sorted(sel)
+        s["out"] = out.get()
+        save_settings(s)
+        work(lambda: ("built", do_build(state["stock"], pack, sel, ver.get(), out.get(), say)))
+
+    b_dl.config(command=lambda: work(download))
+    b_pick.config(command=pick)
+    b_build.config(command=build)
+
+    def poll():
+        try:
+            while True:
+                kind, val = events.get_nowait()
+                if kind == "log":
+                    log.insert("end", val + "\n")
+                    log.see("end")
+                elif kind == "progress":
+                    bar["value"] = val
+                elif kind in ("done", "error"):
+                    state["busy"] = False
+                    if kind == "error":
+                        log.insert("end", "Error: " + val + "\n")
+                        log.see("end")
+                        messagebox.showerror(APP, val)
+                    elif isinstance(val, tuple) and val[0] == "built":
+                        try:
+                            s["last_build"] = int(ver.get().split(".")[1]) - 600
+                        except ValueError:
+                            pass
+                        save_settings(s)
+                        ver.set(next_version(s))
+                        messagebox.showinfo(APP, "Saved %s\n\n%s" % (val[1], INSTALL))
+                    refresh_fw()
+        except queue.Empty:
+            pass
+        root.after(100, poll)
+
+    err = missing_dependency()
+    if err:
+        messagebox.showerror(APP, err)
+        root.destroy()
+        return 1
+    refresh_fw()
+    if os.path.exists(stock_path(s)):
+        work(load, stock_path(s))
+    poll()
+    root.mainloop()
+    return 0
+
+
+def main(argv):
+    if "--help" in argv or "-h" in argv:
+        print(__doc__)
+        return 0
+    if "--cli" in argv or "--list" in argv:
+        return cli(argv)
+    try:
+        import tkinter  # noqa: F401
+    except ImportError:
+        print("tkinter is not available; use --cli (see --help)")
+        return 1
+    return gui()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,0 +1,87 @@
+# E-M1 Mark III mod builder
+
+A small window app that:
+
+1. downloads the official E-M1 Mark III firmware **1.6** from OM Digital Solutions' update server
+   (the same request OM's updater makes) and checks its SHA-256,
+2. lets you tick the mods you want,
+3. writes `E1399999.BIN` for the camera's card updater.
+
+No OM firmware is stored in this repository. The mods are edit lists (`mods.json`) that are applied to
+your own download.
+
+**Unofficial. Flashing modified firmware is at your own risk.**
+
+## Run it
+
+Needs Python 3.8 or newer, tkinter (included with the python.org installers for Windows and macOS),
+and the `lz4` package:
+
+```bash
+python3 -m pip install lz4
+```
+
+```bash
+python3 builder/em1iii_builder.py
+```
+
+Without a window:
+
+```bash
+python3 builder/em1iii_builder.py --list
+```
+
+```bash
+python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash --out ~/E-M1III-firmware
+```
+
+`--mods all` or `--mods none` (stock 1.6 with a new version number, for going back to stock).
+`--stock FILE` uses a file you already downloaded; it must be the official 1.6 file.
+
+The download and your settings are kept in `~/.em1iii-mod-builder/`.
+
+## Mods
+
+| id | Mod | Camera status |
+|---|---|---|
+| `panorama` | Panorama aspect 65:24 (replaces 7:6) | worked (1.5 build) |
+| `multiexp` | Multiple Exposure with 3 and 4 frames | worked (1.5 build) |
+| `stack_any_lens` | In-camera focus stacking with any lens | worked (1.5 build) |
+| `stack16` | Focus stacking up to 16 frames | not tested |
+| `keyline_mono` | Key Line II in black and white | worked (1.5 build) |
+| `arrow_keys` | More arrow-key functions | not tested |
+| `hold_presets` | ISO / shutter / aperture hold presets on Myset 2/3/4 | toggle version worked; hold version not tested |
+| `preset_labels` | C2/C3/C4 shown as ISO / SS / Aperture (needs `hold_presets`) | not tested |
+| `hhrs_flash` | Flash in handheld High Res | worked (1.5 build) |
+| `hires_art` | Art filters in High Res (colour/tone only) | worked (1.5 build) |
+
+All mods were developed and tested on a 1.5-based file. For 1.6 each one was checked byte by byte:
+every changed byte, the code and data around it, and every firmware address the new code uses are
+the same in 1.5 and 1.6. The exception is Panorama, where four addresses moved in 1.6 and were adjusted
+(`adapt_16` in `tools/patch_aspect.py`). Nothing has run on a camera with 1.6 yet.
+
+## Install on the camera
+
+1. Charge the battery fully.
+2. Copy `E1399999.BIN` to the SD card as `DCOLYMP/E1399999.BIN`. `DCOLYMP` is a folder at the top level
+   of the card, next to `DCIM`. It must be the only `E139….BIN` file on the card.
+3. With the camera off, hold **OK** and switch it on to start the card update. Wait until the light
+   stops (it may blink or simply go out), then switch the camera off and on.
+4. Delete `DCOLYMP/E1399999.BIN` from the card afterwards.
+
+The camera skips a file whose version equals the installed one, so every build gets a new version
+(1.651, 1.652, …). To go back to stock, build with no mods.
+
+## For developers
+
+`mods.json` is generated from the patch tools in `tools/`:
+
+```bash
+MN10300_BIN=/path/to/mn10300-elf/bin python3 tools/make_modpack.py OLY_E_139_1600_0000_0000.BIN builder/mods.json
+```
+
+It runs each tool on the official file on its own and records the changed bytes: block 0 at runtime
+addresses (both olycompress blobs expanded), other blocks at plain offsets. Each mod also stores a
+SHA-256 of the stock bytes under its edits. The generator fails if two mods change the same byte, or if
+the merged edit lists differ from running all tools one after another. `tools/modcore.py` holds the
+download, apply and rebuild code that the app uses.

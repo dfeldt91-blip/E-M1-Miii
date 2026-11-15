@@ -1064,6 +1064,19 @@ def titletest(m):
     repack_b(m, gui, csz)
 
 
+def adapt_16(m):
+    """Official 1.6: same layout as 1.5 except the ORF frame cases (+2) and the three
+    0x6020e5xx (w,h) tables (+4). Detected by the frame jump table itself."""
+    global FRAME_WIDE, FRAME_TALL, TABLES
+    jt = struct.unpack_from("<9I", m, off(FRAME_JT))
+    if jt[5] == FRAME_TALL + 2 and jt[1] == jt[2] == FRAME_WIDE + 2:
+        FRAME_WIDE, FRAME_TALL = FRAME_WIDE + 2, FRAME_TALL + 2
+        moved = {0x6020e578: 0x6020e57c, 0x6020e5ac: 0x6020e5b0, 0x6020e5e0: 0x6020e5e4}
+        TABLES = [(moved.get(a, a), lay) for a, lay in TABLES]
+        print("  firmware 1.6 layout: frame cases %#x/%#x, tables %s"
+              % (FRAME_WIDE, FRAME_TALL, ", ".join("%#x" % v for v in moved.values())))
+
+
 def main(argv):
     if len(argv) < 3:
         print(__doc__)
@@ -1075,6 +1088,7 @@ def main(argv):
     b0 = blocks[0]
     check(b0["info"]["model"] == 0x1390 and b0["info"]["flags"] == 0x100, "not the E-M1 III main block")
     m = bytearray(b0["plain"])
+    adapt_16(m)
     if "--stage1" in argv:
         stage1(m)
     elif "--stage2a" in argv:
