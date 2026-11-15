@@ -11,8 +11,11 @@ set 0x60cb1a73(d0 sid, d1 value), get 0x60cb1b1e(d0 sid) -> d0.
 Prototype: Myset 2 / 3 / 4 become ISO (sid 6) / Shutter (sid 4) / Aperture (sid 3) presets, toggle:
   press (off -> on): prev = get(sid); if a preset is stored, set(sid, preset)
   press (on -> off): preset = get(sid) (keeps any dial change made meanwhile); set(sid, prev)
-Myset 1 stays stock. State in RAM (boot-copied base section, starts 0xff = no preset), so presets
-are lost at power-off.
+Myset 1 stays stock. Camera 1.616 (state in the base section at 0x600d6cc0): C2 press restarted the
+camera, almost certainly a write to protected memory. State now lives in the unused settings
+COLOR_CREATOR_2_VIVID_1..12 (0x38d-0x398, s16 like ISO/shutter/aperture, never used on this body),
+4 per preset: +0 active, +1 preset stored, +2 previous value, +3 preset value, through the same
+get/set API. So it persists across power-off.
 """
 import hashlib
 import os
@@ -26,7 +29,7 @@ import olycompress  # noqa: E402
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 SITE, STOCK, BACK = 0x60cc97db, bytes.fromhex("9792838a01"), 0x60cc97e0
-STUB, VARS, SIDS = 0x600d6c00, 0x600d6cc0, 0x600d6cbc
+STUB, VARS, SIDS = 0x600d6c00, 0x600d6cc0, 0x600d6cbc     # VARS no longer used
 SRC = """cmp 4,d0
 bcs stock
 cmp 7,d0
@@ -37,37 +40,54 @@ mov sids,a0
 mov d3,a1
 add a0,a1
 movbu (a1),d2
+asl2 d3
+add 0x38d,d3
 mov d3,d0
-asl2 d0
-mov d0,d1
-add d0,d0
-add d1,d0
-mov vars,a2
-add d0,a2
-mov (a2),d0
+call get,[d2,a2],24
 cmp 1,d0
 bne turn_on
 mov d2,d0
 call get,[d2,a2],24
-mov d0,(8,a2)
-mov (4,a2),d1
+mov d0,d1
+mov d3,d0
+add 3,d0
+call set,[d2,a2],20
+mov d3,d0
+add 1,d0
+mov 1,d1
+call set,[d2,a2],20
+mov d3,d0
+add 2,d0
+call get,[d2,a2],24
+mov d0,d1
 mov d2,d0
 call set,[d2,a2],20
-clr d0
-mov d0,(a2)
+mov d3,d0
+clr d1
+call set,[d2,a2],20
 ret [d2,d3,a2,a3],20
 turn_on:
 mov d2,d0
 call get,[d2,a2],24
-mov d0,(4,a2)
-mov (8,a2),d1
-cmp -1,d1
-beq mark
+mov d0,d1
+mov d3,d0
+add 2,d0
+call set,[d2,a2],20
+mov d3,d0
+add 1,d0
+call get,[d2,a2],24
+cmp 1,d0
+bne mark
+mov d3,d0
+add 3,d0
+call get,[d2,a2],24
+mov d0,d1
 mov d2,d0
 call set,[d2,a2],20
 mark:
-mov 1,d0
-mov d0,(a2)
+mov d3,d0
+mov 1,d1
+call set,[d2,a2],20
 ret [d2,d3,a2,a3],20
 stock:
 mov a1,a3
