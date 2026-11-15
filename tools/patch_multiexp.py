@@ -166,6 +166,12 @@ def patch(main):
         src = src.replace("mov a3,a0\ncall sdf,[d2,a2,a3],24", "spin:\nbra spin")
         check("spin:" in src, "diag replace failed")
         print("  DIAGNOSTIC: freezes in the success handler at shot >= 2 (not the last shot)")
+    if "--diag-freeze2" in sys.argv:
+        # diagnostic 2: freeze whenever the success handler runs with the frame setting >= 3,
+        # whatever the take count; the shot after which it freezes tells when the merge runs.
+        src = src.replace("call getv,[],4\n", "call getv,[],4\ncmp 3,d0\nbcs nod\nspin2:\nbra spin2\nnod:\n")
+        check("spin2:" in src, "diag2 replace failed")
+        print("  DIAGNOSTIC 2: freezes in the success handler whenever frames >= 3")
     stub = patch_aspect.assemble_syms(src, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
     m[off(OVL_STUB):off(OVL_STUB) + len(stub)] = stub
     a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
