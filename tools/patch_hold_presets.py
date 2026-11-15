@@ -8,7 +8,11 @@ MYSET_1..4 (actions 3..6, type 2). The Myset press handler 0x60cc97db (blob B) t
 (0x60cc9822, loads Custom Mode 15..18) or end (0x60cc993e, restore). GUI setting API (blob B):
 set 0x60cb1a73(d0 sid, d1 value), get 0x60cb1b1e(d0 sid) -> d0.
 
-Prototype: Myset 2 / 3 / 4 become ISO (sid 6) / Shutter (sid 4) / Aperture (sid 3) presets, toggle:
+1.617 (toggle) confirmed working on camera. 1.618: hold. Releases go to endFuncDirect
+0x60cc4bdc, which jumps through 0x60f37e88[action-1]; actions 3..6 -> 0x60cc4dd6 (stock end
+helper). Entries 4..6 now point at a release stub. Press = apply preset, release = store the
+(possibly dialled) value as preset and restore.
+Earlier prototype: Myset 2 / 3 / 4 become ISO (sid 6) / Shutter (sid 4) / Aperture (sid 3) presets, toggle:
   press (off -> on): prev = get(sid); if a preset is stored, set(sid, preset)
   press (on -> off): preset = get(sid) (keeps any dial change made meanwhile); set(sid, prev)
 Myset 1 stays stock. Camera 1.616 (state in the base section at 0x600d6cc0): C2 press restarted the
@@ -29,7 +33,10 @@ import olycompress  # noqa: E402
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 SITE, STOCK, BACK = 0x60cc97db, bytes.fromhex("9792838a01"), 0x60cc97e0
-STUB, VARS, SIDS = 0x600d6c00, 0x600d6cc0, 0x600d6cbc     # VARS no longer used
+STUB, SIDS = 0x600d5900, 0x600d58f0     # 1.616/1.617 used 0x600d6c00 / sids 0x600d6cbc
+RSTUB, RTAB, RELBACK = 0x600d5800, 0x60f37e88, 0x60cc4dd6
+# press: if a release was missed (still active) act as release; else prev = current,
+# apply the preset if one is stored, mark active.
 SRC = """cmp 4,d0
 bcs stock
 cmp 7,d0
@@ -45,7 +52,11 @@ add 0x38d,d3
 mov d3,d0
 call get,[d2,a2],24
 cmp 1,d0
-bne turn_on
+bne press
+mov d3,d0
+call get,[d2,a2],24
+cmp 1,d0
+bne done
 mov d2,d0
 call get,[d2,a2],24
 mov d0,d1
@@ -65,8 +76,9 @@ call set,[d2,a2],20
 mov d3,d0
 clr d1
 call set,[d2,a2],20
+done:
 ret [d2,d3,a2,a3],20
-turn_on:
+press:
 mov d2,d0
 call get,[d2,a2],24
 mov d0,d1
@@ -96,6 +108,47 @@ mov d0,d3
 mov 1,d2
 jmp back"""
 
+# release: entered from the endFuncDirect jump table (0x60f37e88, actions 4..6) inside that
+# handler's frame with d2 = action; d3/a3 are free there. If active: preset = current (keeps the
+# dial change made while holding), stored = 1, restore prev, active = 0. Then the stock path.
+RSRC = """mov d2,a3
+mov d2,d0
+mov d0,d3
+add -4,d3
+mov sids,a0
+mov d3,a1
+add a0,a1
+movbu (a1),d2
+asl2 d3
+add 0x38d,d3
+mov d3,d0
+call get,[d2,a2],24
+cmp 1,d0
+bne rdone
+mov d2,d0
+call get,[d2,a2],24
+mov d0,d1
+mov d3,d0
+add 3,d0
+call set,[d2,a2],20
+mov d3,d0
+add 1,d0
+mov 1,d1
+call set,[d2,a2],20
+mov d3,d0
+add 2,d0
+call get,[d2,a2],24
+mov d0,d1
+mov d2,d0
+call set,[d2,a2],20
+mov d3,d0
+clr d1
+call set,[d2,a2],20
+rdone:
+mov a3,d2
+jmp relback"""
+
+
 
 def off(a):
     return a - BASE
@@ -109,10 +162,15 @@ def check(cond, msg):
 def patch(main):
     import patch_aspect
     m = bytearray(main)
-    check(set(m[off(STUB - 16):off(VARS + 48)]) == {0xff}, "stub/vars area not free")
-    stub = patch_aspect.assemble_syms(SRC, STUB, {"back": BACK, "sids": SIDS, "vars": VARS,
+    check(set(m[off(STUB - 16):off(STUB + 0x100)]) == {0xff}, "stub area not free")
+    stub = patch_aspect.assemble_syms(SRC, STUB, {"back": BACK, "sids": SIDS,
                                                   "get": 0x60cb1b1e, "set": 0x60cb1a73})
-    check(STUB + len(stub) <= SIDS, "stub too long (%d)" % len(stub))
+    check(len(stub) <= 0x100, "stub too long (%d)" % len(stub))
+    check(set(m[off(RSTUB - 16):off(RSTUB + 0x100)]) == {0xff}, "release stub area not free")
+    rstub = patch_aspect.assemble_syms(RSRC, RSTUB, {"relback": RELBACK, "sids": SIDS,
+                                                     "get": 0x60cb1b1e, "set": 0x60cb1a73})
+    check(RSTUB + len(rstub) <= SIDS, "release stub too long")
+    m[off(RSTUB):off(RSTUB) + len(rstub)] = rstub
     m[off(STUB):off(STUB) + len(stub)] = stub
     m[off(SIDS):off(SIDS) + 3] = bytes([6, 4, 3])
     csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
@@ -122,6 +180,9 @@ def patch(main):
     g = SITE - BLOB_B
     check(bytes(gui[g:g + 5]) == STOCK, "Myset handler entry differs")
     gui[g:g + 5] = b"\xdc" + struct.pack("<i", STUB - SITE)
+    t = RTAB - BLOB_B
+    check(struct.unpack_from("<3I", gui, t + 12) == (RELBACK,) * 3, "release jump table differs")
+    struct.pack_into("<3I", gui, t + 12, RSTUB, RSTUB, RSTUB)
     c = olycompress.pack(bytes(gui))
     check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
     old_end = BLOB_B_OFF + 32 + csz
@@ -130,7 +191,7 @@ def patch(main):
         m[BLOB_B_OFF + 32 + len(c):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(c))
     struct.pack_into("<I", m, BLOB_B_OFF + 16, len(c))
     check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "recompressed blob does not decode to the edit")
-    print("  Myset hook %#x -> stub %#x (%d B), vars %#x; blob B %#x -> %#x" % (SITE, STUB, len(stub), VARS, csz, len(c)))
+    print("  Myset hook %#x -> stub %#x (%d B), release stub %#x (%d B); blob B %#x -> %#x" % (SITE, STUB, len(stub), RSTUB, len(rstub), csz, len(c)))
     return bytes(m)
 
 
