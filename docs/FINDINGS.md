@@ -426,3 +426,15 @@ MODE_MULTI_EXPOSURE_FRAME 0x10a: validator 0x604dc904 ([0,2]), tab descriptors 0
 0x61288514, and the Number of Frames row records 0x611bc7ac/0x61271fd8/0x61280730 (36 B, two option
 lists each). The sequencer (0x609c7bff, 0x609c857c, 0x609c8da5) counts to the setting; frame array
 malloc(20). Camera: 3f and 4f work (1.602); 5f froze and restarted the camera, so the list is [0,2,3,4].
+
+## GUI icons (block 1, found 1.6; not used yet)
+
+Block 1 directory (offset 0, {u32 flash address, u32 size}, 70 entries): entries 0 and 69 are
+olycompress blobs that load at 0xa303d000 (5.9 MB) and 0xa373d000 (6.9 MB). The icon table is at
+0xa35b65d0 (blob 1 offset 0x5795d0), u32 per icon id (~10350). Each entry points to a 24-byte
+descriptor {u16 format (0x0e / 0x05), u16 width, u16 height, u16 depth 8, u32 0, u32 data size,
+u32 data pointer (pixel data ends just before the descriptor), u32 0}; pixel data is a nibble-RLE
+format, not decoded yet. Aspect icons: SCP list A 0x1ee0-0x1ee4 (50x38; 16:9 = 0x1ee0), list B
+0x1d7-0x1db / 0x975 (64x48; 16:9 = 0x1d7).
+
+## Frame art effect masks (block 2): see tools/patch_frame_white.py
