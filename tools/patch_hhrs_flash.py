@@ -9,7 +9,7 @@ the shared "force 0" map 0x60470fc0 {0->0, 1->0}. Rule 3 is
   IF MODE_PIXSHIFT_SR (0x2f2) == 1 AND MODE_PIXSHIFT_SR_HANDHELD (0x68f) == 1 -> flash off.
 Its map pointer (rule entry 0x6048a958 + 8) is pointed at the existing identity map 0x60480ee4
 {0->0, 1->1} instead. The condition record and both maps are shared, so they stay unchanged.
-Camera 1.620 (that change alone): flash option still not available.
+Camera 1.620 (that change alone): flash option still not available. Camera 1.621: works.
 
 The rule record table really starts at 0x604920dc (284 records; MODE_STROBE 0x10 has 455 rules,
 record 0x60492988). MODE_STROBE rule 46 (entry 0x6047f42c) is the same handheld condition with
