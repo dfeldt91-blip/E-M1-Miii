@@ -159,7 +159,14 @@ def patch(main):
     a[SDF_SITE - BLOB_A:SDF_SITE - BLOB_A + len(SDF_STOCK)] = (
         b"\xdc" + struct.pack("<i", SDF_STUB - SDF_SITE) + b"\xcb" * (len(SDF_STOCK) - 5))
     print("  ScaleDispForce hook %#x -> stub %#x (%d B)" % (SDF_SITE, SDF_STUB, len(stub2)))
-    stub = patch_aspect.assemble_syms(OVL_SRC, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
+    src = OVL_SRC
+    if "--diag-freeze" in sys.argv:
+        # diagnostic: freeze (endless loop) when the per-shot success handler runs for shot >= 2 of
+        # a 3-4 frame sequence, to learn whether that path runs at all. Battery pull recovers.
+        src = src.replace("mov a3,a0\ncall sdf,[d2,a2,a3],24", "spin:\nbra spin")
+        check("spin:" in src, "diag replace failed")
+        print("  DIAGNOSTIC: freezes in the success handler at shot >= 2 (not the last shot)")
+    stub = patch_aspect.assemble_syms(src, OVL_STUB, {"back": OVL_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
     m[off(OVL_STUB):off(OVL_STUB) + len(stub)] = stub
     a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
         b"\xdc" + struct.pack("<i", OVL_STUB - OVL_SITE) + b"\xcb" * (len(OVL_STOCK) - 5))
