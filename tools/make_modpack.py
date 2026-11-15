@@ -67,6 +67,10 @@ GENERATED = [
     ("white_frame_panorama", "White frame in Panorama",
      "Adds the white-border Frame masks for the Panorama aspect (stock has none there: the camera froze).",
      "Worked on the camera (1.6 build 1.665).", ["panorama", "white_frame"], {}),
+    ("xpan_icon", "XPAN icon for Panorama on the SCP",
+     "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value "
+     "cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
+     "Not tested on the camera yet.", ["panorama"], {}),
 ]
 
 

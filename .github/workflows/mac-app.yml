@@ -14,6 +14,7 @@ on:
       - "tools/olyfw.py"
       - "tools/olycompress.py"
       - "tools/patch_frame_white.py"
+      - "tools/patch_xpan_icon.py"
       - ".github/workflows/mac-app.yml"
 
 jobs:

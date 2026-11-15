@@ -438,3 +438,5 @@ format, not decoded yet. Aspect icons: SCP list A 0x1ee0-0x1ee4 (50x38; 16:9 = 0
 0x1d7-0x1db / 0x975 (64x48; 16:9 = 0x1d7).
 
 ## Frame art effect masks (block 2): see tools/patch_frame_white.py
+Icon pixel format 14 decoded and re-encoded byte for byte for all 6816 icons; the XPAN icons
+(tools/patch_xpan_icon.py) extend the table to 10353 entries and move blob 0 to flash 0x43000000.

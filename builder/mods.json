@@ -1115,6 +1115,17 @@
    ],
    "generator": "white_frame_panorama",
    "options": {}
+  },
+  {
+   "id": "xpan_icon",
+   "title": "XPAN icon for Panorama on the SCP",
+   "description": "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
+   "camera": "Not tested on the camera yet.",
+   "requires": [
+    "panorama"
+   ],
+   "generator": "xpan_icon",
+   "options": {}
   }
  ]
 }

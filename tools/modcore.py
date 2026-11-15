@@ -196,7 +196,17 @@ def _frame(img, plains, opts, log, panorama):
         raise BuildError(str(e))
 
 
+def _xpan(img, plains, opts, log):
+    import patch_xpan_icon as xi
+    xi.LOG = log
+    try:
+        xi.apply(img, plains)
+    except SystemExit as e:
+        raise BuildError(str(e))
+
+
 GENERATORS = {
+    "xpan_icon": _xpan,
     "white_frame": lambda img, plains, opts, log: _frame(img, plains, opts, log, False),
     "white_frame_panorama": lambda img, plains, opts, log: _frame(img, plains, opts, log, True),
 }
@@ -207,6 +217,28 @@ def bcd_version(text):
     t = text.strip().replace(".", "")
     check(len(t) == 4 and t.isdigit(), "version must look like 1.601")
     return int(t, 16)
+
+
+def rebuild_main(main, img):
+    """Main block bytes for the edited runtime image IMG (blobs recompressed only if changed)."""
+    out_main = bytearray(main)
+    blob_lo = BLOBS[0][1]
+    out_main[:blob_lo - BASE] = img[:blob_lo - BASE]                   # main part before the blobs
+    tail = BLOB_END - BASE
+    out_main[tail:] = img[tail:len(out_main)]                         # main part after the blobs
+    for k, (hdr, rt) in enumerate(BLOBS):
+        csz, usz = struct.unpack_from("<II", main, hdr + 16)
+        raw = bytes(img[rt - BASE:rt - BASE + usz])
+        if raw == olycompress.unpack(main, hdr):
+            continue
+        limit = (BLOBS[k + 1][0] if k + 1 < len(BLOBS) else tail) - (hdr + 32)
+        c = olycompress.pack(raw)
+        check(len(c) <= limit, "compressed blob %d does not fit" % k)
+        out_main[hdr + 32:hdr + 32 + limit] = c + b"\xff" * (limit - len(c))
+        struct.pack_into("<I", out_main, hdr + 16, len(c))
+        check(olycompress.unpack(bytes(out_main), hdr) == raw, "blob %d does not decode back" % k)
+    check(runtime_image(bytes(out_main)) == bytes(img), "rebuilt image differs from the edited image")
+    return bytes(out_main)
 
 
 def build(stock, pack, selected, version, log=print, options=None):
@@ -251,23 +283,7 @@ def build(stock, pack, selected, version, log=print, options=None):
             opts.update(options.get(m["id"], {}))
             log("  + %s %s" % (m["title"], " ".join("%s=%s" % kv for kv in sorted(opts.items()))))
             GENERATORS[m["generator"]](img, plains, opts, log)
-    out_main = bytearray(main)
-    blob_lo = BLOBS[0][1]
-    out_main[:blob_lo - BASE] = img[:blob_lo - BASE]                   # main part before the blobs
-    tail = BLOB_END - BASE
-    out_main[tail:] = img[tail:len(out_main)]                         # main part after the blobs
-    for k, (hdr, rt) in enumerate(BLOBS):
-        csz, usz = struct.unpack_from("<II", main, hdr + 16)
-        raw = bytes(img[rt - BASE:rt - BASE + usz])
-        if raw == olycompress.unpack(main, hdr):
-            continue
-        limit = (BLOBS[k + 1][0] if k + 1 < len(BLOBS) else tail) - (hdr + 32)
-        c = olycompress.pack(raw)
-        check(len(c) <= limit, "compressed blob %d does not fit" % k)
-        out_main[hdr + 32:hdr + 32 + limit] = c + b"\xff" * (limit - len(c))
-        struct.pack_into("<I", out_main, hdr + 16, len(c))
-        check(olycompress.unpack(bytes(out_main), hdr) == raw, "blob %d does not decode back" % k)
-    check(runtime_image(bytes(out_main)) == bytes(img), "rebuilt image differs from the edited image")
+    out_main = rebuild_main(main, img)
     out = bytearray()
     for i, b in enumerate(blocks):
         head, tl = bytearray(b["head"]), bytearray(b["tail"])
