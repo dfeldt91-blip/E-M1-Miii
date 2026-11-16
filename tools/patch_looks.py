@@ -46,6 +46,13 @@ Camera 1.685 (portra): Custom clearly muted, live view = JPEG.
 canSettingValue (0x10208 -> 0x608d58ce(sid d0, GUI value d1); for 111 a class check 0x608d784a, then
 the core check 0x602ca813) accepts. The hook answers yes for (0x6f, 54..56) (Color Profile 1-3), and
 the 0x6f validator gets a 27th entry {11, 0} -> GUI 54 (as DIAL_NON's), list/alt copied to free space.
+Camera 1.686: nothing new in the menus or SCP. Dropped; the menus' list comes from elsewhere.
+
+--looks K1,K2,K3,K4,K5,K6 (stage 2, picker): six looks in Custom, picked on the camera with Custom's
+base mode (setting 0xd3, GUI values i-Finish 7, Vivid 0, Natural 1, Muted 2, Portrait 5, Monotone 3,
+in that menu order = looks 1..6). The stub reads 0xd3 through the settings getter 0x602ca8c5
+(`call ..,[],4`, sid in d0, GUI value out) before and after the builder call and indexes a 6 x 60-byte
+table {12 x (hue, lightness) s16, 12 x s8 saturation}.
 """
 import hashlib
 import os
@@ -237,8 +244,100 @@ def unhide(main):
     return bytes(m)
 
 
+GET = 0x602ca8c5
+BASE_SID = 0xd3
+MENU_ORDER = [7, 0, 1, 2, 5, 3]          # Custom base-mode GUI values in menu order -> looks 1..6
+SRC6 = """add -20,sp
+mov d0,(4,sp)
+mov d1,(8,sp)
+mov a0,(12,sp)
+mov a1,(16,sp)
+call pick,[],4
+mov d0,a0
+mov (16,sp),a1
+clr d1
+2:
+movbu (48,a0),d0
+movbu d0,(d1,a1)
+inc a0
+inc d1
+cmp 12,d1
+bne 2b
+mov (4,sp),d0
+mov (8,sp),d1
+mov (12,sp),a0
+mov (16,sp),a1
+add 20,sp
+call builder,[d2,d3,a2,a3],96
+add -4,sp
+call pick,[],4
+add 4,sp
+mov d0,a1
+mov (12,a2),a0
+add 688,a0
+mov 12,d1
+1:
+movhu (a1),d0
+movhu d0,(18,a0)
+movhu (2,a1),d0
+movhu d0,(22,a0)
+add 4,a1
+add 24,a0
+add -1,d1
+bne 1b
+jmp resume
+pick:
+add -4,sp
+mov 0xd3,d0
+call get,[],4
+add 4,sp
+cmp 8,d0
+bcs 3f
+clr d0
+3:
+mov gmap,a0
+movbu (d0,a0),d0
+mov 60,d1
+mulu d1,d0
+mov looks,a0
+add a0,d0
+ret [],4
+gmap:
+"""
+
+
+def looks6_src(keys):
+    gmap = [0] * 8
+    for i, g in enumerate(MENU_ORDER):
+        gmap[g] = i
+    s = SRC6 + "".join(" .byte %d\n" % x for x in gmap) + ".balign 4\nlooks:\n"
+    for k in keys:
+        hues, lights, sats = look_values(LOOKS[k])
+        s += "".join(" .hword %d,%d\n" % (h, l) for h, l in zip(hues, lights))
+        s += "".join(" .byte %d\n" % x for x in sats)
+    return s
+
+
+def patch6(main, keys):
+    import patch_aspect
+    check(len(keys) == 6 and all(k in LOOKS for k in keys), "--looks needs six looks from looks_library")
+    m = bytearray(main)
+    e = off(PM_LIST) + PM_ELEM * CUSTOM_IDX
+    check(struct.unpack_from("<I", m, e)[0] == 6, "Custom picture-mode entry differs")
+    check(bytes(m[off(SITE):off(SITE) + 5]) == SITE_STOCK, "colour builder call differs")
+    check(bytes(m[off(SITE) - len(SITE_PRE):off(SITE)]) == SITE_PRE, "colour selector differs")
+    check(set(m[off(STUB):off(STUB) + 0x200]) == {0xff}, "stub area not free")
+    stub = patch_aspect.assemble_syms(looks6_src(keys), STUB, {"builder": BUILDER, "resume": RESUME, "get": GET})
+    check(len(stub) <= 0x200, "stub too long")
+    m[e:e + PM_ELEM] = struct.pack("<I", 11) + bytes(PM_ELEM - 4)
+    m[off(STUB):off(STUB) + len(stub)] = stub
+    m[off(SITE):off(SITE) + 5] = JMP
+    print("  Custom -> Color Profile, 6 looks by base mode: %s (stub %d B)" % (", ".join(keys), len(stub)))
+    return bytes(m)
+
+
 def main(argv):
-    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look", "--test4")):
+    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look", "--test4", "--looks")):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
@@ -256,7 +355,10 @@ def main(argv):
     fw = olyfw.read(src)
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
-    new_main = patch(blocks[0]["plain"], hues, lights, sats)
+    if "--looks" in argv:
+        new_main = patch6(blocks[0]["plain"], argv[argv.index("--looks") + 1].split(","))
+    else:
+      new_main = patch(blocks[0]["plain"], hues, lights, sats)
     if "--look" in argv:
         alt = bytearray(blocks[0]["plain"])
         patch_at(alt, BASE, key)
