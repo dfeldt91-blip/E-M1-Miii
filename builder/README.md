@@ -94,6 +94,13 @@ the same in 1.5 and 1.6. The exception is Panorama, where four addresses moved i
 
 To go back to stock, build with no mods.
 
+## Credits
+
+The film looks in Custom (`custom_looks`) and the colour-engine research behind them come from
+**Caduceus** by cakelesscoder, Apache License 2.0: https://github.com/cakelesscoder/caduceus-ep7
+(recipes from its `sim/recipes/library_v2.json` and `library_v3.json`; the hue/lightness method from
+fishcu's PEN-F HSL work, https://github.com/fishcu/oly_fw_analysis, which Caduceus builds on).
+
 ## For developers
 
 `mods.json` is generated from the patch tools in `tools/`:

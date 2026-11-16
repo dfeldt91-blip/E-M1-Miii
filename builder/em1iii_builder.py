@@ -26,6 +26,7 @@ HERE = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.abspath(__file_
 sys.path.insert(0, os.path.join(HERE, "..", "tools"))
 
 APP = "E-M1 Mark III mod builder"
+CADUCEUS_URL = "https://github.com/cakelesscoder/caduceus-ep7"
 PACK = os.path.join(HERE, "mods.json")
 DATA_DIR = os.path.join(os.path.expanduser("~"), ".em1iii-mod-builder")
 SETTINGS = os.path.join(DATA_DIR, "settings.json")
@@ -187,7 +188,13 @@ def gui():
     ttk.Label(outer, text=APP, font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
     ttk.Label(outer, foreground="#a33", wraplength=720, text=(
         "Unofficial. Builds a modified firmware from OM's official 1.6 file. Flashing it is at your own "
-        "risk; mods marked 'not tested' have never run on a camera.")).pack(anchor="w", pady=(2, 8))
+        "risk; mods marked 'not tested' have never run on a camera.")).pack(anchor="w", pady=(2, 0))
+    credit = ttk.Frame(outer)
+    credit.pack(anchor="w", pady=(0, 8))
+    ttk.Label(credit, text="Film looks and colour-engine research: Caduceus by cakelesscoder (Apache-2.0)  ").pack(side="left")
+    link = ttk.Label(credit, text=CADUCEUS_URL, foreground="#0645ad", cursor="hand2")
+    link.pack(side="left")
+    link.bind("<Button-1>", lambda e: __import__("webbrowser").open(CADUCEUS_URL))
 
     # 1. firmware
     f1 = ttk.LabelFrame(outer, text="1. Official firmware 1.6", padding=8)
