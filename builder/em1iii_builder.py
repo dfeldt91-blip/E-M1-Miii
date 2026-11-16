@@ -35,7 +35,7 @@ INSTALL = """How to install
 2. Copy E1399999.BIN to the SD card as DCOLYMP/E1399999.BIN (a folder named DCOLYMP at the top level of the card, next to DCIM). It must be the only E139....BIN file on the card.
 3. With the camera off, hold OK and switch it on to start the card update. Wait until the light stops (it may blink or simply go out), then switch the camera off and on.
 4. Delete DCOLYMP/E1399999.BIN from the card afterwards.
-The camera skips a file with the same version as the one installed, so each build gets a new version. To go back to stock, build with no mods ticked and install that file the same way."""
+To go back to stock, build with no mods ticked and install that file the same way."""
 
 
 def missing_dependency():
@@ -73,11 +73,7 @@ def save_settings(s):
         json.dump(s, fh, indent=1)
 
 
-def next_version(s):
-    """1.651, 1.652 ... (BCD in the file header), one more than the last build. Starts at 51 because
-    the test builds made during development used 1.610-1.622."""
-    n = max(int(s.get("last_build", 0)) + 1, 51)
-    return "1.6%02d" % min(n, 99)
+VERSION = "1.601"   # fixed firmware version written to every build
 
 
 def stock_path(s):
@@ -110,7 +106,7 @@ def do_build(stock, pack, selected, version_text, out_dir, log, options=None):
                 extra = "".join(", %s %s" % (m["options"][k]["label"], v) for k, v in opts.items())
                 fh.write("  - %s%s  (%s)\n" % (m["title"], extra, m["camera"]))
         if not selected:
-            fh.write("  (none: stock 1.6 with a new version number)\n")
+            fh.write("  (none: stock 1.6)\n")
         import hashlib
         fh.write("sha256: %s\n\n%s\n" % (hashlib.sha256(data).hexdigest(), INSTALL))
     log("Wrote %s" % dst)
@@ -154,7 +150,7 @@ def cli(argv):
                     print("  %d%%" % p)
             modcore.download_stock(path, prog)
         stock = read_stock(path)
-        version = arg("--version") or next_version(s)
+        version = arg("--version") or VERSION
         options = {}
         if arg("--frame-width"):
             options["white_frame"] = {"width_pct": float(arg("--frame-width"))}
@@ -164,8 +160,6 @@ def cli(argv):
     except (modcore.BuildError, OSError) as e:
         print("error:", e)
         return 1
-    if not arg("--version"):
-        s["last_build"] = int(version.split(".")[1]) - 600
     if not arg("--stock"):
         s["stock"] = path
     save_settings(s)
@@ -269,10 +263,6 @@ def gui():
     # 3. output
     f3 = ttk.LabelFrame(outer, text="3. Build", padding=8)
     f3.pack(fill="x")
-    ttk.Label(f3, text="Version:").grid(row=0, column=0, sticky="w")
-    ver = tk.StringVar(value=next_version(s))
-    ttk.Entry(f3, textvariable=ver, width=8).grid(row=0, column=1, sticky="w")
-    ttk.Label(f3, text="(must differ from the version on the camera)", foreground="#555").grid(row=0, column=2, sticky="w")
     ttk.Label(f3, text="Save to:").grid(row=1, column=0, sticky="w", pady=4)
     out = tk.StringVar(value=s.get("out") or os.path.join(os.path.expanduser("~"), "E-M1III-firmware"))
     ttk.Entry(f3, textvariable=out, width=60).grid(row=1, column=1, columnspan=2, sticky="we")
@@ -336,7 +326,7 @@ def gui():
 
     def build():
         sel = {k for k, v in vars_.items() if v.get()}
-        if not sel and not messagebox.askyesno(APP, "No mods selected. Build plain stock 1.6 with a new version number?"):
+        if not sel and not messagebox.askyesno(APP, "No mods selected. Build plain stock 1.6?"):
             return
         options = {}
         try:
@@ -349,7 +339,7 @@ def gui():
         s["out"] = out.get()
         s["options"] = options
         save_settings(s)
-        work(lambda: ("built", do_build(state["stock"], pack, sel, ver.get(), out.get(), say, options)))
+        work(lambda: ("built", do_build(state["stock"], pack, sel, VERSION, out.get(), say, options)))
 
     b_dl.config(command=lambda: work(download))
     b_pick.config(command=pick)
@@ -371,12 +361,6 @@ def gui():
                         log.see("end")
                         messagebox.showerror(APP, val)
                     elif isinstance(val, tuple) and val[0] == "built":
-                        try:
-                            s["last_build"] = int(ver.get().split(".")[1]) - 600
-                        except ValueError:
-                            pass
-                        save_settings(s)
-                        ver.set(next_version(s))
                         messagebox.showinfo(APP, "Saved %s\n\n%s" % (val[1], INSTALL))
                         reveal(val[1])
                     refresh_fw()

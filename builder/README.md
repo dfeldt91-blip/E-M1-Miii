@@ -53,7 +53,7 @@ python3 builder/em1iii_builder.py --list
 python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash --out ~/E-M1III-firmware
 ```
 
-`--mods all` or `--mods none` (stock 1.6 with a new version number, for going back to stock).
+`--mods all` or `--mods none` (stock 1.6, for going back to stock).
 `--stock FILE` uses a file you already downloaded; it must be the official 1.6 file.
 
 The download and your settings are kept in `~/.em1iii-mod-builder/`.
@@ -90,8 +90,7 @@ the same in 1.5 and 1.6. The exception is Panorama, where four addresses moved i
    stops (it may blink or simply go out), then switch the camera off and on.
 4. Delete `DCOLYMP/E1399999.BIN` from the card afterwards.
 
-The camera skips a file whose version equals the installed one, so every build gets a new version
-(1.651, 1.652, …). To go back to stock, build with no mods.
+To go back to stock, build with no mods.
 
 ## For developers
 
