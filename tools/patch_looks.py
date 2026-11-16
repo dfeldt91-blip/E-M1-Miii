@@ -473,7 +473,10 @@ REC_D3, REC_D3_STOCK = 0x604da7d0, bytes.fromhex("d3008000" "74cb4b60" "9ce84a60
 D3_LIST, D3_ALT, D3_N = 0x604bcb74, 0x604ae89c, 6
 NEW_VALUES = [4, 6] + list(range(8, 31))       # GUI values inside the 0..63 range the tables cover (1.693: 64+ restarted)
 # valid {base mode, filter} pairs not used by the stock six ({7,0} {1,0} {2,0} {3,0} {4,0} {5,1}); filters 0..8
-NEW_PAIRS = [(b, f) for b in (7, 1, 2, 3, 4) for f in (1, 2, 3, 4)] + [(5, 0), (5, 2), (5, 3), (5, 4), (2, 5)]
+NEW_PAIRS = [(5, f) for f in (0, 2, 3, 4, 5, 6, 7, 8)] + [(8, 0), (9, 0), (10, 0), (11, 0), (12, 0)]
+# 1.694 (colour bases with filters 1..4) still restarted on choosing a new entry: stock never pairs a colour
+# base with a filter. 1.695: only Monotone + its filters and other real picture types with filter 0 (13 -> 19
+# looks in all).
 ALL_VALUES = MENU_ORDER + NEW_VALUES             # menu order: 6 stock positions, then the new ones
 DESC_REFS = (0x611bb9d4, 0x611bb9e4, 0x61271200, 0x61271210, 0x6127f8ec, 0x6127f8fc)   # address of the list pointer
 STUB31, GMAP31, NAMES31, LISTA31, LISTB31, ALT31 = 0x600d5800, 0x600d58a0, 0x600d5900, 0x600d5b00, 0x600d5c80, 0x600d5e00
@@ -481,8 +484,13 @@ LOOKS31, VLIST31 = 0x600d62e0, 0x600d77e0
 SRC31 = SRC6.replace("cmp 8,d0", "cmp 89,d0").split("gmap:")[0]
 
 
+DEFAULT19 = ["provia", "velvia", "astia", "cl_chrome", "cl_neg", "portra", "ektar", "gold", "ektachrome",
+             "cinestill", "pro400h", "kchrome", "kchrome25", "portra160", "superia", "eterna", "v500t",
+             "polaroid", "xpro"]
+
+
 def all_keys():
-    return [k for k in LOOKS if k != "portra400"]
+    return DEFAULT19
 
 
 def apply31(img, base, keys=None, gui_img=True):
@@ -491,7 +499,7 @@ def apply31(img, base, keys=None, gui_img=True):
     o = lambda a: a - base  # noqa: E731
     keys = keys or all_keys()
     n = len(keys)
-    check(n <= len(ALL_VALUES), "too many looks")
+    check(n <= D3_N + len(NEW_PAIRS) and n <= len(ALL_VALUES), "too many looks")
     e = o(PM_LIST) + PM_ELEM * CUSTOM_IDX
     check(struct.unpack_from("<I", img, e)[0] == 6, "Custom picture-mode entry differs")
     check(bytes(img[o(SITE):o(SITE) + 5]) == SITE_STOCK, "colour builder call differs")
