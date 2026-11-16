@@ -76,7 +76,7 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `white_frame` | Frame art effect as a plain white border; width setting (% of the short side) | worked (1.6, 1.664) |
 | `white_frame_panorama` | White frame in Panorama (needs `panorama` and `white_frame`) | worked (1.6, 1.665) |
 | `underwater_mono` | Underwater picture mode in black and white; tint setting | worked (1.6, 1.674) |
-| `custom_looks` | Custom = six Caduceus film looks (pick them here); Custom's base-mode list on the camera shows the look names | worked (1.6, 1.691) |
+| `custom_looks` | Custom = six Caduceus film looks (pick them here); Custom's base-mode list on the camera shows the look names | worked (1.6, 1.691); option *Load looks from SD card*: Custom shows Look 1-6, first half-press reads `EM1MOD/LOOKS.BIN` (button *Write card file*) - not camera-tested (1.696) |
 | `xpan_icon` | "XPAN" icons for Panorama on the SCP (needs `panorama`) | 1.666: XPAN in the option lists; main SCP cell shows a 17:9 label |
 
 All mods were developed and tested on a 1.5-based file. For 1.6 each one was checked byte by byte:

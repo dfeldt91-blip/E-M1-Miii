@@ -9,7 +9,8 @@ in this program: the mods are edit lists (builder/mods.json) applied to your own
   python3 builder/em1iii_builder.py --list             list the mods
   python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
                                     [--stock FILE] [--frame-width 3] [--underwater-tint 0..4]
-                                    [--custom-looks ID,ID,ID,ID,ID,ID]   (see --looks)
+                                    [--custom-looks ID,ID,ID,ID,ID,ID]   (see --looks) [--custom-looks-sd]
+                                    [--card-file CARD_DIR]   also write EM1MOD/LOOKS.BIN with those looks
                                                        no window ('--mods all' / '--mods none')
 
 Needs Python 3.8+ and the lz4 package (pip install lz4). The window needs tkinter.
@@ -116,6 +117,17 @@ def do_build(stock, pack, selected, version_text, out_dir, log, options=None):
     return dst
 
 
+def write_card_file(root, keys, log):
+    """EM1MOD/LOOKS.BIN under ROOT (the card) with six looks (Film looks in Custom, SD option)."""
+    import patch_looks
+    d = os.path.join(root, "EM1MOD")
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "LOOKS.BIN"), "wb") as fh:
+        fh.write(patch_looks.make_looks_bin(keys))
+    log("Wrote %s: %s" % (os.path.join(d, "LOOKS.BIN"),
+                          ", ".join("Look %d = %s" % (i + 1, patch_looks.LOOKS[k]["name"]) for i, k in enumerate(keys))))
+
+
 # ---------------------------------------------------------------- command line
 
 def cli(argv):
@@ -171,6 +183,12 @@ def cli(argv):
                 print("--custom-looks needs six look ids (see --looks)")
                 return 1
             options["custom_looks"] = {"look%d" % (i + 1): k for i, k in enumerate(ks)}
+        if "--custom-looks-sd" in argv:
+            options.setdefault("custom_looks", {})["sd"] = "on"
+        if arg("--card-file"):
+            import patch_looks
+            ks = arg("--custom-looks", ",".join(patch_looks.DEFAULT6)).split(",")
+            write_card_file(arg("--card-file"), ks, print)
         do_build(stock, pack, selected, version, arg("--out", os.getcwd()), print, options)
     except (modcore.BuildError, OSError) as e:
         print("error:", e)
@@ -299,6 +317,8 @@ def gui():
     ttk.Button(f3, text="Browse...", command=lambda: out.set(filedialog.askdirectory() or out.get())).grid(row=1, column=3, padx=6)
     b_build = ttk.Button(f3, text="Build E1399999.BIN")
     b_build.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
+    b_card = ttk.Button(f3, text="Write card file (looks)...")
+    b_card.grid(row=3, column=0, columnspan=3, sticky="w", pady=(4, 0))
     log = tk.Text(outer, height=7, wrap="word")
     log.pack(fill="both", pady=(8, 0))
 
@@ -371,6 +391,24 @@ def gui():
         save_settings(s)
         work(lambda: ("built", do_build(state["stock"], pack, sel, VERSION, out.get(), say, options)))
 
+    def card_file():
+        keys = []
+        for i in range(1, 7):
+            var, keymap = opt_vars[("custom_looks", "look%d" % i)]
+            keys.append(keymap[var.get()])
+        root_dir = filedialog.askdirectory(title="SD card (top folder, next to DCIM)")
+        if not root_dir:
+            return
+        try:
+            write_card_file(root_dir, keys, say)
+            messagebox.showinfo(APP, "Wrote EM1MOD/LOOKS.BIN with the six looks chosen under 'Film looks in Custom'.\n\n"
+                                "The camera reads it at the first half-press after switching on (firmware built "
+                                "with 'Load looks from SD card'), card in slot 1. Custom's list shows Look 1-6 in "
+                                "the order of the six slots.")
+        except Exception as e:  # noqa: BLE001
+            messagebox.showerror(APP, str(e))
+
+    b_card.config(command=card_file)
     b_dl.config(command=lambda: work(download))
     b_pick.config(command=pick)
     b_build.config(command=build)

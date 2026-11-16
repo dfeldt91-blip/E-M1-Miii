@@ -68,8 +68,11 @@ MODS = [
 def _look_options():
     import patch_looks as pl
     choices = [[k, v["name"]] for k, v in pl.LOOKS.items() if k != "portra400"]
-    return {"look%d" % (i + 1): {"label": "%s slot" % pl.MENU_NAMES[i], "default": pl.DEFAULT6[i], "choices": choices}
-            for i in range(6)}
+    o = {"look%d" % (i + 1): {"label": "%s slot" % pl.MENU_NAMES[i], "default": pl.DEFAULT6[i], "choices": choices}
+         for i in range(6)}
+    o["sd"] = {"label": "Load looks from SD card (not camera-tested)", "default": "off",
+               "choices": [["off", "No"], ["on", "Yes: Look 1-6, card file"]]}
+    return o
 
 
 GENERATED = [
@@ -89,7 +92,10 @@ GENERATED = [
      "recipes (31 looks). Pick six here; on the camera choose between them in Picture Mode > Custom > "
      "first item, whose list shows the look names. Other picture modes and menus are unchanged. "
      "Custom's own base-mode look (Vivid, Natural...) is replaced; tone, grain and WB shift of the "
-     "recipes are not applied yet. Looks: Caduceus by cakelesscoder (Apache-2.0).",
+     "recipes are not applied yet. With 'Load looks from SD card', Custom's list shows Look 1-6 and, at the "
+     "first half-press after switching on, the camera reads EM1MOD/LOOKS.BIN from the card in slot 1 "
+     "(button 'Write card file' below); without the file it uses the six looks picked here. "
+     "Looks: Caduceus by cakelesscoder (Apache-2.0).",
      "Worked on the camera (1.6 build 1.691).", [], _look_options()),
     ("underwater_mono", "Underwater picture mode in black and white",
      "The Underwater picture mode becomes a second black-and-white mode (photo and live view), "

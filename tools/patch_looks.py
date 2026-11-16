@@ -411,7 +411,25 @@ CODE6 = bytes.fromhex(
 GMAP_OFF, LOOKS_OFF = 0x8c, 0x94
 
 
-def apply6(img, base, keys, labels=True):
+# --sd build (camera test 1.696): colour stub with the card-aware pick (gmap at +0xbf, looks at +0xc8),
+# labels at STUB+0x280, HLS hook + loader + path at SD_CODE (STUB+0x300).
+CODE6SD = bytes.fromhex(
+    "f8feec42044608430c4710cd55000004f1e05d1004f84030f4454144a50cc9f7580459085c0c5d10f8fe14ddfe923000"
+    "f060f8fefccd2b000004f8fe04f1e1f8220cfad0b002850cf061f87012f86102f870162104201829ffc9efdc44953000"
+    "f8fefc2cd300dd3f4c1f000004f8fe04a008c40300fcdcbf5a0d60f400853cf25481fcac9231e8a1fac8454dc927fcac"
+    "b631e8a1fac8314cc91bf1e4fcac5231e8a1f8c010fcadce31e8a1f214f1d1e4df000484fcdcc85a0d60f150df0004")
+GMAP_SD_OFF, LOOKS_SD_OFF, NAMES_SD_OFF = 0xbf, 0xc8, 0x280
+SD_BLOB = bytes.fromhex(
+    "fcc800010002c92ef8fef042044608430cfcac3ea1e8a1fac85a5ac8102c5a5afc833ea1e8a1cd1a00f018580459085c0c"
+    "f8fe10dda41c7400f024dc261c7400fcdc005e0d60fcdd145e0d60dd776e59000004b000c905cc9a00922c7001dd5fdaf4"
+    "ff0004b000c905cc8b009380012d700199dddf6f5900f0188298dd506e5900b010faca7001c96a73fcc8454d314cc961f8"
+    "4304a001c95af84305a006c9539c2008f1d0fce0ffffff1ffce4000000a0f1e12d6801f040f051414529ffc9f8f1dc2808"
+    "fce0ffffff1ffce4000000a0fc83ce31e8a1f8c410fc835231e8a12c454dfc839231e8a12c314cfc83b631e8a1dff01898"
+    "ddd76d5900b010caf50000433a5c454d314d4f445c4c4f4f4b532e42494e0072000000")
+SD_JMP = b"\xdc" + struct.pack("<i", 0x600d5d00 - 0x6081795c)
+
+
+def apply6(img, base, keys, labels=True, sd=False):
     """Six looks in Custom without an assembler. IMG: bytearray of the runtime image (blobs unpacked)
     at runtime address BASE. Returns the look names in menu order."""
     o = lambda a: a - base  # noqa: E731
@@ -428,17 +446,25 @@ def apply6(img, base, keys, labels=True):
     for k in keys:
         hues, lights, sats = look_values(LOOKS[k])
         data += b"".join(struct.pack("<hh", h, l) for h, l in zip(hues, lights)) + bytes(s & 0xff for s in sats)
+    code, goff, loff, naddr = (CODE6SD, GMAP_SD_OFF, LOOKS_SD_OFF, STUB + NAMES_SD_OFF) if sd else (CODE6, GMAP_OFF, LOOKS_OFF, NAMES)
+    if sd:
+        check(set(img[o(SD_CODE):o(SD_CODE) + 0x180]) == {0xff}, "SD code area not free")
+        check(bytes(img[o(SD_HOOK):o(SD_HOOK) + 5]) == SD_HOOK_STOCK, "HLS dispatch call differs")
+        img[o(SD_CODE):o(SD_CODE) + len(SD_BLOB)] = SD_BLOB
+        img[o(SD_HOOK):o(SD_HOOK) + 5] = SD_JMP
     img[e:e + PM_ELEM] = struct.pack("<I", 11) + bytes(PM_ELEM - 4)
-    img[o(STUB):o(STUB) + len(CODE6)] = CODE6
-    img[o(STUB) + GMAP_OFF:o(STUB) + GMAP_OFF + 8] = bytes(gmap)
-    img[o(STUB) + LOOKS_OFF:o(STUB) + LOOKS_OFF + len(data)] = data
+    img[o(STUB):o(STUB) + len(code)] = code
+    img[o(STUB) + goff:o(STUB) + goff + 8] = bytes(gmap)
+    if sd:
+        img[o(STUB) + goff + 8:o(STUB) + loff] = bytes(loff - goff - 8)       # .balign 4 fill
+    img[o(STUB) + loff:o(STUB) + loff + len(data)] = data
     img[o(SITE):o(SITE) + 5] = JMP
     if labels:
         names, ptrs = b"", []
-        for k in keys:
-            ptrs.append(NAMES + len(names))
-            names += LOOKS[k]["name"].encode("ascii") + b"\0"
-        img[o(NAMES):o(NAMES) + len(names)] = names
+        for i, k in enumerate(keys):
+            ptrs.append(naddr + len(names))
+            names += (("Look %d" % (i + 1)) if sd else LOOKS[k]["name"]).encode("ascii") + b"\0"
+        img[o(naddr):o(naddr) + len(names)] = names
         for lst in LABEL_LISTS:
             for i, (val, sid) in enumerate(LABEL_STOCK):
                 a = o(lst) + 12 * i
@@ -794,10 +820,10 @@ def main(argv):
     elif "--looks" in argv:
         keys6 = argv[argv.index("--looks") + 1].split(",")
         new_main = patch6(blocks[0]["plain"], keys6)
-        if "--labels" in argv and "--diag-lists" not in argv and "--sd" not in argv:
+        if "--labels" in argv and "--diag-lists" not in argv:
             import modcore
             img = bytearray(modcore.runtime_image(blocks[0]["plain"]))
-            apply6(img, BASE, keys6)
+            apply6(img, BASE, keys6, sd="--sd" in argv)
             check(modcore.rebuild_main(blocks[0]["plain"], img) == new_main,
                   "pre-assembled six-look stub (CODE6) differs from the assembled one")
     else:

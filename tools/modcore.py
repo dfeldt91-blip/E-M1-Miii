@@ -219,10 +219,14 @@ def _custom_looks(img, plains, opts, log):
     import patch_looks as pl
     keys = [str(opts.get("look%d" % i, pl.DEFAULT6[i - 1])) for i in range(1, 7)]
     try:
-        names = pl.apply6(img, BASE, keys)
+        sd = str(opts.get("sd", "off")) == "on"
+        names = pl.apply6(img, BASE, keys, sd=sd)
     except SystemExit as e:
         raise BuildError(str(e))
-    log("    Custom looks: " + ", ".join("%s = %s" % (s, n) for s, n in zip(pl.MENU_NAMES, names)))
+    if sd:
+        log("    Custom shows Look 1..6; built-in: " + ", ".join(names) + "; the card file EM1MOD/LOOKS.BIN replaces them")
+    else:
+        log("    Custom looks: " + ", ".join("%s = %s" % (s, n) for s, n in zip(pl.MENU_NAMES, names)))
 
 
 GENERATORS = {
