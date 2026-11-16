@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Underwater picture mode -> a second Monotone (EXPERIMENTAL test, E-M1 Mark III 1.6).
+"""Underwater picture mode -> black and white (EXPERIMENTAL, E-M1 Mark III 1.6).
 
-  python3 tools/patch_underwater_mono.py IN.BIN OUT.BIN [--version 0x1672]
+  python3 tools/patch_underwater_mono.py IN.BIN OUT.BIN [--version 0x1674]
 
-The Picture Mode validator list (setting 0x6f, 26 entries of 64 bytes at 0x604bc4f4) holds the
-image-pipeline type of each entry: {u32 type, u32 flag, ...}; Monotone is entry 5 {5, 1},
-Underwater entry 8 {10, 0} (GUI value 0x1c, label "Underwater"). Test 1.595 showed that this
-type drives the image pipeline (e-Portrait set to 12 shot Monochrome Profile).
-1.672 gave Underwater Monotone's {5, 1}: choosing Underwater selected Monotone (the GUI finds the
-entry by type, so a duplicate type is an alias). 1.673 keeps type 10 and only sets the second
-field (1 on Monotone only, perhaps a monochrome flag): {10, 1}.
-Open question for the camera test: which contrast / sharpness / filter / tone values the
-Underwater slot then uses (Monotone's current ones, defaults, or something else).
+Picture Mode validator list (setting 0x6f, 26 x 64-byte entries at 0x604bc4f4) {u32 pipeline type,
+u32 slot}: Monotone {5, 1}, Underwater {10, 0} (GUI value 0x1c).
+  1.672 Underwater -> {5, 1}: an alias of Monotone (the GUI finds the entry by type).
+  1.673 Underwater -> {10, 1}: normal colour Underwater (the second field is not a mono flag).
+1.674: the chroma toning lookup 0x603dfd00 (see patch_keyline_mono.py) is keyed by the pipeline
+type: a 16-slot open hash at 0x6053e67c {u32 key-4, u32 handler}, index (key-4) & 15, linear
+probe until the key or an empty slot (stored 0). Type 5 (Monotone) and 12 (Mono Profile) are in
+it; 10 is not, so Underwater falls to the default (colour unless the job's mono flag is set).
+This patch adds key 10 -> 0x603dfe09 (always the neutral grey vector) in empty slot 13, the first
+empty slot on 10's probe path (6..13), so Underwater keeps its identity, menus and colour
+processing, and its JPEG is toned grey. Tone fixed (neutral); no filter setting.
 """
 import hashlib
 import os
@@ -22,8 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import olyfw  # noqa: E402
 
 BASE = 0x60021020
-LIST, ELEM = 0x604bc4f4, 64
-MONOTONE, UNDERWATER = 5, 8
+HASH, SLOTS = 0x6053e67c, 16
+KEY, GREY, DEFAULT = 10, 0x603dfe09, 0x603dfdc7
 
 
 def off(a):
@@ -37,13 +39,14 @@ def check(cond, msg):
 
 def patch(main):
     m = bytearray(main)
-    mono = off(LIST + ELEM * MONOTONE)
-    uw = off(LIST + ELEM * UNDERWATER)
-    check(struct.unpack_from("<2I", m, mono) == (5, 1), "Monotone entry differs")
-    check(struct.unpack_from("<2I", m, uw) == (10, 0), "Underwater entry differs")
-    check(set(m[uw + 8:uw + ELEM]) == {0}, "Underwater entry has more data than expected")
-    struct.pack_into("<I", m, uw + 4, 1)
-    print("  Underwater (entry 8) -> {10, 1}")
+    tab = [struct.unpack_from("<2I", m, off(HASH) + 8 * k) for k in range(SLOTS)]
+    check(all(k != KEY - 4 for k, h in tab), "type %d already has a toning entry" % KEY)
+    i = (KEY - 4) & 15
+    while tab[i][0] != 0:
+        i = (i + 1) % SLOTS
+    check(i == 13 and tab[i] == (0, DEFAULT), "unexpected toning table layout (slot %d)" % i)
+    struct.pack_into("<2I", m, off(HASH) + 8 * i, KEY - 4, GREY)
+    print("  toning table slot %d: type %d (Underwater) -> neutral grey" % (i, KEY))
     return bytes(m)
 
 
