@@ -50,7 +50,7 @@ Camera 1.686: nothing new in the menus or SCP. Dropped; the menus' list comes fr
 
 --looks K1,K2,K3,K4,K5,K6 (stage 2, picker): six looks in Custom, picked on the camera with Custom's
 base mode (setting 0xd3, GUI values i-Finish 7, Vivid 0, Natural 1, Muted 2, Portrait 5, Monotone 3,
-in that menu order = looks 1..6). The stub reads 0xd3 through the settings getter 0x602ca8c5
+in that menu order = looks 1..6). The stub reads 0xd3 through the settings getter 0x602ca6a5
 (`call ..,[],4`, sid in d0, GUI value out) before and after the builder call and indexes a 6 x 60-byte
 table {12 x (hue, lightness) s16, 12 x s8 saturation}.
 Labels (Custom only): Custom's base-mode option lists (descriptors {0xd3, ..., list, 6}: 0x611b3f94 and
@@ -59,6 +59,12 @@ Labels (Custom only): Custom's base-mode option lists (descriptors {0xd3, ..., l
 other menus). Each entry becomes type 1 {value, 1, unit string, ASCII pointer} (the form menus use
 for "0.3 sec"), unit 0x1b (empty in every language), pointing at the look's name in base-section
 free space after the stub. Other menus keep their labels.
+Camera 1.688: every base mode gave Portra and the names did not change: 0x602ca8c5 does not return
+the GUI value (fell through to look 2), and the menu draws plain-text names from other lists.
+1.689: getter 0x602ca6a5 (what the API's getSetting uses; the Custom REMAP handler 0x60df7837
+reads 0xd3 through the API), and the plain-text lists 0x611ec244, 0x611ecc28, 0x611ed420
+({7 i-Enhance 0x91, 0 Vivid 0x679, 1 Natural 0x67a, 2 Muted 0xb7, 5 Portrait 0x67d, 3 Monochrome
+0xb0, 6 Custom 0x5f}; first six relabelled, Custom kept) as well.
 """
 import hashlib
 import os
@@ -250,7 +256,7 @@ def unhide(main):
     return bytes(m)
 
 
-GET = 0x602ca8c5
+GET = 0x602ca6a5          # core GUI-value getter (API getSetting 0x608a8ccf -> 0x608d57a2 -> here)
 BASE_SID = 0xd3
 MENU_ORDER = [7, 0, 1, 2, 5, 3]          # Custom base-mode GUI values in menu order -> looks 1..6
 SRC6 = """add -20,sp
@@ -330,6 +336,10 @@ EMPTY_UNIT, NAMES = 0x1b, STUB + 0x200
 BLOB_B = 0x60c6c000
 
 
+TEXT_LISTS = (0x611ec244, 0x611ecc28, 0x611ed420)
+TEXT_STOCK = [(7, 0x91), (0, 0x679), (1, 0x67a), (2, 0xb7), (5, 0x67d), (3, 0xb0)]
+
+
 def label_patch(m, keys):
     import olycompress
     names = b""
@@ -343,8 +353,8 @@ def label_patch(m, keys):
     gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
     check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
           "blob B does not recompress identically")
-    for lst in LABEL_LISTS:
-        for i, (val, sid) in enumerate(LABEL_STOCK):
+    for lst, stock in [(x, LABEL_STOCK) for x in LABEL_LISTS] + [(x, TEXT_STOCK) for x in TEXT_LISTS]:
+        for i, (val, sid) in enumerate(stock):
             o = lst - BLOB_B + 12 * i
             v, ty, s = struct.unpack_from("<IHH", gui, o)
             check((v, ty, s) == (val, 4, sid), "base-mode label entry %#x differs" % (lst + 12 * i))
