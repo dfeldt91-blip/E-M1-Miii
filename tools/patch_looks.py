@@ -70,6 +70,9 @@ the main menu's Picture Mode screen kept the stock names. The three text lists a
 Mode lists (descriptors at 0x611ef13c/0x611ef1a4 n 0x44, 0x611ef2a8 n 0x40, 0x611efc34 n 0x2a).
 --diag-lists: label list k's names "k <name>" (k = 1, 2, 3 in TEXT_LISTS order) to see which list
 Custom's settings use.
+Camera 1.690: the SCP showed "1 ..." (TEXT_LISTS[0] is the SCP's list); Custom's settings showed the
+un-numbered names, i.e. LABEL_LISTS. The main menu's Picture Mode screen stayed stock. So --labels
+now patches LABEL_LISTS only (TEXT_LISTS only with --diag-lists).
 """
 import hashlib
 import os
@@ -366,7 +369,9 @@ def label_patch(m, keys):
                 names += ("%d %s" % (k + 1, LOOKS[key]["name"])).encode("ascii") + b"\0"
         check(len(names) <= 0x200, "labels too long")
         m[off(NAMES):off(NAMES) + len(names)] = names
-    lists = [(x, LABEL_STOCK, 0) for x in LABEL_LISTS] + [(x, TEXT_STOCK, k + 1) for k, x in enumerate(TEXT_LISTS)]
+    lists = [(x, LABEL_STOCK, 0) for x in LABEL_LISTS]
+    if diag:
+        lists += [(x, TEXT_STOCK, k + 1) for k, x in enumerate(TEXT_LISTS)]
     for lst, stock, k in lists:
         for i, (val, sid) in enumerate(stock):
             o = lst - BLOB_B + 12 * i
