@@ -28,7 +28,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15          # Apple silicon (2026-11-16: macos-latest arm64 had no free runners, macos-14 retired)
+          # Apple silicon: three runner pools at once (GitHub's arm64 Macs were often not acquired on
+          # 2026-11-16); the release uses the first one that built
+          - runner: macos-26
+            arch: apple-silicon
+          - runner: macos-15
+            arch: apple-silicon
+          - runner: macos-latest
             arch: apple-silicon
           - runner: macos-15-intel    # Intel Macs
             arch: intel
@@ -47,7 +53,7 @@ jobs:
           "dist/E-M1 III Mod Builder.app/Contents/MacOS/E-M1 III Mod Builder" --list
       - uses: actions/upload-artifact@v7
         with:
-          name: E-M1-III-Mod-Builder-mac-${{ matrix.arch }}
+          name: E-M1-III-Mod-Builder-mac-${{ matrix.arch }}-${{ matrix.runner }}
           path: dist/E-M1-III-Mod-Builder-mac.zip
           if-no-files-found: error
 
@@ -96,8 +102,8 @@ jobs:
         run: |
           mkdir out
           for a in apple-silicon intel; do
-            f=artifacts/E-M1-III-Mod-Builder-mac-$a/E-M1-III-Mod-Builder-mac.zip
-            if [ -f "$f" ]; then cp "$f" out/E-M1-III-Mod-Builder-mac-$a.zip; else echo "no $a build"; fi
+            f=$(ls artifacts/E-M1-III-Mod-Builder-mac-$a-*/E-M1-III-Mod-Builder-mac.zip 2>/dev/null | head -1 || true)
+            if [ -n "$f" ]; then cp "$f" out/E-M1-III-Mod-Builder-mac-$a.zip; echo "$a from $f"; else echo "no $a build"; fi
           done
           f=artifacts/E-M1-III-Mod-Builder-windows/E-M1-III-Mod-Builder-windows.zip
           if [ -f "$f" ]; then cp "$f" out/; else echo "no windows build"; fi
