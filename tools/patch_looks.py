@@ -19,6 +19,12 @@ Colour engine on this body (same code as the E-P7 1.1, caduceus docs/HSL_PORT.md
 
 --test1: after the builder, every record gets hue +3000 and lightness 0 (an obvious colour shift,
 Custom only, photos and live view). Shows that the hook and the record layout are right.
+Camera 1.682: Custom colours shifted (live view and photo), other modes normal; Custom's base mode
+(e.g. Monotone) no longer matters.
+
+--test2 (colour map): hue 0; lightness -300 on record 0 and +300 on record 3, all others 0.
+On the E-P7 the records are wheel sectors in the order 2*(r%6)+r/6, so record 0 and record 3
+should be opposite colours (sectors 0 and 6).
 """
 import hashlib
 import os
@@ -87,11 +93,14 @@ def patch(main, hues, lights):
 
 
 def main(argv):
-    if len(argv) < 3 or "--test1" not in argv:
+    if len(argv) < 3 or not ("--test1" in argv or "--test2" in argv):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
     hues, lights = [3000] * 12, [0] * 12
+    if "--test2" in argv:
+        hues, lights = [0] * 12, [0] * 12
+        lights[0], lights[3] = -300, 300
     fw = olyfw.read(src)
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
