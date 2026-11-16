@@ -72,7 +72,7 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `preset_labels` | C2/C3/C4 shown as ISO / SS / Aperture (needs `hold_presets`) | not tested |
 | `hhrs_flash` | Flash in handheld High Res | worked (1.5 build) |
 | `hires_art` | Art filters in High Res (colour/tone only) | worked (1.5 build) |
-| `scp_menu` | SCP bottom-right cell (Button Function) opens the main menu, titled "Menu" | menu worked (1.675); title not tested (1.679) |
+| `scp_menu` | SCP bottom-right cell (Button Function) opens the main menu, titled "Menu" | worked (1.6, 1.679) |
 | `white_frame` | Frame art effect as a plain white border; width setting (% of the short side) | worked (1.6, 1.664) |
 | `white_frame_panorama` | White frame in Panorama (needs `panorama` and `white_frame`) | worked (1.6, 1.665) |
 | `underwater_mono` | Underwater picture mode in black and white; tint setting | worked (1.6, 1.674) |

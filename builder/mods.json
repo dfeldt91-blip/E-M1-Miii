@@ -1092,7 +1092,7 @@
    "id": "scp_menu",
    "title": "SCP button cell opens the main menu",
    "description": "The bottom-right cell of the Super Control Panel (Button Function) opens the main menu instead, like pressing MENU on the SCP.",
-   "camera": "Menu: worked on the camera (1.6 build 1.675); the \"Menu\" title is new in 1.679, not tested yet.",
+   "camera": "Worked on the camera (1.6 build 1.679, menu and title).",
    "requires": [],
    "stock_sha256": "9126c6e3650cf1864c90ba817cb0a2d93c6b9dae4fddc4eb68953eec5336d58d",
    "edits": [

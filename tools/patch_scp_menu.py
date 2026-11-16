@@ -18,7 +18,7 @@ Camera 1.675/1.676: the cell opens the main menu.
 Title: the SCP cell title table (pairs {u32 string, u32 n}, e.g. 0x611f0ff8 "@A003@AF Mode" 6,
 "@A003@WB" 7, "@A003@Kelvin" 28) has {0xc73 "@A003@Button Function", 12} at 0x611f1010 -> "Menu"
 (0xa7). The Custom Menu item (setting 0xd1a) uses its own records with 0xc73 and is unchanged.
-Test 1.679: does the SCP title change?
+Camera 1.679: the SCP cell is titled "Menu" and opens the main menu.
 """
 import hashlib
 import os

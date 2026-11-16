@@ -57,7 +57,7 @@ MODS = [
     ("scp_menu", "patch_scp_menu.py", [], "SCP button cell opens the main menu",
      "The bottom-right cell of the Super Control Panel (Button Function) opens the main menu instead, "
      "like pressing MENU on the SCP.",
-     "Menu: worked on the camera (1.6 build 1.675); the \"Menu\" title is new in 1.679, not tested yet.", []),
+     "Worked on the camera (1.6 build 1.679, menu and title).", []),
 ]
 
 
