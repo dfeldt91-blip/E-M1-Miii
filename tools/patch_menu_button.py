@@ -6,6 +6,9 @@
 Adds "Menu" to the Button Function lists of the full custom buttons (after Live ND). Pressing the
 button posts a MENU key press (0x900e) through the GUI key poster 0x60ed53a0(code, lparam) (stock
 use: 0x60df5e06), so the camera reacts as if MENU had been pressed.
+Camera 1.676 (press only, no release): nothing for about 2 s, then the screen briefly changed
+colour (in a B&W picture mode), no menu. 1.677: press + release (0x900f). 1.678 (--event):
+PostEventToCA(18, 7), as the SCP's MENU handler.
 
 Slots (see docs/FINDINGS.md, "High Res Shot as a button function"): code 284 ("Backlit LCD") is
 in every button table but in no button list on this body. Its function row 17 (284, 29, 69) ->
@@ -49,6 +52,15 @@ STOCK39 = [3209] + STOCK38
 SRC = """mov 0x900e,d0
 clr d1
 call post,[a2],64
+mov 0x900f,d0
+clr d1
+call post,[a2],64
+jmp back"""
+# --event: instead of the key press, what the SCP's MENU handler 0x60e7c352 does (worked for the
+# SCP cell, test 1.676): PostEventToCA 0x60ed53f2(18, 7).
+SRC_EVENT = """mov 18,d0
+mov 7,d1
+call event,[d2,d3,a2],48
 jmp back"""
 
 
@@ -81,7 +93,8 @@ def patch(main):
             struct.pack_into("<I", m, off(rec) + 4, at)
             struct.pack_into("<H", m, off(rec) + 12, 2 * len(new))
     check(LIST38 + 2 * 39 <= LIST39 and LIST39 + 2 * 40 <= STUB, "lists overlap")
-    stub = patch_aspect.assemble_syms(SRC, STUB, {"back": NOOP, "post": 0x60ed53a0})
+    src = SRC_EVENT if "--event" in sys.argv else SRC
+    stub = patch_aspect.assemble_syms(src, STUB, {"back": NOOP, "post": 0x60ed53a0, "event": 0x60ed53f2})
     check(STUB + len(stub) <= FREE_HI, "stub too long")
     m[off(STUB):off(STUB) + len(stub)] = stub
     # blob B tables
