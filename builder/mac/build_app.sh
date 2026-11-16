@@ -11,7 +11,7 @@ rm -rf build dist
 "$PY" -m PyInstaller --noconfirm --windowed --name "$NAME" \
   --osx-bundle-identifier io.github.em1iii.modbuilder \
   --paths tools \
-  --hidden-import modcore --hidden-import olyfw --hidden-import olycompress --hidden-import patch_frame_white --hidden-import patch_xpan_icon --hidden-import patch_underwater_mono \
+  --hidden-import modcore --hidden-import olyfw --hidden-import olycompress --hidden-import patch_frame_white --hidden-import patch_xpan_icon --hidden-import patch_underwater_mono --hidden-import patch_looks --hidden-import looks_library \
   --hidden-import lz4.block --hidden-import certifi --hidden-import PIL.Image --hidden-import PIL.ImageDraw --hidden-import PIL.ImageChops --hidden-import PIL.JpegImagePlugin \
   --add-data "builder/mods.json:." \
   builder/em1iii_builder.py

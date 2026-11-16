@@ -16,6 +16,8 @@ on:
       - "tools/patch_frame_white.py"
       - "tools/patch_xpan_icon.py"
       - "tools/patch_underwater_mono.py"
+      - "tools/patch_looks.py"
+      - "tools/looks_library.py"
       - ".github/workflows/mac-app.yml"
 
 jobs:

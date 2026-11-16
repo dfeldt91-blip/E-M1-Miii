@@ -1106,6 +1106,796 @@
    "options": {}
   },
   {
+   "id": "custom_looks",
+   "title": "Film looks in Custom (Caduceus recipes)",
+   "description": "Custom becomes a film-look mode: hue, saturation and lightness per colour from Caduceus's film recipes (31 looks). Pick six here; on the camera choose between them in Picture Mode > Custom > first item, whose list shows the look names. Other picture modes and menus are unchanged. Custom's own base-mode look (Vivid, Natural...) is replaced; tone, grain and WB shift of the recipes are not applied yet. Looks: Caduceus by cakelesscoder (Apache-2.0).",
+   "camera": "Worked on the camera (1.6 build 1.691).",
+   "requires": [],
+   "generator": "custom_looks",
+   "options": {
+    "look1": {
+     "label": "i-Enhance slot",
+     "default": "provia",
+     "choices": [
+      [
+       "provia",
+       "Provia"
+      ],
+      [
+       "velvia",
+       "Velvia"
+      ],
+      [
+       "astia",
+       "Astia"
+      ],
+      [
+       "cl_chrome",
+       "Cl. Chrome"
+      ],
+      [
+       "cl_neg",
+       "Classic Neg"
+      ],
+      [
+       "provia400",
+       "Provia 400"
+      ],
+      [
+       "reala",
+       "Reala Ace"
+      ],
+      [
+       "eterna",
+       "Eterna"
+      ],
+      [
+       "bleach",
+       "Bleach Byp."
+      ],
+      [
+       "kchrome",
+       "Kodachrome64"
+      ],
+      [
+       "portra",
+       "Portra 400"
+      ],
+      [
+       "ektar",
+       "Ektar 100"
+      ],
+      [
+       "gold",
+       "Gold 200"
+      ],
+      [
+       "ektachrome",
+       "Ektachrome"
+      ],
+      [
+       "cinestill",
+       "CineStill800"
+      ],
+      [
+       "pro400h",
+       "Pro 400H"
+      ],
+      [
+       "aerochrome",
+       "Aerochrome"
+      ],
+      [
+       "kchrome25",
+       "Kodachrome25"
+      ],
+      [
+       "fuji200",
+       "Fujicolor200"
+      ],
+      [
+       "cibachrome",
+       "Cibachrome"
+      ],
+      [
+       "portra160",
+       "Portra 160"
+      ],
+      [
+       "ultramax",
+       "UltraMax 400"
+      ],
+      [
+       "superia",
+       "Superia 400"
+      ],
+      [
+       "agfa",
+       "Agfa Vista"
+      ],
+      [
+       "cs50d",
+       "CineStill50D"
+      ],
+      [
+       "v250d",
+       "Vision3 250D"
+      ],
+      [
+       "v500t",
+       "Vision3 500T"
+      ],
+      [
+       "polaroid",
+       "Polaroid"
+      ],
+      [
+       "xpro",
+       "Cross Proc."
+      ],
+      [
+       "atrophy",
+       "Atrophy"
+      ],
+      [
+       "cuban",
+       "Cuban Neg"
+      ]
+     ]
+    },
+    "look2": {
+     "label": "Vivid slot",
+     "default": "portra",
+     "choices": [
+      [
+       "provia",
+       "Provia"
+      ],
+      [
+       "velvia",
+       "Velvia"
+      ],
+      [
+       "astia",
+       "Astia"
+      ],
+      [
+       "cl_chrome",
+       "Cl. Chrome"
+      ],
+      [
+       "cl_neg",
+       "Classic Neg"
+      ],
+      [
+       "provia400",
+       "Provia 400"
+      ],
+      [
+       "reala",
+       "Reala Ace"
+      ],
+      [
+       "eterna",
+       "Eterna"
+      ],
+      [
+       "bleach",
+       "Bleach Byp."
+      ],
+      [
+       "kchrome",
+       "Kodachrome64"
+      ],
+      [
+       "portra",
+       "Portra 400"
+      ],
+      [
+       "ektar",
+       "Ektar 100"
+      ],
+      [
+       "gold",
+       "Gold 200"
+      ],
+      [
+       "ektachrome",
+       "Ektachrome"
+      ],
+      [
+       "cinestill",
+       "CineStill800"
+      ],
+      [
+       "pro400h",
+       "Pro 400H"
+      ],
+      [
+       "aerochrome",
+       "Aerochrome"
+      ],
+      [
+       "kchrome25",
+       "Kodachrome25"
+      ],
+      [
+       "fuji200",
+       "Fujicolor200"
+      ],
+      [
+       "cibachrome",
+       "Cibachrome"
+      ],
+      [
+       "portra160",
+       "Portra 160"
+      ],
+      [
+       "ultramax",
+       "UltraMax 400"
+      ],
+      [
+       "superia",
+       "Superia 400"
+      ],
+      [
+       "agfa",
+       "Agfa Vista"
+      ],
+      [
+       "cs50d",
+       "CineStill50D"
+      ],
+      [
+       "v250d",
+       "Vision3 250D"
+      ],
+      [
+       "v500t",
+       "Vision3 500T"
+      ],
+      [
+       "polaroid",
+       "Polaroid"
+      ],
+      [
+       "xpro",
+       "Cross Proc."
+      ],
+      [
+       "atrophy",
+       "Atrophy"
+      ],
+      [
+       "cuban",
+       "Cuban Neg"
+      ]
+     ]
+    },
+    "look3": {
+     "label": "Natural slot",
+     "default": "velvia",
+     "choices": [
+      [
+       "provia",
+       "Provia"
+      ],
+      [
+       "velvia",
+       "Velvia"
+      ],
+      [
+       "astia",
+       "Astia"
+      ],
+      [
+       "cl_chrome",
+       "Cl. Chrome"
+      ],
+      [
+       "cl_neg",
+       "Classic Neg"
+      ],
+      [
+       "provia400",
+       "Provia 400"
+      ],
+      [
+       "reala",
+       "Reala Ace"
+      ],
+      [
+       "eterna",
+       "Eterna"
+      ],
+      [
+       "bleach",
+       "Bleach Byp."
+      ],
+      [
+       "kchrome",
+       "Kodachrome64"
+      ],
+      [
+       "portra",
+       "Portra 400"
+      ],
+      [
+       "ektar",
+       "Ektar 100"
+      ],
+      [
+       "gold",
+       "Gold 200"
+      ],
+      [
+       "ektachrome",
+       "Ektachrome"
+      ],
+      [
+       "cinestill",
+       "CineStill800"
+      ],
+      [
+       "pro400h",
+       "Pro 400H"
+      ],
+      [
+       "aerochrome",
+       "Aerochrome"
+      ],
+      [
+       "kchrome25",
+       "Kodachrome25"
+      ],
+      [
+       "fuji200",
+       "Fujicolor200"
+      ],
+      [
+       "cibachrome",
+       "Cibachrome"
+      ],
+      [
+       "portra160",
+       "Portra 160"
+      ],
+      [
+       "ultramax",
+       "UltraMax 400"
+      ],
+      [
+       "superia",
+       "Superia 400"
+      ],
+      [
+       "agfa",
+       "Agfa Vista"
+      ],
+      [
+       "cs50d",
+       "CineStill50D"
+      ],
+      [
+       "v250d",
+       "Vision3 250D"
+      ],
+      [
+       "v500t",
+       "Vision3 500T"
+      ],
+      [
+       "polaroid",
+       "Polaroid"
+      ],
+      [
+       "xpro",
+       "Cross Proc."
+      ],
+      [
+       "atrophy",
+       "Atrophy"
+      ],
+      [
+       "cuban",
+       "Cuban Neg"
+      ]
+     ]
+    },
+    "look4": {
+     "label": "Muted slot",
+     "default": "cl_chrome",
+     "choices": [
+      [
+       "provia",
+       "Provia"
+      ],
+      [
+       "velvia",
+       "Velvia"
+      ],
+      [
+       "astia",
+       "Astia"
+      ],
+      [
+       "cl_chrome",
+       "Cl. Chrome"
+      ],
+      [
+       "cl_neg",
+       "Classic Neg"
+      ],
+      [
+       "provia400",
+       "Provia 400"
+      ],
+      [
+       "reala",
+       "Reala Ace"
+      ],
+      [
+       "eterna",
+       "Eterna"
+      ],
+      [
+       "bleach",
+       "Bleach Byp."
+      ],
+      [
+       "kchrome",
+       "Kodachrome64"
+      ],
+      [
+       "portra",
+       "Portra 400"
+      ],
+      [
+       "ektar",
+       "Ektar 100"
+      ],
+      [
+       "gold",
+       "Gold 200"
+      ],
+      [
+       "ektachrome",
+       "Ektachrome"
+      ],
+      [
+       "cinestill",
+       "CineStill800"
+      ],
+      [
+       "pro400h",
+       "Pro 400H"
+      ],
+      [
+       "aerochrome",
+       "Aerochrome"
+      ],
+      [
+       "kchrome25",
+       "Kodachrome25"
+      ],
+      [
+       "fuji200",
+       "Fujicolor200"
+      ],
+      [
+       "cibachrome",
+       "Cibachrome"
+      ],
+      [
+       "portra160",
+       "Portra 160"
+      ],
+      [
+       "ultramax",
+       "UltraMax 400"
+      ],
+      [
+       "superia",
+       "Superia 400"
+      ],
+      [
+       "agfa",
+       "Agfa Vista"
+      ],
+      [
+       "cs50d",
+       "CineStill50D"
+      ],
+      [
+       "v250d",
+       "Vision3 250D"
+      ],
+      [
+       "v500t",
+       "Vision3 500T"
+      ],
+      [
+       "polaroid",
+       "Polaroid"
+      ],
+      [
+       "xpro",
+       "Cross Proc."
+      ],
+      [
+       "atrophy",
+       "Atrophy"
+      ],
+      [
+       "cuban",
+       "Cuban Neg"
+      ]
+     ]
+    },
+    "look5": {
+     "label": "Portrait slot",
+     "default": "kchrome",
+     "choices": [
+      [
+       "provia",
+       "Provia"
+      ],
+      [
+       "velvia",
+       "Velvia"
+      ],
+      [
+       "astia",
+       "Astia"
+      ],
+      [
+       "cl_chrome",
+       "Cl. Chrome"
+      ],
+      [
+       "cl_neg",
+       "Classic Neg"
+      ],
+      [
+       "provia400",
+       "Provia 400"
+      ],
+      [
+       "reala",
+       "Reala Ace"
+      ],
+      [
+       "eterna",
+       "Eterna"
+      ],
+      [
+       "bleach",
+       "Bleach Byp."
+      ],
+      [
+       "kchrome",
+       "Kodachrome64"
+      ],
+      [
+       "portra",
+       "Portra 400"
+      ],
+      [
+       "ektar",
+       "Ektar 100"
+      ],
+      [
+       "gold",
+       "Gold 200"
+      ],
+      [
+       "ektachrome",
+       "Ektachrome"
+      ],
+      [
+       "cinestill",
+       "CineStill800"
+      ],
+      [
+       "pro400h",
+       "Pro 400H"
+      ],
+      [
+       "aerochrome",
+       "Aerochrome"
+      ],
+      [
+       "kchrome25",
+       "Kodachrome25"
+      ],
+      [
+       "fuji200",
+       "Fujicolor200"
+      ],
+      [
+       "cibachrome",
+       "Cibachrome"
+      ],
+      [
+       "portra160",
+       "Portra 160"
+      ],
+      [
+       "ultramax",
+       "UltraMax 400"
+      ],
+      [
+       "superia",
+       "Superia 400"
+      ],
+      [
+       "agfa",
+       "Agfa Vista"
+      ],
+      [
+       "cs50d",
+       "CineStill50D"
+      ],
+      [
+       "v250d",
+       "Vision3 250D"
+      ],
+      [
+       "v500t",
+       "Vision3 500T"
+      ],
+      [
+       "polaroid",
+       "Polaroid"
+      ],
+      [
+       "xpro",
+       "Cross Proc."
+      ],
+      [
+       "atrophy",
+       "Atrophy"
+      ],
+      [
+       "cuban",
+       "Cuban Neg"
+      ]
+     ]
+    },
+    "look6": {
+     "label": "Monochrome slot",
+     "default": "cinestill",
+     "choices": [
+      [
+       "provia",
+       "Provia"
+      ],
+      [
+       "velvia",
+       "Velvia"
+      ],
+      [
+       "astia",
+       "Astia"
+      ],
+      [
+       "cl_chrome",
+       "Cl. Chrome"
+      ],
+      [
+       "cl_neg",
+       "Classic Neg"
+      ],
+      [
+       "provia400",
+       "Provia 400"
+      ],
+      [
+       "reala",
+       "Reala Ace"
+      ],
+      [
+       "eterna",
+       "Eterna"
+      ],
+      [
+       "bleach",
+       "Bleach Byp."
+      ],
+      [
+       "kchrome",
+       "Kodachrome64"
+      ],
+      [
+       "portra",
+       "Portra 400"
+      ],
+      [
+       "ektar",
+       "Ektar 100"
+      ],
+      [
+       "gold",
+       "Gold 200"
+      ],
+      [
+       "ektachrome",
+       "Ektachrome"
+      ],
+      [
+       "cinestill",
+       "CineStill800"
+      ],
+      [
+       "pro400h",
+       "Pro 400H"
+      ],
+      [
+       "aerochrome",
+       "Aerochrome"
+      ],
+      [
+       "kchrome25",
+       "Kodachrome25"
+      ],
+      [
+       "fuji200",
+       "Fujicolor200"
+      ],
+      [
+       "cibachrome",
+       "Cibachrome"
+      ],
+      [
+       "portra160",
+       "Portra 160"
+      ],
+      [
+       "ultramax",
+       "UltraMax 400"
+      ],
+      [
+       "superia",
+       "Superia 400"
+      ],
+      [
+       "agfa",
+       "Agfa Vista"
+      ],
+      [
+       "cs50d",
+       "CineStill50D"
+      ],
+      [
+       "v250d",
+       "Vision3 250D"
+      ],
+      [
+       "v500t",
+       "Vision3 500T"
+      ],
+      [
+       "polaroid",
+       "Polaroid"
+      ],
+      [
+       "xpro",
+       "Cross Proc."
+      ],
+      [
+       "atrophy",
+       "Atrophy"
+      ],
+      [
+       "cuban",
+       "Cuban Neg"
+      ]
+     ]
+    }
+   }
+  },
+  {
    "id": "underwater_mono",
    "title": "Underwater picture mode in black and white",
    "description": "The Underwater picture mode becomes a second black-and-white mode (photo and live view), with its own name and settings. It comes out a little brighter than Monotone. Tint is fixed per build.",

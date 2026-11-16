@@ -9,6 +9,7 @@ in this program: the mods are edit lists (builder/mods.json) applied to your own
   python3 builder/em1iii_builder.py --list             list the mods
   python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
                                     [--stock FILE] [--frame-width 3] [--underwater-tint 0..4]
+                                    [--custom-looks ID,ID,ID,ID,ID,ID]   (see --looks)
                                                        no window ('--mods all' / '--mods none')
 
 Needs Python 3.8+ and the lz4 package (pip install lz4). The window needs tkinter.
@@ -104,7 +105,8 @@ def do_build(stock, pack, selected, version_text, out_dir, log, options=None):
         for m in pack["mods"]:
             if m["id"] in selected:
                 opts = (options or {}).get(m["id"], {})
-                extra = "".join(", %s %s" % (m["options"][k]["label"], v) for k, v in opts.items())
+                extra = "".join(", %s %s" % (m["options"][k]["label"],
+                                             dict(m["options"][k].get("choices", [])).get(v, v)) for k, v in opts.items())
                 fh.write("  - %s%s  (%s)\n" % (m["title"], extra, m["camera"]))
         if not selected:
             fh.write("  (none: stock 1.6)\n")
@@ -124,6 +126,12 @@ def cli(argv):
         return 1
     pack = modcore.load_pack(PACK)
     ids = [m["id"] for m in pack["mods"]]
+    if "--looks" in argv:
+        for m in pack["mods"]:
+            if m["id"] == "custom_looks":
+                for k, name in m["options"]["look1"]["choices"]:
+                    print("%-12s %s" % (k, name))
+        return 0
     if "--list" in argv:
         for m in pack["mods"]:
             req = ("  needs: " + ", ".join(m["requires"])) if m["requires"] else ""
@@ -157,6 +165,12 @@ def cli(argv):
             options["white_frame"] = {"width_pct": float(arg("--frame-width"))}
         if arg("--underwater-tint"):
             options["underwater_mono"] = {"tint": int(arg("--underwater-tint"))}
+        if arg("--custom-looks"):
+            ks = arg("--custom-looks").split(",")
+            if len(ks) != 6:
+                print("--custom-looks needs six look ids (see --looks)")
+                return 1
+            options["custom_looks"] = {"look%d" % (i + 1): k for i, k in enumerate(ks)}
         do_build(stock, pack, selected, version, arg("--out", os.getcwd()), print, options)
     except (modcore.BuildError, OSError) as e:
         print("error:", e)
@@ -255,8 +269,17 @@ def gui():
             of = ttk.Frame(inner)
             of.grid(row=2 * i, column=0, sticky="e", padx=(0, 8))
             for name, o in m["options"].items():
-                var = tk.StringVar(value=str(s.get("options", {}).get(m["id"], {}).get(name, o["default"])))
-                opt_vars[(m["id"], name)] = var
+                saved = s.get("options", {}).get(m["id"], {}).get(name, o["default"])
+                if "choices" in o:
+                    keys = [c[0] for c in o["choices"]]
+                    labels = [c[1] for c in o["choices"]]
+                    var = tk.StringVar(value=labels[keys.index(saved)] if saved in keys else labels[keys.index(o["default"])])
+                    opt_vars[(m["id"], name)] = (var, dict(zip(labels, keys)))
+                    ttk.Label(of, text=o["label"] + ":").pack(side="top", anchor="e")
+                    ttk.Combobox(of, textvariable=var, values=labels, state="readonly", width=16).pack(side="top", anchor="e", padx=4)
+                    continue
+                var = tk.StringVar(value=str(saved))
+                opt_vars[(m["id"], name)] = (var, None)
                 ttk.Label(of, text=o["label"] + ":").pack(side="left")
                 ttk.Spinbox(of, textvariable=var, from_=o["min"], to=o["max"], increment=o.get("step", 0.5), width=5).pack(side="left", padx=4)
 
@@ -337,8 +360,8 @@ def gui():
             return
         options = {}
         try:
-            for (mid, name), var in opt_vars.items():
-                options.setdefault(mid, {})[name] = float(var.get())
+            for (mid, name), (var, keymap) in opt_vars.items():
+                options.setdefault(mid, {})[name] = keymap[var.get()] if keymap else float(var.get())
         except ValueError:
             messagebox.showerror(APP, "Please enter a number for the options.")
             return
@@ -392,7 +415,7 @@ def main(argv):
     if "--help" in argv or "-h" in argv:
         print(__doc__)
         return 0
-    if "--cli" in argv or "--list" in argv:
+    if "--cli" in argv or "--list" in argv or "--looks" in argv:
         return cli(argv)
     try:
         import tkinter  # noqa: F401
