@@ -68,8 +68,6 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `stack16` | Focus stacking up to 16 frames | not tested |
 | `keyline_mono` | Key Line II in black and white | worked (1.5 build) |
 | `arrow_keys` | More arrow-key functions | not tested |
-| `hold_presets` | ISO / shutter / aperture hold presets on Myset 2/3/4 | toggle version worked; hold version not tested |
-| `preset_labels` | C2/C3/C4 shown as ISO / SS / Aperture (needs `hold_presets`) | not tested |
 | `hhrs_flash` | Flash in handheld High Res | worked (1.5 build) |
 | `hires_art` | Art filters in High Res (colour/tone only) | worked (1.5 build) |
 | `scp_menu` | SCP bottom-right cell (Button Function) opens the main menu, titled "Menu" | worked (1.6, 1.679) |
