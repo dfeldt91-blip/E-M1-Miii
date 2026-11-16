@@ -267,6 +267,8 @@ def unhide(main):
 GET = 0x602ca6a5          # core GUI-value getter (API getSetting 0x608a8ccf -> 0x608d57a2 -> here)
 BASE_SID = 0xd3
 MENU_ORDER = [7, 0, 1, 2, 5, 3]          # Custom base-mode GUI values in menu order -> looks 1..6
+MENU_NAMES = ["i-Enhance", "Vivid", "Natural", "Muted", "Portrait", "Monochrome"]
+DEFAULT6 = ["provia", "portra", "velvia", "cl_chrome", "kchrome", "cinestill"]
 SRC6 = """add -20,sp
 mov d0,(4,sp)
 mov d1,(8,sp)
@@ -391,6 +393,52 @@ def label_patch(m, keys):
     print("  Custom base-mode labels -> %s" % ", ".join(LOOKS[k]["name"] for k in keys))
 
 
+# SRC6 assembled at STUB (camera 1.691); data follows: gmap (8 B) at +0x8c, six 60-byte looks at +0x94,
+# names at NAMES (STUB + 0x200). For builds without binutils (the mod builder app); --looks builds
+# check that it still matches the assembler's output.
+CODE6 = bytes.fromhex(
+    "f8feec42044608430c4710cd55000004f1e05d1004f84030f4454144a50cc9f7580459085c0c5d10f8fe14ddfe923000"
+    "f060f8fefccd2b000004f8fe04f1e1f8220cfad0b002850cf061f87012f86102f870162104201829ffc9efdc44953000"
+    "f8fefc2cd300dd3f4c1f000004f8fe04a008c40300fcdc8c5a0d60f400853cf254fcdc945a0d60f150df0004")
+GMAP_OFF, LOOKS_OFF = 0x8c, 0x94
+
+
+def apply6(img, base, keys, labels=True):
+    """Six looks in Custom without an assembler. IMG: bytearray of the runtime image (blobs unpacked)
+    at runtime address BASE. Returns the look names in menu order."""
+    o = lambda a: a - base  # noqa: E731
+    check(len(keys) == 6 and all(k in LOOKS for k in keys), "six looks from the library are needed")
+    e = o(PM_LIST) + PM_ELEM * CUSTOM_IDX
+    check(struct.unpack_from("<I", img, e)[0] == 6, "Custom picture-mode entry differs")
+    check(bytes(img[o(SITE):o(SITE) + 5]) == SITE_STOCK, "colour builder call differs")
+    check(bytes(img[o(SITE) - len(SITE_PRE):o(SITE)]) == SITE_PRE, "colour selector differs")
+    check(set(img[o(STUB):o(NAMES) + 0x200]) == {0xff}, "stub area not free")
+    gmap = [0] * 8
+    for i, g in enumerate(MENU_ORDER):
+        gmap[g] = i
+    data = b""
+    for k in keys:
+        hues, lights, sats = look_values(LOOKS[k])
+        data += b"".join(struct.pack("<hh", h, l) for h, l in zip(hues, lights)) + bytes(s & 0xff for s in sats)
+    img[e:e + PM_ELEM] = struct.pack("<I", 11) + bytes(PM_ELEM - 4)
+    img[o(STUB):o(STUB) + len(CODE6)] = CODE6
+    img[o(STUB) + GMAP_OFF:o(STUB) + GMAP_OFF + 8] = bytes(gmap)
+    img[o(STUB) + LOOKS_OFF:o(STUB) + LOOKS_OFF + len(data)] = data
+    img[o(SITE):o(SITE) + 5] = JMP
+    if labels:
+        names, ptrs = b"", []
+        for k in keys:
+            ptrs.append(NAMES + len(names))
+            names += LOOKS[k]["name"].encode("ascii") + b"\0"
+        img[o(NAMES):o(NAMES) + len(names)] = names
+        for lst in LABEL_LISTS:
+            for i, (val, sid) in enumerate(LABEL_STOCK):
+                a = o(lst) + 12 * i
+                check(struct.unpack_from("<IHH", img, a) == (val, 4, sid), "base-mode label entry %#x differs" % (lst + 12 * i))
+                struct.pack_into("<IHHI", img, a, val, 1, EMPTY_UNIT, ptrs[MENU_ORDER.index(val)])
+    return [LOOKS[k]["name"] for k in keys]
+
+
 def patch6(main, keys):
     import patch_aspect
     check(len(keys) == 6 and all(k in LOOKS for k in keys), "--looks needs six looks from looks_library")
@@ -431,7 +479,14 @@ def main(argv):
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
     if "--looks" in argv:
-        new_main = patch6(blocks[0]["plain"], argv[argv.index("--looks") + 1].split(","))
+        keys6 = argv[argv.index("--looks") + 1].split(",")
+        new_main = patch6(blocks[0]["plain"], keys6)
+        if "--labels" in argv and "--diag-lists" not in argv:
+            import modcore
+            img = bytearray(modcore.runtime_image(blocks[0]["plain"]))
+            apply6(img, BASE, keys6)
+            check(modcore.rebuild_main(blocks[0]["plain"], img) == new_main,
+                  "pre-assembled six-look stub (CODE6) differs from the assembled one")
     else:
       new_main = patch(blocks[0]["plain"], hues, lights, sats)
     if "--look" in argv:

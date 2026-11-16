@@ -65,6 +65,13 @@ MODS = [
 
 # Generated at build time by the app (tools/modcore.py GENERATORS): id, title, description, status,
 # requires, options {name: {label, default, min, max}}
+def _look_options():
+    import patch_looks as pl
+    choices = [[k, v["name"]] for k, v in pl.LOOKS.items() if k != "portra400"]
+    return {"look%d" % (i + 1): {"label": "%s slot" % pl.MENU_NAMES[i], "default": pl.DEFAULT6[i], "choices": choices}
+            for i in range(6)}
+
+
 GENERATED = [
     ("white_frame", "Frame art effect: plain white border",
      "The Frame art effect becomes a clean white border instead of the grungy film edge.",
@@ -77,6 +84,13 @@ GENERATED = [
      "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value "
      "cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
      "Camera 1.666: XPAN in the SCP option lists; the main SCP cell shows a 17:9 label.", ["panorama"], {}),
+    ("custom_looks", "Film looks in Custom (Caduceus recipes)",
+     "Custom becomes a film-look mode: hue, saturation and lightness per colour from Caduceus's film "
+     "recipes (31 looks). Pick six here; on the camera choose between them in Picture Mode > Custom > "
+     "first item, whose list shows the look names. Other picture modes and menus are unchanged. "
+     "Custom's own base-mode look (Vivid, Natural...) is replaced; tone, grain and WB shift of the "
+     "recipes are not applied yet. Looks: Caduceus by cakelesscoder (Apache-2.0).",
+     "Worked on the camera (1.6 build 1.691).", [], _look_options()),
     ("underwater_mono", "Underwater picture mode in black and white",
      "The Underwater picture mode becomes a second black-and-white mode (photo and live view), "
      "with its own name and settings. It comes out a little brighter than Monotone. Tint is fixed "

@@ -215,7 +215,18 @@ def _uw_mono(img, plains, opts, log):
     log("    Underwater tint: %s" % um.TINT_NAMES[tint])
 
 
+def _custom_looks(img, plains, opts, log):
+    import patch_looks as pl
+    keys = [str(opts.get("look%d" % i, pl.DEFAULT6[i - 1])) for i in range(1, 7)]
+    try:
+        names = pl.apply6(img, BASE, keys)
+    except SystemExit as e:
+        raise BuildError(str(e))
+    log("    Custom looks: " + ", ".join("%s = %s" % (s, n) for s, n in zip(pl.MENU_NAMES, names)))
+
+
 GENERATORS = {
+    "custom_looks": _custom_looks,
     "underwater_mono": _uw_mono,
     "xpan_icon": _xpan,
     "white_frame": lambda img, plains, opts, log: _frame(img, plains, opts, log, False),
