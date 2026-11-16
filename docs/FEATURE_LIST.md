@@ -9,6 +9,7 @@ works on the camera.
 | 2 | **100 % JPEG quality** | A JPEG compression step better than Super Fine (as close to no compression as the encoder allows). | On hold: scaler found; needs sample JPEGs |
 | 3 | **C1–C4 remember photo / video** | Each C slot remembers whether the camera was in photo or video mode when it was saved; turning the dial to it opens that mode with its settings. (Stock already saves the movie settings, but Assign to Custom Mode is unavailable in movie mode and C positions are always photo.) | **Done**: worked on the camera (1.681); in the app as `cmode_video` |
 | 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Dropped by the owner (would delay startup). |
+| 5 | **Looks in Custom (Caduceus-style)** | Custom shoots a look picked on the computer (hue/saturation/lightness per colour, tone, later grain/split tone); later loaded from the card on the first half-press. | Stage 1 test 1.682 (`tools/patch_looks.py --test1`): colour engine hook |
 
 ## Leads
 
@@ -40,3 +41,7 @@ works on the camera.
   once at power-on, with a replaced message string. Findings: the OpnScr functions are only
   reached from the debug command shell (`sdk api ... drawImage`), not at power-on; timed GUI
   messages go through `0x60ed18cd` (e.g. 0xb37 at `0x60eb11fc`).
+- **5:** the E-M1 III colour engine is the E-P7's: selector `0x603def13..` checks key 11, `add 0x718,a3`,
+  COLOR table `0x60529b50`, builder call `0x603def9a` (`cd 8f fd f0 60`) -> `0x603ded29`; output 12 x 24 B
+  records at +688 (hue +18, lightness +22), control +976. Port of fishcu's PEN-F `image_parameters`
+  (Caduceus HSL). Custom (Picture Mode entry 6) -> pipeline 11 as in the 1.595 repurpose.
