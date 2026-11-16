@@ -53,6 +53,12 @@ base mode (setting 0xd3, GUI values i-Finish 7, Vivid 0, Natural 1, Muted 2, Por
 in that menu order = looks 1..6). The stub reads 0xd3 through the settings getter 0x602ca8c5
 (`call ..,[],4`, sid in d0, GUI value out) before and after the builder call and indexes a 6 x 60-byte
 table {12 x (hue, lightness) s16, 12 x s8 saturation}.
+Labels (Custom only): Custom's base-mode option lists (descriptors {0xd3, ..., list, 6}: 0x611b3f94 and
+0x611b6f38, GUI copies 0x61269588/0x6126c5a0 and 0x61277bfc/0x6127ac8c) hold 12-byte entries
+{u32 GUI value, u16 4, u16 string, u32 cond} with their own strings (@A0C6@Natural ... shared with
+other menus). Each entry becomes type 1 {value, 1, unit string, ASCII pointer} (the form menus use
+for "0.3 sec"), unit 0x1b (empty in every language), pointing at the look's name in base-section
+free space after the stub. Other menus keep their labels.
 """
 import hashlib
 import os
@@ -318,6 +324,43 @@ def looks6_src(keys):
     return s
 
 
+LABEL_LISTS = (0x611b3f94, 0x611b6f38, 0x61269588, 0x6126c5a0, 0x61277bfc, 0x6127ac8c)
+LABEL_STOCK = [(7, 0xca9), (0, 0xcbe), (1, 0xcbf), (2, 0xcaf), (5, 0xcc0), (3, 0x26a)]
+EMPTY_UNIT, NAMES = 0x1b, STUB + 0x200
+BLOB_B = 0x60c6c000
+
+
+def label_patch(m, keys):
+    import olycompress
+    names = b""
+    ptrs = []
+    for k in keys:
+        ptrs.append(NAMES + len(names))
+        names += LOOKS[k]["name"].encode("ascii") + b"\0"
+    check(len(names) <= 0x100 and set(m[off(NAMES):off(NAMES) + 0x100]) == {0xff}, "label area not free")
+    m[off(NAMES):off(NAMES) + len(names)] = names
+    csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
+    gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
+    check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
+          "blob B does not recompress identically")
+    for lst in LABEL_LISTS:
+        for i, (val, sid) in enumerate(LABEL_STOCK):
+            o = lst - BLOB_B + 12 * i
+            v, ty, s = struct.unpack_from("<IHH", gui, o)
+            check((v, ty, s) == (val, 4, sid), "base-mode label entry %#x differs" % (lst + 12 * i))
+            look = MENU_ORDER.index(val)
+            struct.pack_into("<IHHI", gui, o, val, 1, EMPTY_UNIT, ptrs[look])
+    c = olycompress.pack(bytes(gui))
+    check(len(c) <= (0x612f1000 - BASE) - (BLOB_B_OFF + 32), "recompressed blob B does not fit")
+    old_end = BLOB_B_OFF + 32 + csz
+    m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + len(c)] = c
+    if len(c) < csz:
+        m[BLOB_B_OFF + 32 + len(c):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(c))
+    struct.pack_into("<I", m, BLOB_B_OFF + 16, len(c))
+    check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "blob B does not decode to the edit")
+    print("  Custom base-mode labels -> %s" % ", ".join(LOOKS[k]["name"] for k in keys))
+
+
 def patch6(main, keys):
     import patch_aspect
     check(len(keys) == 6 and all(k in LOOKS for k in keys), "--looks needs six looks from looks_library")
@@ -332,6 +375,8 @@ def patch6(main, keys):
     m[e:e + PM_ELEM] = struct.pack("<I", 11) + bytes(PM_ELEM - 4)
     m[off(STUB):off(STUB) + len(stub)] = stub
     m[off(SITE):off(SITE) + 5] = JMP
+    if "--labels" in sys.argv:
+        label_patch(m, keys)
     print("  Custom -> Color Profile, 6 looks by base mode: %s (stub %d B)" % (", ".join(keys), len(stub)))
     return bytes(m)
 
