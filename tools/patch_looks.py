@@ -467,10 +467,13 @@ def patch6(main, keys):
 # 0x61271200/10, 0x6127f8ec/fc) point at new 31-entry type-1 lists (look names) plus each list's stock
 # trailing entry, n 6 -> 31. The stub (SRC31) maps the GUI value through a 89-byte table to a look.
 # Camera 1.692: 31 entries shown, but every new one showed/used the Natural position (Astia):
-# identical components. 1.693: new entries {2, filter 16+i}.
+# identical components. 1.693: new entries {2, filter 16+i}: names right, but choosing one restarted the
+# camera. 1.694: valid pairs (NEW_PAIRS, filters 0..8) and GUI values 4, 6, 8..30.
 REC_D3, REC_D3_STOCK = 0x604da7d0, bytes.fromhex("d3008000" "74cb4b60" "9ce84a60" "8001" "4000" "0006" "0000")
 D3_LIST, D3_ALT, D3_N = 0x604bcb74, 0x604ae89c, 6
-NEW_VALUES = list(range(64, 64 + 25))
+NEW_VALUES = [4, 6] + list(range(8, 31))       # GUI values inside the 0..63 range the tables cover (1.693: 64+ restarted)
+# valid {base mode, filter} pairs not used by the stock six ({7,0} {1,0} {2,0} {3,0} {4,0} {5,1}); filters 0..8
+NEW_PAIRS = [(b, f) for b in (7, 1, 2, 3, 4) for f in (1, 2, 3, 4)] + [(5, 0), (5, 2), (5, 3), (5, 4), (2, 5)]
 ALL_VALUES = MENU_ORDER + NEW_VALUES             # menu order: 6 stock positions, then the new ones
 DESC_REFS = (0x611bb9d4, 0x611bb9e4, 0x61271200, 0x61271210, 0x6127f8ec, 0x6127f8fc)   # address of the list pointer
 STUB31, GMAP31, NAMES31, LISTA31, LISTB31, ALT31 = 0x600d5800, 0x600d58a0, 0x600d5900, 0x600d5b00, 0x600d5c80, 0x600d5e00
@@ -503,7 +506,7 @@ def apply31(img, base, keys=None, gui_img=True):
     # the camera identifies a value by its components {MODE_CUSTOM_COLORTONE +0, MODE_CUSTOM_FILTER 0x703 +4}
     # (compound table 0x60469774), so each new entry needs its own filter value (1.692: plain copies all
     # read back as Natural); 0x703 has no validator and is ignored for a colour base mode.
-    extra = b"".join(nat[:4] + struct.pack("<I", 16 + i) + nat[8:] for i in range(n - D3_N))
+    extra = b"".join(struct.pack("<II", *NEW_PAIRS[i]) + nat[8:] for i in range(n - D3_N))
     img[o(VLIST31):o(VLIST31) + 64 * n] = stock + extra
     alt = list(struct.unpack_from("<%dI" % D3_N, img, o(D3_ALT)))
     check(alt == MENU_ORDER, "0xd3 GUI values differ")
