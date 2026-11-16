@@ -25,6 +25,13 @@ Camera 1.682: Custom colours shifted (live view and photo), other modes normal; 
 --test2 (colour map): hue 0; lightness -300 on record 0 and +300 on record 3, all others 0.
 On the E-P7 the records are wheel sectors in the order 2*(r%6)+r/6, so record 0 and record 3
 should be opposite colours (sectors 0 and 6).
+Camera 1.683: yellow darker, blue lighter -> record 0 = yellow (sector 0), record 3 = blue (sector 6),
+as the E-P7 order predicts.
+
+--test3 (wheel direction): lightness -300 on record 6 (sector 1) and +300 on record 9 (sector 7).
+If the wheel runs yellow -> green -> cyan -> blue, the darker colour is yellow-green and the brighter
+one blue-violet; if it runs yellow -> orange -> red -> magenta -> blue, orange darker and cyan-blue
+brighter.
 """
 import hashlib
 import os
@@ -93,7 +100,7 @@ def patch(main, hues, lights):
 
 
 def main(argv):
-    if len(argv) < 3 or not ("--test1" in argv or "--test2" in argv):
+    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3")):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
@@ -101,6 +108,9 @@ def main(argv):
     if "--test2" in argv:
         hues, lights = [0] * 12, [0] * 12
         lights[0], lights[3] = -300, 300
+    if "--test3" in argv:
+        hues, lights = [0] * 12, [0] * 12
+        lights[6], lights[9] = -300, 300
     fw = olyfw.read(src)
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
