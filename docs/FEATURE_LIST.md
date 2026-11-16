@@ -45,3 +45,6 @@ works on the camera.
   COLOR table `0x60529b50`, builder call `0x603def9a` (`cd 8f fd f0 60`) -> `0x603ded29`; output 12 x 24 B
   records at +688 (hue +18, lightness +22), control +976. Port of fishcu's PEN-F `image_parameters`
   (Caduceus HSL). Custom (Picture Mode entry 6) -> pipeline 11 as in the 1.595 repurpose.
+  Long list (all looks in Custom's base-mode list, `--all31`, 1.692-1.695): 31/19 entries shown with names,
+  but choosing any entry past the sixth restarts the camera (new values 64+, 4/6/8..30; filter pairs
+  16+, colour+filter, Monotone filters + other picture types all crash). Dropped; next: SD-card loader.

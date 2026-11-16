@@ -477,6 +477,8 @@ NEW_PAIRS = [(5, f) for f in (0, 2, 3, 4, 5, 6, 7, 8)] + [(8, 0), (9, 0), (10, 0
 # 1.694 (colour bases with filters 1..4) still restarted on choosing a new entry: stock never pairs a colour
 # base with a filter. 1.695: only Monotone + its filters and other real picture types with filter 0 (13 -> 19
 # looks in all).
+# Camera 1.695: still restarts on choosing any entry past the sixth. Long list dropped (cause not found:
+# not the values, not missing list entries, not the base/filter pairing).
 ALL_VALUES = MENU_ORDER + NEW_VALUES             # menu order: 6 stock positions, then the new ones
 DESC_REFS = (0x611bb9d4, 0x611bb9e4, 0x61271200, 0x61271210, 0x6127f8ec, 0x6127f8fc)   # address of the list pointer
 STUB31, GMAP31, NAMES31, LISTA31, LISTB31, ALT31 = 0x600d5800, 0x600d58a0, 0x600d5900, 0x600d5b00, 0x600d5c80, 0x600d5e00
