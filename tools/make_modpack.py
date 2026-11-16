@@ -54,6 +54,10 @@ MODS = [
      "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the colour and tone, "
      "not the effect pass (no soft focus, frames or edges).",
      "Worked on the camera (1.5 build), colour only.", []),
+    ("scp_menu", "patch_scp_menu.py", [], "SCP button cell opens the main menu",
+     "The bottom-right cell of the Super Control Panel (Button Function) opens the main menu instead, "
+     "like pressing MENU on the SCP.",
+     "Menu: worked on the camera (1.6 build 1.675); the \"Menu\" title is new in 1.679, not tested yet.", []),
 ]
 
 

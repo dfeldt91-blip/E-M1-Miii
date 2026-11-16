@@ -14,6 +14,11 @@ MODE_CUSTOM_SW_SCP_STILL (0x563), which returns (4, 9) = the Button Function scr
 replaces the body of that case (from 0x60e7c208, right after `cmp 0x563,d1; bne`) with what MENU
 does in the SCP: post (18, 7), then return 0x104 through the handler's common exit 0x60e7c342
 (d2 << 8 | a3). The movie cell (0x1b5, handled in another state) is unchanged.
+Camera 1.675/1.676: the cell opens the main menu.
+Title: the SCP cell title table (pairs {u32 string, u32 n}, e.g. 0x611f0ff8 "@A003@AF Mode" 6,
+"@A003@WB" 7, "@A003@Kelvin" 28) has {0xc73 "@A003@Button Function", 12} at 0x611f1010 -> "Menu"
+(0xa7). The Custom Menu item (setting 0xd1a) uses its own records with 0xc73 and is unchanged.
+Test 1.679: does the SCP title change?
 """
 import hashlib
 import os
@@ -30,6 +35,7 @@ SITE, CASE_END = 0x60e7c208, 0x60e7c274
 STOCK_CMP = bytes.fromhex("fac96305c96e")          # cmp 0x563,d1 ; bne 0x60e7c274 at 0x60e7c202
 STOCK_MENU = bytes.fromhex("f8fefc80128507dd99900500e0302c0401df0004")   # SCP MENU handler 0x60e7c352
 MENU_HANDLER, EXIT, POST = 0x60e7c352, 0x60e7c342, 0x60ed53f2
+TITLE, TITLE_STOCK, TITLE_NEW = 0x611f1010, (0xc73, 12), 0xa7   # "Menu"
 SRC = """mov 18,d0
 mov 7,d1
 call post,[d2,d3,a2],48
@@ -60,6 +66,8 @@ def patch(main):
     code = patch_aspect.assemble_syms(SRC, SITE, {"post": POST, "exit": EXIT})
     check(SITE + len(code) <= CASE_END, "stub too long")
     gui[g(SITE):g(SITE) + len(code)] = code
+    check(struct.unpack_from("<2I", gui, g(TITLE)) == TITLE_STOCK, "SCP title entry differs")
+    struct.pack_into("<I", gui, g(TITLE), TITLE_NEW)
     c = olycompress.pack(bytes(gui))
     check(len(c) <= off(BLOB_END) - (BLOB_B_OFF + 32), "recompressed blob does not fit")
     old_end = BLOB_B_OFF + 32 + csz
