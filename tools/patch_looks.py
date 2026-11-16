@@ -40,6 +40,12 @@ sim/recipes (sector_order). Record r = sector 2*(r%6)+r/6, as on the E-P7.
 fishcu's tables) and saturation per sector (-5..5): the builder reads one s8 per sector, in sector
 order, from the request at a1 (+0x718); the stub writes the look's values there before the call.
 Tone, contrast, WB shift, grain and bloom are not applied yet.
+Camera 1.685 (portra): Custom clearly muted, live view = JPEG.
+
+--test4 (unhide Color Profile, diagnostic, with --look): menus list Picture Mode values the API
+canSettingValue (0x10208 -> 0x608d58ce(sid d0, GUI value d1); for 111 a class check 0x608d784a, then
+the core check 0x602ca813) accepts. The hook answers yes for (0x6f, 54..56) (Color Profile 1-3), and
+the 0x6f validator gets a 27th entry {11, 0} -> GUI 54 (as DIAL_NON's), list/alt copied to free space.
 """
 import hashlib
 import os
@@ -171,8 +177,68 @@ def patch(main, hues, lights, sats=(0,) * 12):
     return bytes(m)
 
 
+BLOB_A, BLOB_A_OFF, BLOB_B_OFF = 0x60803000, 0x7e1fe0, 0xc4afe0
+CAN_SITE, CAN_STOCK, CAN_BACK = 0x608d58d3, bytes.fromhex("928386aaff"), 0x608d58d8
+REC, REC_STOCK = 0x604da7bc, bytes.fromhex("6f008000f4c44b6034e84a608006400000060000")
+PM_ALT, NON_LIST, NON_ALT = 0x604ae834, 0x604c3df4, 0x604aefc4
+NEW_LIST, NEW_ALT, CAN_STUB = 0x600d62e0, 0x600d5b00, 0x600d5b80
+CAN_SRC = """cmp 0x6f,d0
+bne 1f
+cmp 54,d1
+bcs 1f
+cmp 57,d1
+bcc 1f
+mov 1,d0
+ret [d2,d3,a2],16
+1:
+mov a0,a2
+mov d0,d3
+mov d1,d2
+cmp -1,d2
+jmp back"""
+
+
+def unhide(main):
+    import patch_aspect
+    import olycompress
+    m = bytearray(main)
+    check(bytes(m[off(REC):off(REC) + 20]) == REC_STOCK, "0x6f validator record differs")
+    n = 26
+    lst = bytes(m[off(PM_LIST):off(PM_LIST) + PM_ELEM * n])
+    alt = bytes(m[off(PM_ALT):off(PM_ALT) + 4 * n])
+    non = [bytes(m[off(NON_LIST) + PM_ELEM * k:off(NON_LIST) + PM_ELEM * (k + 1)]) for k in range(n)]
+    non_alt = struct.unpack_from("<%dI" % n, m, off(NON_ALT))
+    k11 = [k for k, e in enumerate(non) if struct.unpack_from("<I", e)[0] == 11]
+    check(len(k11) == 1 and non_alt[k11[0]] == 54, "DIAL_NON Color Profile entry differs")
+    for a, size in ((NEW_LIST, PM_ELEM * (n + 1)), (NEW_ALT, 4 * (n + 1)), (CAN_STUB, 0x40)):
+        check(set(m[off(a):off(a) + size]) == {0xff}, "area %#x not free" % a)
+    m[off(NEW_LIST):off(NEW_LIST) + PM_ELEM * (n + 1)] = lst + non[k11[0]]
+    m[off(NEW_ALT):off(NEW_ALT) + 4 * (n + 1)] = alt + struct.pack("<I", 54)
+    struct.pack_into("<II", m, off(REC) + 4, NEW_LIST, NEW_ALT)
+    struct.pack_into("<H", m, off(REC) + 12, PM_ELEM * (n + 1))
+    stub = patch_aspect.assemble_syms(CAN_SRC, CAN_STUB, {"back": CAN_BACK})
+    check(len(stub) <= 0x40, "stub too long")
+    m[off(CAN_STUB):off(CAN_STUB) + len(stub)] = stub
+    acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
+    a = bytearray(olycompress.unpack(m, BLOB_A_OFF))
+    check(olycompress.pack(bytes(a)) == bytes(m[BLOB_A_OFF + 32:BLOB_A_OFF + 32 + acsz]),
+          "blob A does not recompress identically")
+    check(bytes(a[CAN_SITE - BLOB_A:CAN_SITE - BLOB_A + 5]) == CAN_STOCK, "canSettingValue entry differs")
+    a[CAN_SITE - BLOB_A:CAN_SITE - BLOB_A + 5] = b"\xdc" + struct.pack("<i", CAN_STUB - CAN_SITE)
+    ca = olycompress.pack(bytes(a))
+    check(len(ca) <= BLOB_B_OFF - (BLOB_A_OFF + 32), "blob A does not fit")
+    old_end = BLOB_A_OFF + 32 + acsz
+    m[BLOB_A_OFF + 32:BLOB_A_OFF + 32 + len(ca)] = ca
+    if len(ca) < acsz:
+        m[BLOB_A_OFF + 32 + len(ca):old_end] = b"\xff" * (old_end - BLOB_A_OFF - 32 - len(ca))
+    struct.pack_into("<I", m, BLOB_A_OFF + 16, len(ca))
+    check(olycompress.unpack(m, BLOB_A_OFF) == bytes(a), "blob A does not decode to the edit")
+    print("  unhide: 0x6f list +{11,0}->54; canSettingValue hook %#x -> %#x (%d B)" % (CAN_SITE, CAN_STUB, len(stub)))
+    return bytes(m)
+
+
 def main(argv):
-    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look")):
+    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look", "--test4")):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
@@ -195,6 +261,8 @@ def main(argv):
         alt = bytearray(blocks[0]["plain"])
         patch_at(alt, BASE, key)
         check(bytes(alt) == new_main, "pre-assembled stub (CODE) differs from the assembled one")
+    if "--test4" in argv:
+        new_main = unhide(new_main)
     ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
     out = bytearray()
     for i, b in enumerate(blocks):
