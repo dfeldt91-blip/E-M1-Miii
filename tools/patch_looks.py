@@ -110,11 +110,8 @@ def hl_table(hues, lights, sats):
 HUE_LUT = [7000, 6000, 5000, 4000, 3000, 2000, 1000, 0, -1000, -2000, -3000, -4000, -5000, -6000, -7000]
 LIGHT_LUT = [-300, -250, -200, -150, -100, -50, -25, 0, 25, 50, 100, 150, 200, 250, 300]
 SECTOR = [2 * (r % 6) + r // 6 for r in range(12)]
-LOOKS = {   # caduceus-ep7 sim/recipes/library_v2.json
-    "portra400": {"sat": [-1, 0, 0, -1, -1, -2, -2, -2, -2, -3, -3, -2],
-                  "hue": [1, 1, 0, 0, 0, 0, 1, 0, 0, 0, -2, -2],
-                  "light": [1, 1, 1, 0, 0, 0, -1, 0, 0, 0, 0, 0]},
-}
+from looks_library import LOOKS  # noqa: E402  (Caduceus recipes, Apache-2.0)
+LOOKS = dict(LOOKS, portra400=LOOKS["portra"])
 
 
 def look_values(look):
@@ -122,6 +119,36 @@ def look_values(look):
     lights = [LIGHT_LUT[max(-7, min(7, look["light"][SECTOR[r]])) + 7] for r in range(12)]
     sats = [max(-5, min(5, s)) for s in look["sat"]]          # sector order, read by the builder
     return hues, lights, sats
+
+
+# The stub assembled from SRC at STUB (for builds without binutils, e.g. the mod builder app);
+# --look builds check that it still matches. Data follows: 12 x {hue, lightness} s16 at +0x50
+# (label hl), 12 s8 saturations at +0x80 (label sat).
+CODE = bytes.fromhex(
+    "f8fef4420046044308fcdc805a0d6004f404f44544a50cc9f9580059045c08f8fe0cdd07933000f060"
+    "f8220cfad0b002fcdd505a0d60850cf061f87012f86102f870162104201829ffc9efdc54953000")
+JMP = bytes.fromhex("dc666acfff")       # jmp STUB at SITE
+HL_OFF, SAT_OFF = 0x50, 0x80
+
+
+def patch_at(m, base, key):
+    """Write look KEY (looks_library) into M (bytearray holding the base section at runtime address
+    BASE) without an assembler. Returns the look's name."""
+    o = lambda a: a - base  # noqa: E731
+    check(key in LOOKS, "unknown look %r" % key)
+    hues, lights, sats = look_values(LOOKS[key])
+    e = o(PM_LIST) + PM_ELEM * CUSTOM_IDX
+    check(struct.unpack_from("<I", m, e)[0] == 6, "Custom picture-mode entry differs")
+    check(bytes(m[o(SITE):o(SITE) + 5]) == SITE_STOCK, "colour builder call differs")
+    check(bytes(m[o(SITE) - len(SITE_PRE):o(SITE)]) == SITE_PRE, "colour selector differs")
+    check(set(m[o(STUB):o(STUB) + 0x100]) == {0xff}, "stub area not free")
+    data = b"".join(struct.pack("<hh", h, l) for h, l in zip(hues, lights))
+    m[e:e + PM_ELEM] = struct.pack("<I", 11) + bytes(PM_ELEM - 4)
+    m[o(STUB):o(STUB) + len(CODE)] = CODE
+    m[o(STUB) + HL_OFF:o(STUB) + HL_OFF + 48] = data
+    m[o(STUB) + SAT_OFF:o(STUB) + SAT_OFF + 12] = bytes(s & 0xff for s in sats)
+    m[o(SITE):o(SITE) + 5] = JMP
+    return LOOKS[key]["name"]
 
 
 def patch(main, hues, lights, sats=(0,) * 12):
@@ -155,7 +182,8 @@ def main(argv):
         lights[0], lights[3] = -300, 300
     sats = [0] * 12
     if "--look" in argv:
-        hues, lights, sats = look_values(LOOKS[argv[argv.index("--look") + 1]])
+        key = argv[argv.index("--look") + 1]
+        hues, lights, sats = look_values(LOOKS[key])
     if "--test3" in argv:
         hues, lights = [0] * 12, [0] * 12
         lights[6], lights[9] = -300, 300
@@ -163,6 +191,10 @@ def main(argv):
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
     new_main = patch(blocks[0]["plain"], hues, lights, sats)
+    if "--look" in argv:
+        alt = bytearray(blocks[0]["plain"])
+        patch_at(alt, BASE, key)
+        check(bytes(alt) == new_main, "pre-assembled stub (CODE) differs from the assembled one")
     ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
     out = bytearray()
     for i, b in enumerate(blocks):
