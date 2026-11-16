@@ -27,7 +27,14 @@ works on the camera.
   scenes; the E-P7 measured Super Fine at Sf 0-3 (all 1s) for most files, 5-11 for detailed ones.
   Settings: compression per quality slot `MODE_SHQ_Q/HQ_Q/SQ1_Q/SQ2_Q` (0xb-0xe, values 0..2); UI
   strings SF/F/N/B. Open: where Sf is chosen per compression, and the rate control.
-- **3:** Custom Mode save/recall (Myset) copies a list of setting ids; the movie settings are
-  probably left out of that list. Find the list and add them.
+- **3:** solved by `tools/patch_cmode_video.py`: the menu's changeable check `0x608d522f` greyed
+  out Reset / Custom Modes (0xd1d), Assign (0x13df) and Recall (0x13e0) in movie mode; with it
+  answering yes, the stock save/recall keeps the movie exposure mode (camera 1.681).
 - **4:** stock has Copyright Settings (`MODE_COPYRIGHT_ONOFF`, artist/copyright names in EXIF).
   The startup text needs a string the app writes into the firmware and a place to draw it at power-on.
+  Lead: an API module `LogoScreen` (`drawImage`, `existImage`, `regist`, `unregist`; name table
+  `0x602633cc`, API source `OlyApiLogoScreen.cpp`, getter `0x608a16b0`, vtable `0x60b69df8`,
+  wrappers around `0x608a1646` calling `0x608c3d30` / `0x608c3d3c`) and callback names
+  `CBC_DRAW_OPENING_IMAGE` / `CBS_END_LOGO_IMAGE`: a power-on opening image may exist. If it does,
+  the app can render the owner's text into that image (Pillow). Fallback: a text message posted
+  once at power-on, with a replaced message string.
