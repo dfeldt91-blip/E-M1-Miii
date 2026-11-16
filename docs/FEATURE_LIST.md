@@ -16,8 +16,17 @@ works on the camera.
   (block 2 names). The image parameter builder (`0x60418d51..`, docs/FINDINGS.md) turns them into
   the sharpening strength; −2 needs to map to zero there. Caduceus E-P7 docs/SHARPENING_OFF.md did
   the same on the E-P7.
-- **2:** `MODE_QUALITY`, `MODE_QUALITY_SET1..4_P` (the four quality presets: size + compression).
-  Find the compression table (SF/F/N/B → quantisation scale) and add or change a step.
+- **2:** quantisation scaler `0x603e4cb8..0x603e4d1d` (same as the E-P7's `0x603b6120`, caduceus
+  docs/JPEG_QUALITY.md): `Sf` = job +20 (u16, `usJpegSf`; 0 -> caller default in d2), cached at
+  `0xa26e00ec`; for luma and chroma, entry = min(255, (base x Sf + 128) >> 8), no lower clamp, into
+  a stack table that then goes to the JPEG engine (`0x99901200..`) and the DQT header
+  (`0x60328eb4`, template `ff db 00 c5` at `0x604e94d0`). Base tables (pointers at `0x6053eb3c`):
+  luma `0x6053eb4c`, chroma `0x6053eb8c` = the JPEG Annex K Q50 tables, transposed. All-1 tables
+  (true 100 %) need a min-1 clamp (base 10..121: no single Sf gives all 1s). The job also has
+  `ulJpegTargetSize` / `ulJpegCodeSize` (+12/+16), so a rate control probably raises Sf for detailed
+  scenes; the E-P7 measured Super Fine at Sf 0-3 (all 1s) for most files, 5-11 for detailed ones.
+  Settings: compression per quality slot `MODE_SHQ_Q/HQ_Q/SQ1_Q/SQ2_Q` (0xb-0xe, values 0..2); UI
+  strings SF/F/N/B. Open: where Sf is chosen per compression, and the rate control.
 - **3:** Custom Mode save/recall (Myset) copies a list of setting ids; the movie settings are
   probably left out of that list. Find the list and add them.
 - **4:** stock has Copyright Settings (`MODE_COPYRIGHT_ONOFF`, artist/copyright names in EXIF).
