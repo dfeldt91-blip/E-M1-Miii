@@ -65,6 +65,11 @@ the GUI value (fell through to look 2), and the menu draws plain-text names from
 reads 0xd3 through the API), and the plain-text lists 0x611ec244, 0x611ecc28, 0x611ed420
 ({7 i-Enhance 0x91, 0 Vivid 0x679, 1 Natural 0x67a, 2 Muted 0xb7, 5 Portrait 0x67d, 3 Monochrome
 0xb0, 6 Custom 0x5f}; first six relabelled, Custom kept) as well.
+Camera 1.689: the names showed in the SCP Picture Mode options (wrong) and in Custom's settings list;
+the main menu's Picture Mode screen kept the stock names. The three text lists are whole SCP Picture
+Mode lists (descriptors at 0x611ef13c/0x611ef1a4 n 0x44, 0x611ef2a8 n 0x40, 0x611efc34 n 0x2a).
+--diag-lists: label list k's names "k <name>" (k = 1, 2, 3 in TEXT_LISTS order) to see which list
+Custom's settings use.
 """
 import hashlib
 import os
@@ -347,19 +352,29 @@ def label_patch(m, keys):
     for k in keys:
         ptrs.append(NAMES + len(names))
         names += LOOKS[k]["name"].encode("ascii") + b"\0"
-    check(len(names) <= 0x100 and set(m[off(NAMES):off(NAMES) + 0x100]) == {0xff}, "label area not free")
+    check(set(m[off(NAMES):off(NAMES) + 0x200]) == {0xff}, "label area not free")
     m[off(NAMES):off(NAMES) + len(names)] = names
     csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
     gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
     check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
           "blob B does not recompress identically")
-    for lst, stock in [(x, LABEL_STOCK) for x in LABEL_LISTS] + [(x, TEXT_STOCK) for x in TEXT_LISTS]:
+    diag = "--diag-lists" in sys.argv
+    if diag:
+        for k in range(3):
+            for j, key in enumerate(keys):
+                ptrs.append(NAMES + len(names))
+                names += ("%d %s" % (k + 1, LOOKS[key]["name"])).encode("ascii") + b"\0"
+        check(len(names) <= 0x200, "labels too long")
+        m[off(NAMES):off(NAMES) + len(names)] = names
+    lists = [(x, LABEL_STOCK, 0) for x in LABEL_LISTS] + [(x, TEXT_STOCK, k + 1) for k, x in enumerate(TEXT_LISTS)]
+    for lst, stock, k in lists:
         for i, (val, sid) in enumerate(stock):
             o = lst - BLOB_B + 12 * i
             v, ty, s = struct.unpack_from("<IHH", gui, o)
             check((v, ty, s) == (val, 4, sid), "base-mode label entry %#x differs" % (lst + 12 * i))
             look = MENU_ORDER.index(val)
-            struct.pack_into("<IHHI", gui, o, val, 1, EMPTY_UNIT, ptrs[look])
+            ptr = ptrs[6 * k + look] if (diag and k) else ptrs[look]
+            struct.pack_into("<IHHI", gui, o, val, 1, EMPTY_UNIT, ptr)
     c = olycompress.pack(bytes(gui))
     check(len(c) <= (0x612f1000 - BASE) - (BLOB_B_OFF + 32), "recompressed blob B does not fit")
     old_end = BLOB_B_OFF + 32 + csz
