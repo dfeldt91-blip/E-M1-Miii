@@ -30,6 +30,17 @@ After a build, Finder opens with `E1399999.BIN` selected.
 
 To build the app yourself on a Mac: `bash builder/mac/build_app.sh` (needs Python 3 from python.org).
 
+### Universal Mac app and building it yourself
+
+`E-M1-III-Mod-Builder-mac-universal.zip` (on releases from 1.11) runs natively on Apple silicon and Intel
+Macs. It is built on Intel Macs (`builder/mac/build_universal.sh`: python.org's universal2 Python,
+the arm64 and x86_64 Pillow/lz4 wheels fused with `delocate-merge`, PyInstaller `--target-arch
+universal2`), because GitHub's Apple-silicon build machines are often unavailable.
+
+To build it on your own Mac instead: download this repository (Code > Download ZIP), unzip it and
+double-click `builder/mac/Build Mod Builder app (Mac).command` (first time: right-click > Open). It
+installs python.org's Python 3.12 if needed (asks for your password) and leaves the app in `dist`.
+
 ## Windows app
 
 From the same release page, download `E-M1-III-Mod-Builder-windows.zip`, unzip it and run

@@ -57,6 +57,30 @@ jobs:
           path: dist/E-M1-III-Mod-Builder-mac.zip
           if-no-files-found: error
 
+  mac-universal:
+    # Apple silicon + Intel in one app, built on Intel Macs (GitHub's Apple-silicon Macs are often not
+    # acquired); two Intel pools at once, the release uses the first that built
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15-intel, macos-26-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: false
+      - name: Build the universal app
+        run: bash builder/mac/build_universal.sh
+      - name: Check that the app starts its command-line mode
+        run: |
+          "dist/E-M1 III Mod Builder.app/Contents/MacOS/E-M1 III Mod Builder" --list
+      - uses: actions/upload-artifact@v7
+        with:
+          name: E-M1-III-Mod-Builder-mac-universal-${{ matrix.runner }}
+          path: dist/E-M1-III-Mod-Builder-mac-universal.zip
+          if-no-files-found: error
+
   windows-app:
     continue-on-error: true
     runs-on: windows-latest
@@ -90,7 +114,7 @@ jobs:
     # A manual run with release_tag set publishes both app zips as a GitHub Release
     # (the release action creates the tag on the commit that was built).
     if: always() && github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
-    needs: [mac-app, windows-app]
+    needs: [mac-app, mac-universal, windows-app]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -105,6 +129,8 @@ jobs:
             f=$(ls artifacts/E-M1-III-Mod-Builder-mac-$a-*/E-M1-III-Mod-Builder-mac.zip 2>/dev/null | head -1 || true)
             if [ -n "$f" ]; then cp "$f" out/E-M1-III-Mod-Builder-mac-$a.zip; echo "$a from $f"; else echo "no $a build"; fi
           done
+          f=$(ls artifacts/E-M1-III-Mod-Builder-mac-universal-*/E-M1-III-Mod-Builder-mac-universal.zip 2>/dev/null | head -1 || true)
+          if [ -n "$f" ]; then cp "$f" out/E-M1-III-Mod-Builder-mac-universal.zip; echo "universal from $f"; else echo "no universal build"; fi
           f=artifacts/E-M1-III-Mod-Builder-windows/E-M1-III-Mod-Builder-windows.zip
           if [ -f "$f" ]; then cp "$f" out/; else echo "no windows build"; fi
           ls -la out
@@ -118,7 +144,7 @@ jobs:
           body: |
             Mac app that downloads the official E-M1 Mark III firmware 1.6 from OM, lets you pick mods and writes E1399999.BIN.
 
-            **Download:** `E-M1-III-Mod-Builder-mac-apple-silicon.zip` for M1/M2/M3/M4 Macs, `E-M1-III-Mod-Builder-mac-intel.zip` for Intel Macs. If only the Intel file is listed, it also runs on M1-M4 Macs (macOS installs Rosetta when asked). **Windows:** `E-M1-III-Mod-Builder-windows.zip` (one .exe; Windows SmartScreen may warn because it is unsigned: More info, Run anyway).
+            **Download:** `E-M1-III-Mod-Builder-mac-universal.zip` runs natively on every Mac (Apple silicon and Intel). Also: `E-M1-III-Mod-Builder-mac-apple-silicon.zip` for M1/M2/M3/M4 Macs, `E-M1-III-Mod-Builder-mac-intel.zip` for Intel Macs. If only the Intel file is listed, it also runs on M1-M4 Macs (macOS installs Rosetta when asked). **Windows:** `E-M1-III-Mod-Builder-windows.zip` (one .exe; Windows SmartScreen may warn because it is unsigned: More info, Run anyway).
 
             **First start:** the app is not signed by Apple. Right-click it, choose Open, then Open again. If macOS still blocks it: System Settings, Privacy & Security, Open Anyway.
 
