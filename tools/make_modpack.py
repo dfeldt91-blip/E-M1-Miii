@@ -71,6 +71,12 @@ GENERATED = [
      "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value "
      "cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
      "Camera 1.666: XPAN in the SCP option lists; the main SCP cell shows a 17:9 label.", ["panorama"], {}),
+    ("underwater_mono", "Underwater picture mode in black and white",
+     "The Underwater picture mode becomes a second black-and-white mode (photo and live view), "
+     "with its own name and settings. It comes out a little brighter than Monotone. Tint is fixed "
+     "per build.",
+     "Worked on the camera (1.6 build 1.674, neutral).", [],
+     {"tint": {"label": "Tint (0 neutral, 1 sepia, 2 blue, 3 purple, 4 green)", "default": 0, "min": 0, "max": 4, "step": 1}}),
 ]
 
 

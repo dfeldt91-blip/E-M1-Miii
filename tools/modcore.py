@@ -205,7 +205,18 @@ def _xpan(img, plains, opts, log):
         raise BuildError(str(e))
 
 
+def _uw_mono(img, plains, opts, log):
+    import patch_underwater_mono as um
+    tint = int(round(float(opts.get("tint", 0))))
+    try:
+        um.patch_at(img, BASE, tint)
+    except SystemExit as e:
+        raise BuildError(str(e))
+    log("    Underwater tint: %s" % um.TINT_NAMES[tint])
+
+
 GENERATORS = {
+    "underwater_mono": _uw_mono,
     "xpan_icon": _xpan,
     "white_frame": lambda img, plains, opts, log: _frame(img, plains, opts, log, False),
     "white_frame_panorama": lambda img, plains, opts, log: _frame(img, plains, opts, log, True),

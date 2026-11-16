@@ -1126,6 +1126,23 @@
    ],
    "generator": "xpan_icon",
    "options": {}
+  },
+  {
+   "id": "underwater_mono",
+   "title": "Underwater picture mode in black and white",
+   "description": "The Underwater picture mode becomes a second black-and-white mode (photo and live view), with its own name and settings. It comes out a little brighter than Monotone. Tint is fixed per build.",
+   "camera": "Worked on the camera (1.6 build 1.674, neutral).",
+   "requires": [],
+   "generator": "underwater_mono",
+   "options": {
+    "tint": {
+     "label": "Tint (0 neutral, 1 sepia, 2 blue, 3 purple, 4 green)",
+     "default": 0,
+     "min": 0,
+     "max": 4,
+     "step": 1
+    }
+   }
   }
  ]
 }

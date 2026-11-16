@@ -8,7 +8,7 @@ in this program: the mods are edit lists (builder/mods.json) applied to your own
   python3 builder/em1iii_builder.py                    window
   python3 builder/em1iii_builder.py --list             list the mods
   python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
-                                    [--stock FILE] [--frame-width 3]
+                                    [--stock FILE] [--frame-width 3] [--underwater-tint 0..4]
                                                        no window ('--mods all' / '--mods none')
 
 Needs Python 3.8+ and the lz4 package (pip install lz4). The window needs tkinter.
@@ -158,6 +158,8 @@ def cli(argv):
         options = {}
         if arg("--frame-width"):
             options["white_frame"] = {"width_pct": float(arg("--frame-width"))}
+        if arg("--underwater-tint"):
+            options["underwater_mono"] = {"tint": int(arg("--underwater-tint"))}
         do_build(stock, pack, selected, version, arg("--out", os.getcwd()), print, options)
     except (modcore.BuildError, OSError) as e:
         print("error:", e)
@@ -255,7 +257,7 @@ def gui():
                 var = tk.StringVar(value=str(s.get("options", {}).get(m["id"], {}).get(name, o["default"])))
                 opt_vars[(m["id"], name)] = var
                 ttk.Label(of, text=o["label"] + ":").pack(side="left")
-                ttk.Spinbox(of, textvariable=var, from_=o["min"], to=o["max"], increment=0.5, width=5).pack(side="left", padx=4)
+                ttk.Spinbox(of, textvariable=var, from_=o["min"], to=o["max"], increment=o.get("step", 0.5), width=5).pack(side="left", padx=4)
 
     def set_all(val):
         for v in vars_.values():

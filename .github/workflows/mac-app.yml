@@ -15,6 +15,7 @@ on:
       - "tools/olycompress.py"
       - "tools/patch_frame_white.py"
       - "tools/patch_xpan_icon.py"
+      - "tools/patch_underwater_mono.py"
       - ".github/workflows/mac-app.yml"
 
 jobs:
