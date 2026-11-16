@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: macos-latest      # Apple silicon
+          - runner: macos-14          # Apple silicon (macos-latest arm64 had no free runners, 2026-11-16)
             arch: apple-silicon
           - runner: macos-15-intel    # Intel Macs
             arch: intel
