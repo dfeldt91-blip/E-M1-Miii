@@ -1047,6 +1047,26 @@
    ]
   },
   {
+   "id": "cmode_video",
+   "title": "Custom Modes C1-C4 in video",
+   "description": "Assign to Custom Mode also works with the dial on movie. A C slot saved there opens in video mode with its movie settings; a slot saved in a photo mode stays photo.",
+   "camera": "Worked on the camera (1.6 build 1.681).",
+   "requires": [],
+   "stock_sha256": "289346093f880be275b957284fc44fd6fe66cf2a722f39c213d94b9f7e257bc5",
+   "edits": [
+    [
+     0,
+     "0x600d6a80",
+     "fac81d0dc81afac8df13c814fac8e013c80ef1e20cfadae513dc9de77f008001dfe01c"
+    ],
+    [
+     0,
+     "0x608d522f",
+     "dc511880ffcbcb"
+    ]
+   ]
+  },
+  {
    "id": "white_frame",
    "title": "Frame art effect: plain white border",
    "description": "The Frame art effect becomes a clean white border instead of the grungy film edge.",

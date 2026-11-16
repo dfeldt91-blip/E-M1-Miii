@@ -56,6 +56,10 @@ MODS = [
      "Sharpness becomes a straight scale of the stock +2 strength: -2 off, -1 25 %, 0 50 %, +1 75 %, "
      "+2 100 %. Stock -2 still sharpens. Flat and Log video keep their stock sharpening.",
      "Worked on the camera (1.6 build 1.680).", []),
+    ("cmode_video", "patch_cmode_video.py", [], "Custom Modes C1-C4 in video",
+     "Assign to Custom Mode also works with the dial on movie. A C slot saved there opens in video "
+     "mode with its movie settings; a slot saved in a photo mode stays photo.",
+     "Worked on the camera (1.6 build 1.681).", []),
 ]
 
 

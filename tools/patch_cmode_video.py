@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Custom Modes C1-C4 remember photo / video (EXPERIMENTAL, E-M1 Mark III 1.6). Stage 1: menu.
 
-  MN10300_BIN=... python3 tools/patch_cmode_video.py IN.BIN OUT.BIN --test1 [--version 0x1681]
+  MN10300_BIN=... python3 tools/patch_cmode_video.py IN.BIN OUT.BIN [--test1] [--version 0x1681]
 
 Stock: C1-C4 already save and recall the movie settings, but "Assign to Custom Mode" cannot be used
 while the mode dial is on movie, and a C position is always a photo mode.
@@ -12,8 +12,9 @@ MODE_CAMERA (movie exposure modes 76, 77, 89, 90 = MODE_EXPOSE_MOVIE_SELECT); co
 0x602caa2c (mcon_if_camera_set).
 
 --test1 (diagnostic): the menu's "is this setting changeable" check 0x608d522f (blob A; nonzero =
-yes) answers yes for 0xd1d, 0x13df and 0x13e0. Shows whether this check is what greys out
-Assign to Custom Mode in movie mode.
+yes) answers yes for 0xd1d, 0x13df and 0x13e0. Camera 1.681: Assign to Custom Mode works with the dial on movie, and a C slot saved there
+opens in video (the stock save/recall already keeps the movie exposure mode). That is the whole
+feature; no further stages needed.
 """
 import hashlib
 import os
@@ -79,7 +80,7 @@ def patch(main):
 
 
 def main(argv):
-    if len(argv) < 3 or "--test1" not in argv:
+    if len(argv) < 2:
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
