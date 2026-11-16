@@ -328,11 +328,18 @@ gmap:
 """
 
 
-def looks6_src(keys):
+def looks6_src(keys, sd=False):
     gmap = [0] * 8
     for i, g in enumerate(MENU_ORDER):
         gmap[g] = i
-    s = SRC6 + "".join(" .byte %d\n" % x for x in gmap) + ".balign 4\nlooks:\n"
+    src = SRC6
+    if sd:
+        i = src.index("3:\nmov gmap,a0")
+        pick = PICK_SD
+        for k in ("MAGIC_LO", "MAGIC_HI", "PTR_LO", "PTR_HI"):
+            pick = pick.replace(k, "%#x" % sd_syms()[k])
+        src = src[:i] + pick
+    s = src + "".join(" .byte %d\n" % x for x in gmap) + ".balign 4\nlooks:\n"
     for k in keys:
         hues, lights, sats = look_values(LOOKS[k])
         s += "".join(" .hword %d,%d\n" % (h, l) for h, l in zip(hues, lights))
@@ -350,14 +357,15 @@ TEXT_LISTS = (0x611ec244, 0x611ecc28, 0x611ed420)
 TEXT_STOCK = [(7, 0x91), (0, 0x679), (1, 0x67a), (2, 0xb7), (5, 0x67d), (3, 0xb0)]
 
 
-def label_patch(m, keys):
+def label_patch(m, keys, labels=None):
     import olycompress
     names = b""
     ptrs = []
-    for k in keys:
+    for i, k in enumerate(keys):
         ptrs.append(NAMES + len(names))
-        names += LOOKS[k]["name"].encode("ascii") + b"\0"
-    check(set(m[off(NAMES):off(NAMES) + 0x200]) == {0xff}, "label area not free")
+        names += (labels[i] if labels else LOOKS[k]["name"]).encode("ascii") + b"\0"
+    check(set(m[off(NAMES):off(NAMES) + (0x200 if "--diag-lists" in sys.argv else 0x80)]) == {0xff}, "label area not free")
+    check(len(names) <= 0x80 or "--diag-lists" in sys.argv, "labels too long")
     m[off(NAMES):off(NAMES) + len(names)] = names
     csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
     gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
@@ -448,13 +456,19 @@ def patch6(main, keys):
     check(bytes(m[off(SITE):off(SITE) + 5]) == SITE_STOCK, "colour builder call differs")
     check(bytes(m[off(SITE) - len(SITE_PRE):off(SITE)]) == SITE_PRE, "colour selector differs")
     check(set(m[off(STUB):off(STUB) + 0x200]) == {0xff}, "stub area not free")
-    stub = patch_aspect.assemble_syms(looks6_src(keys), STUB, {"builder": BUILDER, "resume": RESUME, "get": GET})
-    check(len(stub) <= 0x200, "stub too long")
+    sd = "--sd" in sys.argv
+    stub = patch_aspect.assemble_syms(looks6_src(keys, sd), STUB, {"builder": BUILDER, "resume": RESUME, "get": GET})
+    check(len(stub) <= (0x280 if sd else 0x200), "stub too long")
+    if sd:                      # SD layout: stub+looks to +0x280, labels +0x280..+0x300, SD code +0x300
+        global NAMES
+        NAMES = STUB + 0x280
     m[e:e + PM_ELEM] = struct.pack("<I", 11) + bytes(PM_ELEM - 4)
     m[off(STUB):off(STUB) + len(stub)] = stub
     m[off(SITE):off(SITE) + 5] = JMP
     if "--labels" in sys.argv:
-        label_patch(m, keys)
+        label_patch(m, keys, ["Look %d" % (i + 1) for i in range(6)] if sd else None)
+    if sd:
+        sd_patch(m)
     print("  Custom -> Color Profile, 6 looks by base mode: %s (stub %d B)" % (", ".join(keys), len(stub)))
     return bytes(m)
 
@@ -570,6 +584,185 @@ def patch31(main):
     return modcore.rebuild_main(main, img)
 
 
+# ---------------------------------------------------------------- SD-card looks (stage 3)
+# --sd (with --looks): on the first shutter half-press after power-on, read C:\\EM1MOD\\LOOKS.BIN and use
+# its six looks in Custom instead of the built-in ones. Custom's list shows "Look 1".."Look 6".
+# - Hook: HLS_EVENT task loop (0x60817872 -> 0x608178c0): event at (4,sp), dispatch call at 0x6081795c
+#   `call 0x608179d8,[d2,d3,a2,a3],36` (cd 7c 00 f0 24, blob A), resume 0x60817961. Event 0x02000100 =
+#   half-press (TRIG1). The stub tries once per power-on (TRIED halfword) before dispatching.
+# - File API (stock "load arm linux from sd" 0x6005a634, same as the E-P7): fopen 0x6066cbc3 [],4
+#   (a0 path, a1 mode -> a0), fread 0x6066cd52 [d2,d3,a2,a3],24 (a0 buf, d0 size, d1 count, a1 handle),
+#   fclose 0x6066cbcc [d2,a2,a3],16; malloc 0x600237bd [],4 (d0 -> a0).
+# - File: "EM1L", u8 version 1, u8 count 6, u16 0, then 6 x 60 B {12 x (hue, lightness) s16, 12 x sat s8}.
+# - RAM: never the firmware sections (writes there restarted the camera, 1.616). The look block is copied
+#   to the uncached alias of a malloc'd buffer; its address and a 32-bit magic sit in four unused
+#   halfwords (padding after u16 globals with no other reference, 0x61e83150/90/b4/cc + 2), uncached.
+SD_HOOK, SD_HOOK_STOCK, SD_BACK, SD_DISPATCH = 0x6081795c, bytes.fromhex("cd7c00f024"), 0x60817961, 0x608179d8
+FOPEN, FREAD, FCLOSE, MALLOC = 0x6066cbc3, 0x6066cd52, 0x6066cbcc, 0x600237bd
+MAGIC_LO, MAGIC_HI, PTR_LO, PTR_HI, TRIED = 0xa1e83192, 0xa1e831b6, 0xa1e831ce, 0xa1e83152, 0xa1e8a13e
+SD_CODE = STUB + 0x300
+FILE_SIZE, FILE_MAGIC = 8 + 6 * 60, 0x4c314d45            # "EM1L"
+SD_SRC = """hls:
+cmp 0x2000100,d0
+bne go
+add -16,sp
+mov d0,(4,sp)
+mov d1,(8,sp)
+mov a0,(12,sp)
+movhu (TRIED),d0
+cmp 0x5a5a,d0
+beq skip
+mov 0x5a5a,d0
+movhu d0,(TRIED)
+call loader,[d2,d3,a2,a3],24
+skip:
+mov (4,sp),d0
+mov (8,sp),d1
+mov (12,sp),a0
+add 16,sp
+go:
+call dispatch,[d2,d3,a2,a3],36
+jmp back
+loader:
+mov path,a0
+mov mode,a1
+call fopen,[],4
+cmp 0,a0
+beq out
+mov a0,a2
+mov FSIZE,d0
+call malloc,[],4
+cmp 0,a0
+beq close
+mov a0,a3
+mov 1,d0
+mov FSIZE,d1
+mov a2,a1
+call fread,[d2,d3,a2,a3],24
+mov d0,d2
+mov a2,a0
+call fclose,[d2,a2,a3],16
+cmp FSIZE,d2
+bne out
+mov (a3),d0
+cmp FMAGIC,d0
+bne out
+movbu (4,a3),d0
+cmp 1,d0
+bne out
+movbu (5,a3),d0
+cmp 6,d0
+bne out
+mov a3,a0
+add 8,a0
+mov a0,d0
+and 0x1fffffff,d0
+or 0xa0000000,d0
+mov d0,a1
+mov 360,d1
+1:
+movbu (a0),d0
+movbu d0,(a1)
+inc a0
+inc a1
+add -1,d1
+bne 1b
+mov a3,d0
+add 8,d0
+and 0x1fffffff,d0
+or 0xa0000000,d0
+movhu d0,(PTR_LO)
+lsr 16,d0
+movhu d0,(PTR_HI)
+mov 0x4d45,d0
+movhu d0,(MAGIC_LO)
+mov 0x4c31,d0
+movhu d0,(MAGIC_HI)
+out:
+ret [d2,d3,a2,a3],24
+close:
+mov a2,a0
+call fclose,[d2,a2,a3],16
+bra out
+.balign 4
+path:
+.asciz "C:\\\\EM1MOD\\\\LOOKS.BIN"
+mode:
+.asciz "r"
+"""
+# Look-pointer selection in the colour hook (replaces SRC6's pick tail)
+PICK_SD = """3:
+mov gmap,a0
+movbu (d0,a0),d0
+mov 60,d1
+mulu d1,d0
+mov d0,d1
+movhu (MAGIC_LO),d0
+cmp 0x4d45,d0
+bne 4f
+movhu (MAGIC_HI),d0
+cmp 0x4c31,d0
+bne 4f
+mov d1,a0
+movhu (PTR_HI),d0
+asl 16,d0
+movhu (PTR_LO),d1
+or d1,d0
+mov a0,d1
+add d1,d0
+ret [],4
+4:
+mov d1,d0
+mov looks,a0
+add a0,d0
+ret [],4
+gmap:
+"""
+
+
+def sd_syms():
+    return {"TRIED": TRIED, "MAGIC_LO": MAGIC_LO, "MAGIC_HI": MAGIC_HI, "PTR_LO": PTR_LO, "PTR_HI": PTR_HI,
+            "FSIZE": FILE_SIZE, "FMAGIC": FILE_MAGIC, "dispatch": SD_DISPATCH, "back": SD_BACK,
+            "fopen": FOPEN, "fread": FREAD, "fclose": FCLOSE, "malloc": MALLOC}
+
+
+def sd_patch(m):
+    """Assemble the HLS hook + loader at SD_CODE and hook blob A (block 0 plain M, bytearray)."""
+    import patch_aspect
+    import olycompress
+    src = SD_SRC
+    for k, v in sd_syms().items():
+        src = src.replace(k, "%#x" % v) if k.isupper() else src
+    code = patch_aspect.assemble_syms(src, SD_CODE, {k: v for k, v in sd_syms().items() if not k.isupper()})
+    check(len(code) <= 0x180 and set(m[off(SD_CODE):off(SD_CODE) + 0x180]) == {0xff}, "SD code area")
+    m[off(SD_CODE):off(SD_CODE) + len(code)] = code
+    acsz = struct.unpack_from("<I", m, BLOB_A_OFF + 16)[0]
+    a = bytearray(olycompress.unpack(m, BLOB_A_OFF))
+    check(olycompress.pack(bytes(a)) == bytes(m[BLOB_A_OFF + 32:BLOB_A_OFF + 32 + acsz]), "blob A does not recompress identically")
+    check(bytes(a[SD_HOOK - BLOB_A:SD_HOOK - BLOB_A + 5]) == SD_HOOK_STOCK, "HLS dispatch call differs")
+    a[SD_HOOK - BLOB_A:SD_HOOK - BLOB_A + 5] = b"\xdc" + struct.pack("<i", SD_CODE - SD_HOOK)
+    ca = olycompress.pack(bytes(a))
+    check(len(ca) <= BLOB_B_OFF - (BLOB_A_OFF + 32), "blob A does not fit")
+    old_end = BLOB_A_OFF + 32 + acsz
+    m[BLOB_A_OFF + 32:BLOB_A_OFF + 32 + len(ca)] = ca
+    if len(ca) < acsz:
+        m[BLOB_A_OFF + 32 + len(ca):old_end] = b"\xff" * (old_end - BLOB_A_OFF - 32 - len(ca))
+    struct.pack_into("<I", m, BLOB_A_OFF + 16, len(ca))
+    check(olycompress.unpack(m, BLOB_A_OFF) == bytes(a), "blob A does not decode to the edit")
+    print("  SD loader: hook %#x -> %#x (%d B), file C:\\EM1MOD\\LOOKS.BIN" % (SD_HOOK, SD_CODE, len(code)))
+
+
+def make_looks_bin(keys):
+    """The card file for six looks from the library."""
+    check(len(keys) == 6, "six looks")
+    out = struct.pack("<IBBH", FILE_MAGIC, 1, 6, 0)
+    for k in keys:
+        hues, lights, sats = look_values(LOOKS[k])
+        out += b"".join(struct.pack("<hh", h, l) for h, l in zip(hues, lights)) + bytes(s & 0xff for s in sats)
+    check(len(out) == FILE_SIZE, "file size")
+    return out
+
+
 def main(argv):
     if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look", "--test4", "--looks", "--all31")):
         print(__doc__)
@@ -589,12 +782,19 @@ def main(argv):
     fw = olyfw.read(src)
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
+    if "--card" in argv:
+        out = argv[argv.index("--card") + 1]
+        os.makedirs(os.path.join(out, "EM1MOD"), exist_ok=True)
+        keysc = argv[argv.index("--card-looks") + 1].split(",")
+        with open(os.path.join(out, "EM1MOD", "LOOKS.BIN"), "wb") as fh:
+            fh.write(make_looks_bin(keysc))
+        print("  card file %s: %s" % (os.path.join(out, "EM1MOD", "LOOKS.BIN"), ", ".join(LOOKS[k]["name"] for k in keysc)))
     if "--all31" in argv:
         new_main = patch31(blocks[0]["plain"])
     elif "--looks" in argv:
         keys6 = argv[argv.index("--looks") + 1].split(",")
         new_main = patch6(blocks[0]["plain"], keys6)
-        if "--labels" in argv and "--diag-lists" not in argv:
+        if "--labels" in argv and "--diag-lists" not in argv and "--sd" not in argv:
             import modcore
             img = bytearray(modcore.runtime_image(blocks[0]["plain"]))
             apply6(img, BASE, keys6)
