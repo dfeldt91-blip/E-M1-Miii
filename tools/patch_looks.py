@@ -466,6 +466,8 @@ def patch6(main, keys):
 # ({0xd3, 4, title 0xcb, cond, list, n} and the continuation {.., cond, list, n}; at 0x611bb9d4/e4,
 # 0x61271200/10, 0x6127f8ec/fc) point at new 31-entry type-1 lists (look names) plus each list's stock
 # trailing entry, n 6 -> 31. The stub (SRC31) maps the GUI value through a 89-byte table to a look.
+# Camera 1.692: 31 entries shown, but every new one showed/used the Natural position (Astia):
+# identical components. 1.693: new entries {2, filter 16+i}.
 REC_D3, REC_D3_STOCK = 0x604da7d0, bytes.fromhex("d3008000" "74cb4b60" "9ce84a60" "8001" "4000" "0006" "0000")
 D3_LIST, D3_ALT, D3_N = 0x604bcb74, 0x604ae89c, 6
 NEW_VALUES = list(range(64, 64 + 25))
@@ -498,7 +500,11 @@ def apply31(img, base, keys=None, gui_img=True):
     stock = bytes(img[o(D3_LIST):o(D3_LIST) + 64 * D3_N])
     nat = stock[64 * 2:64 * 3]                        # entry 2 = Natural {2, 0..} (GUI 1)
     check(struct.unpack_from("<I", nat)[0] == 2 and set(nat[4:]) == {0}, "Natural entry differs")
-    img[o(VLIST31):o(VLIST31) + 64 * n] = stock + nat * (n - D3_N)
+    # the camera identifies a value by its components {MODE_CUSTOM_COLORTONE +0, MODE_CUSTOM_FILTER 0x703 +4}
+    # (compound table 0x60469774), so each new entry needs its own filter value (1.692: plain copies all
+    # read back as Natural); 0x703 has no validator and is ignored for a colour base mode.
+    extra = b"".join(nat[:4] + struct.pack("<I", 16 + i) + nat[8:] for i in range(n - D3_N))
+    img[o(VLIST31):o(VLIST31) + 64 * n] = stock + extra
     alt = list(struct.unpack_from("<%dI" % D3_N, img, o(D3_ALT)))
     check(alt == MENU_ORDER, "0xd3 GUI values differ")
     img[o(ALT31):o(ALT31) + 4 * n] = struct.pack("<%dI" % n, *vals)
