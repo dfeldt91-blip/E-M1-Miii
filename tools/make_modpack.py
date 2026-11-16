@@ -52,6 +52,10 @@ MODS = [
      "The bottom-right cell of the Super Control Panel (Button Function) opens the main menu instead, "
      "like pressing MENU on the SCP.",
      "Worked on the camera (1.6 build 1.679, menu and title).", []),
+    ("sharp_scale", "patch_sharp_off.py", [], "Sharpness -2 = off (linear scale)",
+     "Sharpness becomes a straight scale of the stock +2 strength: -2 off, -1 25 %, 0 50 %, +1 75 %, "
+     "+2 100 %. Stock -2 still sharpens. Flat and Log video keep their stock sharpening.",
+     "Worked on the camera (1.6 build 1.680).", []),
 ]
 
 

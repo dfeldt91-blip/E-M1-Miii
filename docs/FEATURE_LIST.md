@@ -5,7 +5,7 @@ works on the camera.
 
 | # | Feature | What it should do | Status |
 |---|---|---|---|
-| 1 | **Sharpness as a linear scale** | −2 off, −1 25 %, 0 50 %, +1 75 %, +2 100 % (= stock +2). Stock −2 still sharpens. | Test 1.680 built (`tools/patch_sharp_off.py`), not camera-tested |
+| 1 | **Sharpness as a linear scale** | −2 off, −1 25 %, 0 50 %, +1 75 %, +2 100 % (= stock +2). Stock −2 still sharpens. | **Done**: worked on the camera (1.680); in the app as `sharp_scale` |
 | 2 | **100 % JPEG quality** | A JPEG compression step better than Super Fine (as close to no compression as the encoder allows). | Not started |
 | 3 | **Video settings in C1–C4** | Saving a Custom Mode (C1–C4) also keeps the movie settings, so recalling it brings them back. | Not started |
 | 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Not started |

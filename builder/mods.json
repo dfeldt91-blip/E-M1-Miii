@@ -1022,6 +1022,31 @@
    ]
   },
   {
+   "id": "sharp_scale",
+   "title": "Sharpness -2 = off (linear scale)",
+   "description": "Sharpness becomes a straight scale of the stock +2 strength: -2 off, -1 25 %, 0 50 %, +1 75 %, +2 100 %. Stock -2 still sharpens. Flat and Log video keep their stock sharpening.",
+   "camera": "Worked on the camera (1.6 build 1.680).",
+   "requires": [],
+   "stock_sha256": "9b3fff0d0cd1ee29c95a8fe72d0bb9effee3f3fd977e54d634005d0d903fc176",
+   "edits": [
+    [
+     0,
+     "0x600d6a40",
+     "5c3070fac8d007c821fac8d107c81b5c0cfa400307102802a000c20300a004c3048004f251f8c5025c2cf8b837dc86453000"
+    ],
+    [
+     0,
+     "0x603daf60",
+     "8a02cbcbcb"
+    ],
+    [
+     0,
+     "0x603dafee",
+     "dc52bacfff"
+    ]
+   ]
+  },
+  {
    "id": "white_frame",
    "title": "Frame art effect: plain white border",
    "description": "The Frame art effect becomes a clean white border instead of the grungy film edge.",
