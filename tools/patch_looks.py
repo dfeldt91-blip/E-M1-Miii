@@ -459,8 +459,100 @@ def patch6(main, keys):
     return bytes(m)
 
 
+# ---------------------------------------------------------------- all looks in Custom's list
+# --all31: Custom's base-mode setting 0xd3 gets one value per library look. Validator record 0x604da7d0
+# {0xd3, list 0x604bcb74, alt 0x604ae89c, 6 x 64 B}: new list = the 6 stock entries + 25 copies of
+# Natural's {2, 0...} entry, alt = stock GUI values + 64..88. Menus: the two descriptors per GUI copy
+# ({0xd3, 4, title 0xcb, cond, list, n} and the continuation {.., cond, list, n}; at 0x611bb9d4/e4,
+# 0x61271200/10, 0x6127f8ec/fc) point at new 31-entry type-1 lists (look names) plus each list's stock
+# trailing entry, n 6 -> 31. The stub (SRC31) maps the GUI value through a 89-byte table to a look.
+REC_D3, REC_D3_STOCK = 0x604da7d0, bytes.fromhex("d3008000" "74cb4b60" "9ce84a60" "8001" "4000" "0006" "0000")
+D3_LIST, D3_ALT, D3_N = 0x604bcb74, 0x604ae89c, 6
+NEW_VALUES = list(range(64, 64 + 25))
+ALL_VALUES = MENU_ORDER + NEW_VALUES             # menu order: 6 stock positions, then the new ones
+DESC_REFS = (0x611bb9d4, 0x611bb9e4, 0x61271200, 0x61271210, 0x6127f8ec, 0x6127f8fc)   # address of the list pointer
+STUB31, GMAP31, NAMES31, LISTA31, LISTB31, ALT31 = 0x600d5800, 0x600d58a0, 0x600d5900, 0x600d5b00, 0x600d5c80, 0x600d5e00
+LOOKS31, VLIST31 = 0x600d62e0, 0x600d77e0
+SRC31 = SRC6.replace("cmp 8,d0", "cmp 89,d0").split("gmap:")[0]
+
+
+def all_keys():
+    return [k for k in LOOKS if k != "portra400"]
+
+
+def apply31(img, base, keys=None, gui_img=True):
+    """All library looks in Custom's list. IMG: runtime image bytearray at BASE (blob B unpacked)."""
+    import patch_aspect
+    o = lambda a: a - base  # noqa: E731
+    keys = keys or all_keys()
+    n = len(keys)
+    check(n <= len(ALL_VALUES), "too many looks")
+    e = o(PM_LIST) + PM_ELEM * CUSTOM_IDX
+    check(struct.unpack_from("<I", img, e)[0] == 6, "Custom picture-mode entry differs")
+    check(bytes(img[o(SITE):o(SITE) + 5]) == SITE_STOCK, "colour builder call differs")
+    check(bytes(img[o(REC_D3):o(REC_D3) + 20]) == REC_D3_STOCK, "0xd3 validator record differs")
+    for a, size in ((STUB31, 0x700), (LOOKS31, 60 * n), (VLIST31, 64 * n)):
+        check(set(img[o(a):o(a) + size]) == {0xff}, "area %#x not free" % a)
+    vals = ALL_VALUES[:n]
+    # validator
+    stock = bytes(img[o(D3_LIST):o(D3_LIST) + 64 * D3_N])
+    nat = stock[64 * 2:64 * 3]                        # entry 2 = Natural {2, 0..} (GUI 1)
+    check(struct.unpack_from("<I", nat)[0] == 2 and set(nat[4:]) == {0}, "Natural entry differs")
+    img[o(VLIST31):o(VLIST31) + 64 * n] = stock + nat * (n - D3_N)
+    alt = list(struct.unpack_from("<%dI" % D3_N, img, o(D3_ALT)))
+    check(alt == MENU_ORDER, "0xd3 GUI values differ")
+    img[o(ALT31):o(ALT31) + 4 * n] = struct.pack("<%dI" % n, *vals)
+    struct.pack_into("<II", img, o(REC_D3) + 4, VLIST31, ALT31)
+    struct.pack_into("<H", img, o(REC_D3) + 12, 64 * n)
+    # look table and value map
+    gmap = [0] * 89
+    for i, v in enumerate(vals):
+        gmap[v] = i
+    data = b""
+    for k in keys:
+        hues, lights, sats = look_values(LOOKS[k])
+        data += b"".join(struct.pack("<hh", h, l) for h, l in zip(hues, lights)) + bytes(s & 0xff for s in sats)
+    img[o(LOOKS31):o(LOOKS31) + len(data)] = data
+    img[o(GMAP31):o(GMAP31) + 89] = bytes(gmap)
+    code = CODE31 if CODE31 else patch_aspect.assemble_syms(SRC31, STUB31, {"builder": BUILDER, "resume": RESUME, "get": GET, "gmap": GMAP31, "looks": LOOKS31})
+    check(len(code) <= GMAP31 - STUB31, "stub too long")
+    img[o(STUB31):o(STUB31) + len(code)] = code
+    img[e:e + PM_ELEM] = struct.pack("<I", 11) + bytes(PM_ELEM - 4)
+    img[o(SITE):o(SITE) + 5] = b"\xdc" + struct.pack("<i", STUB31 - SITE)
+    # names and menu lists
+    names, ptrs = b"", []
+    for k in keys:
+        ptrs.append(NAMES31 + len(names))
+        names += LOOKS[k]["name"].encode("ascii") + b"\0"
+    check(len(names) <= LISTA31 - NAMES31, "names too long")
+    img[o(NAMES31):o(NAMES31) + len(names)] = names
+    for i, ref in enumerate(DESC_REFS):
+        lst = struct.unpack_from("<I", img, o(ref))[0]
+        check(lst in LABEL_LISTS and struct.unpack_from("<I", img, o(ref) + 4)[0] == 6, "descriptor %#x differs" % ref)
+        trail = bytes(img[o(lst) + 72:o(lst) + 84])
+        for j, (val, sid) in enumerate(LABEL_STOCK):
+            v = struct.unpack_from("<IHH", img, o(lst) + 12 * j)
+            check(v[0] == val and v[1] in (1, 4), "label entry %#x differs" % (lst + 12 * j))
+        new = LISTA31 if i % 2 else LISTB31
+        body = b"".join(struct.pack("<IHHI", v, 1, EMPTY_UNIT, p) for v, p in zip(vals, ptrs)) + trail
+        img[o(new):o(new) + len(body)] = body
+        struct.pack_into("<II", img, o(ref), new, n)
+    return [LOOKS[k]["name"] for k in keys]
+
+
+CODE31 = None
+
+
+def patch31(main):
+    import modcore
+    img = bytearray(modcore.runtime_image(main))
+    names = apply31(img, BASE)
+    print("  Custom -> Color Profile, %d looks in Custom's list: %s" % (len(names), ", ".join(names)))
+    return modcore.rebuild_main(main, img)
+
+
 def main(argv):
-    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look", "--test4", "--looks")):
+    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look", "--test4", "--looks", "--all31")):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
@@ -478,7 +570,9 @@ def main(argv):
     fw = olyfw.read(src)
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
-    if "--looks" in argv:
+    if "--all31" in argv:
+        new_main = patch31(blocks[0]["plain"])
+    elif "--looks" in argv:
         keys6 = argv[argv.index("--looks") + 1].split(",")
         new_main = patch6(blocks[0]["plain"], keys6)
         if "--labels" in argv and "--diag-lists" not in argv:
