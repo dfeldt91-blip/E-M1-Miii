@@ -6,8 +6,10 @@
 The Picture Mode validator list (setting 0x6f, 26 entries of 64 bytes at 0x604bc4f4) holds the
 image-pipeline type of each entry: {u32 type, u32 flag, ...}; Monotone is entry 5 {5, 1},
 Underwater entry 8 {10, 0} (GUI value 0x1c, label "Underwater"). Test 1.595 showed that this
-type drives the image pipeline (e-Portrait set to 12 shot Monochrome Profile). This patch gives
-Underwater Monotone's {5, 1}; the menu name and its settings screen stay Underwater's.
+type drives the image pipeline (e-Portrait set to 12 shot Monochrome Profile).
+1.672 gave Underwater Monotone's {5, 1}: choosing Underwater selected Monotone (the GUI finds the
+entry by type, so a duplicate type is an alias). 1.673 keeps type 10 and only sets the second
+field (1 on Monotone only, perhaps a monochrome flag): {10, 1}.
 Open question for the camera test: which contrast / sharpness / filter / tone values the
 Underwater slot then uses (Monotone's current ones, defaults, or something else).
 """
@@ -40,8 +42,8 @@ def patch(main):
     check(struct.unpack_from("<2I", m, mono) == (5, 1), "Monotone entry differs")
     check(struct.unpack_from("<2I", m, uw) == (10, 0), "Underwater entry differs")
     check(set(m[uw + 8:uw + ELEM]) == {0}, "Underwater entry has more data than expected")
-    struct.pack_into("<2I", m, uw, 5, 1)
-    print("  Underwater (entry 8) -> Monotone pipeline {5, 1}")
+    struct.pack_into("<I", m, uw + 4, 1)
+    print("  Underwater (entry 8) -> {10, 1}")
     return bytes(m)
 
 
