@@ -32,6 +32,14 @@ as the E-P7 order predicts.
 If the wheel runs yellow -> green -> cyan -> blue, the darker colour is yellow-green and the brighter
 one blue-violet; if it runs yellow -> orange -> red -> magenta -> blue, orange darker and cyan-blue
 brighter.
+Camera 1.684: orange darker -> the wheel runs yellow, orange, orange-red, red, magenta, violet, blue,
+blue-cyan, cyan, green-cyan, green, yellow-green (sector 0..11), the order of caduceus-ep7's
+sim/recipes (sector_order). Record r = sector 2*(r%6)+r/6, as on the E-P7.
+
+--look NAME: a Caduceus recipe (LOOKS) in Custom: hue/lightness per sector (steps -7..7 through
+fishcu's tables) and saturation per sector (-5..5): the builder reads one s8 per sector, in sector
+order, from the request at a1 (+0x718); the stub writes the look's values there before the call.
+Tone, contrast, WB shift, grain and bloom are not applied yet.
 """
 import hashlib
 import os
@@ -46,7 +54,23 @@ PM_LIST, PM_ELEM, CUSTOM_IDX = 0x604bc4f4, 64, 6
 SITE, SITE_STOCK, RESUME, BUILDER = 0x603def9a, bytes.fromhex("cd8ffdf060"), 0x603def9f, 0x603ded29
 SITE_PRE = bytes.fromhex("fad318079dfcac20a75260fcdc509b5260")   # add 0x718,a3; mov a3,a1; movhu (..),d0; mov tab,a0
 STUB = 0x600d5a00
-SRC = """call builder,[d2,d3,a2,a3],96
+SRC = """add -12,sp
+mov d0,(0,sp)
+mov d1,(4,sp)
+mov a0,(8,sp)
+mov sat,a0
+clr d1
+2:
+movbu (d1,a0),d0
+movbu d0,(d1,a1)
+inc d1
+cmp 12,d1
+bne 2b
+mov (0,sp),d0
+mov (4,sp),d1
+mov (8,sp),a0
+add 12,sp
+call builder,[d2,d3,a2,a3],96
 mov (12,a2),a0
 add 688,a0
 mov hl,a1
@@ -75,11 +99,32 @@ def check(cond, msg):
         sys.exit("refusing to patch: " + msg)
 
 
-def hl_table(hues, lights):
-    return "".join(" .hword %d,%d\n" % (h, l) for h, l in zip(hues, lights))
+def hl_table(hues, lights, sats):
+    return ("".join(" .hword %d,%d\n" % (h, l) for h, l in zip(hues, lights)) + "sat:\n" +
+            "".join(" .byte %d\n" % s for s in sats))
 
 
-def patch(main, hues, lights):
+# Caduceus look steps (sector order yellow, orange, orange-red, red, magenta, violet, blue, blue-cyan,
+# cyan, green-cyan, green, yellow-green) -> native record values. Record r holds sector
+# 2*(r%6)+r/6; hue/lightness step tables from fishcu's PEN-F HSL (image_parameters.s).
+HUE_LUT = [7000, 6000, 5000, 4000, 3000, 2000, 1000, 0, -1000, -2000, -3000, -4000, -5000, -6000, -7000]
+LIGHT_LUT = [-300, -250, -200, -150, -100, -50, -25, 0, 25, 50, 100, 150, 200, 250, 300]
+SECTOR = [2 * (r % 6) + r // 6 for r in range(12)]
+LOOKS = {   # caduceus-ep7 sim/recipes/library_v2.json
+    "portra400": {"sat": [-1, 0, 0, -1, -1, -2, -2, -2, -2, -3, -3, -2],
+                  "hue": [1, 1, 0, 0, 0, 0, 1, 0, 0, 0, -2, -2],
+                  "light": [1, 1, 1, 0, 0, 0, -1, 0, 0, 0, 0, 0]},
+}
+
+
+def look_values(look):
+    hues = [HUE_LUT[max(-7, min(7, look["hue"][SECTOR[r]])) + 7] for r in range(12)]
+    lights = [LIGHT_LUT[max(-7, min(7, look["light"][SECTOR[r]])) + 7] for r in range(12)]
+    sats = [max(-5, min(5, s)) for s in look["sat"]]          # sector order, read by the builder
+    return hues, lights, sats
+
+
+def patch(main, hues, lights, sats=(0,) * 12):
     import patch_aspect
     m = bytearray(main)
     e = off(PM_LIST) + PM_ELEM * CUSTOM_IDX
@@ -87,7 +132,7 @@ def patch(main, hues, lights):
     check(bytes(m[off(SITE):off(SITE) + 5]) == SITE_STOCK, "colour builder call differs")
     check(bytes(m[off(SITE) - len(SITE_PRE):off(SITE)]) == SITE_PRE, "colour selector differs")
     check(set(m[off(STUB):off(STUB) + 0x100]) == {0xff}, "stub area not free")
-    stub = patch_aspect.assemble_syms(SRC + hl_table(hues, lights), STUB,
+    stub = patch_aspect.assemble_syms(SRC + hl_table(hues, lights, sats), STUB,
                                       {"builder": BUILDER, "resume": RESUME})
     check(len(stub) <= 0x100, "stub too long")
     jmp = patch_aspect.assemble_syms("jmp stub", SITE, {"stub": STUB})
@@ -100,7 +145,7 @@ def patch(main, hues, lights):
 
 
 def main(argv):
-    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3")):
+    if len(argv) < 3 or not any(x in argv for x in ("--test1", "--test2", "--test3", "--look")):
         print(__doc__)
         return 1
     src, dst = argv[0], argv[1]
@@ -108,13 +153,16 @@ def main(argv):
     if "--test2" in argv:
         hues, lights = [0] * 12, [0] * 12
         lights[0], lights[3] = -300, 300
+    sats = [0] * 12
+    if "--look" in argv:
+        hues, lights, sats = look_values(LOOKS[argv[argv.index("--look") + 1]])
     if "--test3" in argv:
         hues, lights = [0] * 12, [0] * 12
         lights[6], lights[9] = -300, 300
     fw = olyfw.read(src)
     blocks = olyfw.unpack_blocks(fw)
     check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
-    new_main = patch(blocks[0]["plain"], hues, lights)
+    new_main = patch(blocks[0]["plain"], hues, lights, sats)
     ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
     out = bytearray()
     for i, b in enumerate(blocks):
