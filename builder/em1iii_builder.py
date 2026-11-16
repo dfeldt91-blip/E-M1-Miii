@@ -450,6 +450,11 @@ def gui():
 
 
 def main(argv):
+    # the windowed Windows .exe has no console: print() would fail on a None stream
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w")
     if "--help" in argv or "-h" in argv:
         print(__doc__)
         return 0

@@ -30,6 +30,13 @@ After a build, Finder opens with `E1399999.BIN` selected.
 
 To build the app yourself on a Mac: `bash builder/mac/build_app.sh` (needs Python 3 from python.org).
 
+## Windows app
+
+From the same release page, download `E-M1-III-Mod-Builder-windows.zip`, unzip it and run
+`E-M1 III Mod Builder.exe`. It is not signed, so Windows SmartScreen may say it "protected your PC":
+click **More info**, then **Run anyway**. It works like the Mac app (`builder/windows/build_exe.sh`
+builds it).
+
 ## Run it as a script
 
 Needs Python 3.8 or newer, tkinter (included with the python.org installers for Windows and macOS),

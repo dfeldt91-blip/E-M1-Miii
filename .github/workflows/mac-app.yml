@@ -1,4 +1,4 @@
-name: Mac app
+name: Mac and Windows app
 
 on:
   workflow_dispatch:
@@ -51,11 +51,40 @@ jobs:
           path: dist/E-M1-III-Mod-Builder-mac.zip
           if-no-files-found: error
 
+  windows-app:
+    continue-on-error: true
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the app
+        run: bash builder/windows/build_exe.sh
+      - name: Check the script's command-line mode and the exe
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python -m pip install --quiet lz4 pillow
+          python builder/em1iii_builder.py --list > list.txt
+          head -3 list.txt
+          test -f "dist/E-M1 III Mod Builder.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: E-M1-III-Mod-Builder-windows
+          path: dist/E-M1-III-Mod-Builder-windows.zip
+          if-no-files-found: error
+
   release:
     # A manual run with release_tag set publishes both app zips as a GitHub Release
     # (the release action creates the tag on the commit that was built).
     if: always() && github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
-    needs: mac-app
+    needs: [mac-app, windows-app]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -70,6 +99,8 @@ jobs:
             f=artifacts/E-M1-III-Mod-Builder-mac-$a/E-M1-III-Mod-Builder-mac.zip
             if [ -f "$f" ]; then cp "$f" out/E-M1-III-Mod-Builder-mac-$a.zip; else echo "no $a build"; fi
           done
+          f=artifacts/E-M1-III-Mod-Builder-windows/E-M1-III-Mod-Builder-windows.zip
+          if [ -f "$f" ]; then cp "$f" out/; else echo "no windows build"; fi
           ls -la out
           ls out/*.zip >/dev/null
       - uses: softprops/action-gh-release@v2
@@ -81,7 +112,7 @@ jobs:
           body: |
             Mac app that downloads the official E-M1 Mark III firmware 1.6 from OM, lets you pick mods and writes E1399999.BIN.
 
-            **Download:** `E-M1-III-Mod-Builder-mac-apple-silicon.zip` for M1/M2/M3/M4 Macs, `E-M1-III-Mod-Builder-mac-intel.zip` for Intel Macs. If only the Intel file is listed, it also runs on M1-M4 Macs (macOS installs Rosetta when asked).
+            **Download:** `E-M1-III-Mod-Builder-mac-apple-silicon.zip` for M1/M2/M3/M4 Macs, `E-M1-III-Mod-Builder-mac-intel.zip` for Intel Macs. If only the Intel file is listed, it also runs on M1-M4 Macs (macOS installs Rosetta when asked). **Windows:** `E-M1-III-Mod-Builder-windows.zip` (one .exe; Windows SmartScreen may warn because it is unsigned: More info, Run anyway).
 
             **First start:** the app is not signed by Apple. Right-click it, choose Open, then Open again. If macOS still blocks it: System Settings, Privacy & Security, Open Anyway.
 
