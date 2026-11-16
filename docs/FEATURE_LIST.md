@@ -8,7 +8,7 @@ works on the camera.
 | 1 | **Sharpness as a linear scale** | −2 off, −1 25 %, 0 50 %, +1 75 %, +2 100 % (= stock +2). Stock −2 still sharpens. | **Done**: worked on the camera (1.680); in the app as `sharp_scale` |
 | 2 | **100 % JPEG quality** | A JPEG compression step better than Super Fine (as close to no compression as the encoder allows). | Not started |
 | 3 | **C1–C4 remember photo / video** | Each C slot remembers whether the camera was in photo or video mode when it was saved; turning the dial to it opens that mode with its settings. (Stock already saves the movie settings, but Assign to Custom Mode is unavailable in movie mode and C positions are always photo.) | **Done**: worked on the camera (1.681); in the app as `cmode_video` |
-| 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Not started |
+| 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Dropped by the owner (would delay startup). |
 
 ## Leads
 
@@ -30,11 +30,13 @@ works on the camera.
 - **3:** solved by `tools/patch_cmode_video.py`: the menu's changeable check `0x608d522f` greyed
   out Reset / Custom Modes (0xd1d), Assign (0x13df) and Recall (0x13e0) in movie mode; with it
   answering yes, the stock save/recall keeps the movie exposure mode (camera 1.681).
-- **4:** stock has Copyright Settings (`MODE_COPYRIGHT_ONOFF`, artist/copyright names in EXIF).
+- **4 (dropped):** stock has Copyright Settings (`MODE_COPYRIGHT_ONOFF`, artist/copyright names in EXIF).
   The startup text needs a string the app writes into the firmware and a place to draw it at power-on.
   Lead: an API module `LogoScreen` (`drawImage`, `existImage`, `regist`, `unregist`; name table
   `0x602633cc`, API source `OlyApiLogoScreen.cpp`, getter `0x608a16b0`, vtable `0x60b69df8`,
   wrappers around `0x608a1646` calling `0x608c3d30` / `0x608c3d3c`) and callback names
   `CBC_DRAW_OPENING_IMAGE` / `CBS_END_LOGO_IMAGE`: a power-on opening image may exist. If it does,
   the app can render the owner's text into that image (Pillow). Fallback: a text message posted
-  once at power-on, with a replaced message string.
+  once at power-on, with a replaced message string. Findings: the OpnScr functions are only
+  reached from the debug command shell (`sdk api ... drawImage`), not at power-on; timed GUI
+  messages go through `0x60ed18cd` (e.g. 0xb37 at `0x60eb11fc`).
