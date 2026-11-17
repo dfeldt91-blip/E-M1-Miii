@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ISO-Auto down to L64 (EXPERIMENTAL, E-M1 Mark III 1.6). Stage 1.
 
-  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1707]
+  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1708]
 
 ISO values are APEX Sv x 256: ISO 100 = 0x500, 1/3 EV = 0x55 (L64 0x455, L80 0x4aa, 100 0x500, 125
 0x555, 160 0x5aa, 200 0x600 ... 6400 0xb00). ISO-Auto Set (menu "Upper Limit / Default") uses settings
@@ -23,6 +23,8 @@ Camera 1.705 (lists on both records): the new entries were not shown at all and 
 (200 and up work). 0x604372b3.. clamps Default into the per-mode copies 0x62167ed4..ede, which S/A use
 as the floor. 1.707: that clamp compares with 0x601 instead, so Default 200 gives L64 (no floor) and
 Default 250+ keeps working as the floor; 0x60434633 (M, P?) floor L64.
+Camera 1.707: still 200 in P/A/S (64 in M). 1.708: the ISO-Auto base 0x60433c7e: floor 0x600 -> 0x455,
+and Default 200 -> L64 where it takes Default (cases 0xa000 / 0xa100); 0x604372ca back to 1.706.
 Earlier note: Default is not the lower bound (Default 1000 still went down to 64). ISO-Auto's floor
 is the hard 0x600 clamp above, so the clamps alone give ISO-Auto L64..Upper Limit. Default: clamps
 only; --menu-lists adds the (still blank-labelled) Default/Upper Limit entries 64..160.
@@ -45,8 +47,37 @@ STOCK_NUMS, NEW_NUMS = 0x604b0534, 0x600d92c0
 NUMS = [64, 80, 100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000,
         5000, 6400]
 LOW = [0x455, 0x4aa, 0x500, 0x555, 0x5aa]
+# ISO-Auto base Sv 0x60433c7e (AE input struct copy 0x62167ddc: +24 iso_limiter, +26 iso_standard =
+# Default): floor d3 = 0x600 (0x45c in another state); case 0xa000 / 0xa100 take Default (0 -> floor),
+# 0x9f00 the upper limit; the result is clamped to floor..0xd00. Camera 1.707: P/A/S never below 200.
+FLOOR = (0x60433c88, "2f0006", "2f5504")    # mov 0x600,d3 -> mov 0x455,d3
+STUBS = [  # (site, stock bytes, back, stub address, source): Default 200 -> L64 in the 0xa000 / 0xa100 cases
+    (0x60433ccc, "231af063f8be0ea000c82e", 0x60433d03, 0x600d9400, """add 26,a3
+movhu (a3),d0
+movhu (14,sp),d2
+cmp 0,d0
+beq 9f
+movhu (a3),d2
+cmp 0x600,d2
+bne 9f
+mov 0x455,d2
+9:
+jmp back"""),
+    (0x60433cdb, "901af17cf060f8be0ea000c804f068", 0x60433cea, 0x600d9440, """mov 26,a0
+add a3,a0
+movhu (a0),d0
+movhu (14,sp),d2
+cmp 0,d0
+beq 9f
+movhu (a0),d2
+cmp 0x600,d2
+bne 9f
+mov 0x455,d2
+9:
+jmp back"""),
+]
 CLAMPS = [  # (address, stock bytes, new bytes)
-    (0x604372ca, "fac80006", "fac80106"),   # cmp 0x600,d0 -> cmp 0x601,d0: Default 200 (or less) -> L64
+    (0x604372ca, "fac80006", "fac85504"),   # cmp 0x600,d0 -> cmp 0x455,d0
     (0x604372d0, "2e0006", "2e5504"),       # mov 0x600,d2 -> mov 0x455,d2
     (0x60434633, "fac80006", "fac85504"),
     (0x60434639, "2c0006", "2c5504"),       # mov 0x600,d0 -> mov 0x455,d0
@@ -68,6 +99,19 @@ def patch_at(m, base, lists=False):
         old, nw = bytes.fromhex(old), bytes.fromhex(nw)
         check(bytes(m[o(a):o(a) + len(old)]) == old, "clamp at %#x differs" % a)
         m[o(a):o(a) + len(nw)] = nw
+    import patch_aspect
+    a, old, nw = FLOOR
+    check(bytes(m[o(a):o(a) + 3]) == bytes.fromhex(old), "ISO-Auto floor at %#x differs" % a)
+    m[o(a):o(a) + 3] = bytes.fromhex(nw)
+    for site, old, back, at, src in STUBS:
+        old = bytes.fromhex(old)
+        check(bytes(m[o(site):o(site) + len(old)]) == old, "Default load at %#x differs" % site)
+        stub = patch_aspect.assemble_syms(src, at, {"back": back})
+        check(len(stub) <= 0x40 and set(m[o(at):o(at) + 0x40]) == {0xff}, "stub space at %#x not free" % at)
+        m[o(at):o(at) + len(stub)] = stub
+        jmp = patch_aspect.assemble_syms("jmp stub", site, {"stub": at})
+        check(len(jmp) == 5, "jump is not 5 bytes")
+        m[o(site):o(site) + len(old)] = jmp + b"\xcb" * (len(old) - 5)
     if not lists:
         return 0
     for rec, sid0 in ((REC_DEFAULT, 0x68d), (REC_LIMIT, 0x68b)):
