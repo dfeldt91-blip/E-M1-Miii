@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ISO-Auto down to L64 (EXPERIMENTAL, E-M1 Mark III 1.6). Stage 1.
 
-  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1704]
+  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1705]
 
 ISO values are APEX Sv x 256: ISO 100 = 0x500, 1/3 EV = 0x55 (L64 0x455, L80 0x4aa, 100 0x500, 125
 0x555, 160 0x5aa, 200 0x600 ... 6400 0xb00). ISO-Auto Set (menu "Upper Limit / Default") uses settings
@@ -15,6 +15,9 @@ values to 0x600..0xb00 at 0x604372ca (six per-mode copies 0x62167ed4..) and 0x60
 and its own number list at 0x600d92c0 (64 80 100 125 160 200 .. 6400); both clamps' lower bound
 0x600 -> 0x455. Upper Limit and movie keep 200..6400.
 Camera 1.703 (no number list): ISO-Auto went down to 64; the new menu entries were blank.
+Camera 1.704 (Default's own number list): still blank. The "Upper Limit / Default" screen (menu item
+0x68b) probably shows both columns through the 0x68b record, so 1.705 gives Upper Limit (0x68b) the
+same two lists too (Upper Limit can then also be set to 64..160).
 """
 import hashlib
 import os
@@ -26,6 +29,7 @@ import olyfw  # noqa: E402
 
 BASE = 0x60021020
 REC_DEFAULT = 0x604dbfb8
+REC_LIMIT = 0x604dbf90
 STOCK_LIST = 0x604d90e2
 STOCK_VALUES = [0x600 + 0x55 * k + (k // 3) for k in range(16)]
 NEW_LIST = 0x600d9280
@@ -52,8 +56,9 @@ def off(a):
 
 def patch_at(m, base):
     o = lambda a: a - base  # noqa: E731
-    sid, fl, vp, z, n, sz = struct.unpack_from("<HHIIHH", m, o(REC_DEFAULT))
-    check((sid, fl, vp, z, n, sz) == (0x68d, 0x80, STOCK_LIST, STOCK_NUMS, 32, 2), "ISO-Auto Default record differs")
+    for rec, sid0 in ((REC_DEFAULT, 0x68d), (REC_LIMIT, 0x68b)):
+        sid, fl, vp, z, n, sz = struct.unpack_from("<HHIIHH", m, o(rec))
+        check((sid, fl, vp, z, n, sz) == (sid0, 0x80, STOCK_LIST, STOCK_NUMS, 32, 2), "ISO-Auto record %#x differs" % sid0)
     check(list(struct.unpack_from("<16I", m, o(STOCK_NUMS))) == NUMS[5:], "ISO-Auto number list differs")
     vals = list(struct.unpack_from("<16H", m, o(STOCK_LIST)))
     check(vals == STOCK_VALUES, "ISO-Auto value list differs")
@@ -64,9 +69,10 @@ def patch_at(m, base):
     nums = struct.pack("<%dI" % len(NUMS), *NUMS)
     check(set(m[o(NEW_NUMS) - 16:o(NEW_NUMS) + len(nums) + 16]) == {0xff}, "number list area not free")
     m[o(NEW_NUMS):o(NEW_NUMS) + len(nums)] = nums
-    struct.pack_into("<I", m, o(REC_DEFAULT) + 8, NEW_NUMS)
-    struct.pack_into("<I", m, o(REC_DEFAULT) + 4, NEW_LIST)
-    struct.pack_into("<H", m, o(REC_DEFAULT) + 12, len(data))
+    for rec in (REC_DEFAULT, REC_LIMIT):
+        struct.pack_into("<I", m, o(rec) + 8, NEW_NUMS)
+        struct.pack_into("<I", m, o(rec) + 4, NEW_LIST)
+        struct.pack_into("<H", m, o(rec) + 12, len(data))
     for a, old, nw in CLAMPS:
         old, nw = bytes.fromhex(old), bytes.fromhex(nw)
         check(bytes(m[o(a):o(a) + len(old)]) == old, "clamp at %#x differs" % a)
