@@ -64,23 +64,27 @@ jmp back"""
 # (makePlayScaleHandle 0x609450f6, takeHandles[1..n]). The GUI wrapper entryMesCombineImage
 # (0x60a2e615, after setMesCombineImage counted the shot in 0x61e88ab8) now calls ScaleDispForce
 # when 2 <= held shots < frames (not the last shot, which the camera merges itself).
-RB_SITE, RB_STOCK, RB_BACK = 0x60a2e640, bytes.fromhex("82fccc4036bf60"), 0x60a2e647
+# Camera 1.710 (ScaleDispForce from entryMesCombineImage, during the capture): no overlay at all, not
+# even after shot 1. 1.711: rebuild where the camera returns to live view after a shot that is not the
+# last: finishRecViewForMultiExpose (0x60a2d34a) "Through_Start[2]" ends `mov d3,a0; call 0x60a2ec0f`
+# (shows the overlay); with 2 <= held shots < frames it calls 0x60a2e657 instead (the GUI's own
+# ScaleDispForce + 0x60a2ec0f).
+RB_SITE, RB_STOCK, RB_BACK = 0x60a2d47a, bytes.fromhex("f1eccd9317200c"), 0x60a2d481
 RB_STUB = 0x600d9480
-RB_SRC = """mov d0,d2
-cmp 0,d2
-bne 9f
-movhu (0x61e88ab8),d0
+RB_SRC = """movhu (0x61e88ab8),d0
 cmp 2,d0
-bcs 9f
+bcs 1f
 mov 0x10a,d0
 call getv,[],4
 movhu (0x61e88ab8),d1
 cmp d0,d1
-bcc 9f
-mov (728,a2),a0
-call sdf,[d2,a2,a3],24
-9:
-mov 0x60bf3640,d0
+bcc 1f
+mov d3,a0
+call rebuild,[a2],8
+jmp back
+1:
+mov d3,a0
+call show,[a2],12
 jmp back"""
 # Camera (1.608 freeze probe): the success handler runs only after shot frames-1. The GUI at
 # 0x60a2d2ff posts the merge-and-overlay request (0x30000040) only when count+1 >= frames, i.e.
@@ -189,8 +193,9 @@ def patch(main):
     if "--no-rebuild" not in sys.argv:
         import patch_aspect
         check(set(m[off(RB_STUB) - 16:off(RB_STUB + 0x50)]) == {0xff}, "rebuild stub area not free")
-        check(bytes(a[RB_SITE - BLOB_A:RB_SITE - BLOB_A + len(RB_STOCK)]) == RB_STOCK, "entryMesCombineImage site differs")
-        rb = patch_aspect.assemble_syms(RB_SRC, RB_STUB, {"back": RB_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
+        check(bytes(a[RB_SITE - BLOB_A:RB_SITE - BLOB_A + len(RB_STOCK)]) == RB_STOCK, "finishRecView site differs")
+        rb = patch_aspect.assemble_syms(RB_SRC, RB_STUB, {"back": RB_BACK, "getv": 0x602eeec8,
+                                                          "rebuild": 0x60a2e657, "show": 0x60a2ec0f})
         check(len(rb) <= 0x50, "rebuild stub too long")
         m[off(RB_STUB):off(RB_STUB) + len(rb)] = rb
         a[RB_SITE - BLOB_A:RB_SITE - BLOB_A + len(RB_STOCK)] = (
