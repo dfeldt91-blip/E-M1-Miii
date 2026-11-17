@@ -27,6 +27,7 @@ TAB, COUNT, RAM = 0x32c9c, 3929, 0xa402b560
 TRAILER = "OlympusLanguage_enutft"
 MAX_CHARS = 36
 TITLE1, TITLE2 = 0x2e1, 0x1ee
+LOG = print
 STOCK = {TITLE1: "Shooting Menu 1", TITLE2: "Shooting Menu 2"}
 
 
@@ -63,12 +64,12 @@ def patch_block1(blk1, texts):
         raw = text.encode("utf-16le") + b"\0\0"
         if len(text) <= len(STOCK[sid]):          # fits in place: pad with spaces, keep the pointer
             sec[p - RAM:p - RAM + 2 * len(STOCK[sid])] = text.ljust(len(STOCK[sid])).encode("utf-16le")
-            print("  string %#x %r -> %r (in place)" % (sid, STOCK[sid], text))
+            LOG("  string %#x %r -> %r (in place)" % (sid, STOCK[sid], text))
             continue
         check(at + len(raw) + 2 <= t, "not enough free space after the pointer table (%d bytes)" % free)
         sec[at:at + len(raw)] = raw
         struct.pack_into("<I", sec, TAB + 4 * sid, RAM + at)
-        print("  string %#x %r -> %r (at section %#x)" % (sid, STOCK[sid], text, at))
+        LOG("  string %#x %r -> %r (at section %#x)" % (sid, STOCK[sid], text, at))
         at += len(raw)
     d[o:o + n] = sec
     return bytes(d)

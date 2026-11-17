@@ -18,6 +18,7 @@ on:
       - "tools/patch_underwater_mono.py"
       - "tools/patch_looks.py"
       - "tools/looks_library.py"
+      - "tools/patch_owner_title.py"
       - ".github/workflows/mac-app.yml"
 
 jobs:

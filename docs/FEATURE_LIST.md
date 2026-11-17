@@ -12,6 +12,7 @@ works on the camera.
 | 5 | **Looks in Custom (Caduceus-style)** | Custom shoots a look picked on the computer (hue/saturation/lightness per colour, tone, later grain/split tone); later loaded from the card on the first half-press. | Stage 1 test 1.682 (`tools/patch_looks.py --test1`): colour engine hook |
 | 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | 1.697 and 1.698: no change (still 120 fps). Paused: the value that drives the sensor is not found yet |
 | 7 | **'_' in Edit Filename** | The Edit Filename character picker also offers '_', so names can start with an underscore. | **Done**: worked on the camera (1.700); in the app as `filename_underscore` |
+| 8 | **Owner name in the menu** | The main menu title "Shooting Menu 1" shows the owner's name and phone, typed in the app. | **Done**: worked on the camera (1.701, '@' does not display); in the app as `owner_title` |
 
 ## Leads
 
@@ -68,3 +69,8 @@ works on the camera.
   1.699: 38-entry list at `0x600d9000` with '_' (UTF-16 '_' at `0x600411fe`): no '_' on the camera. The
   settings layer has its own list: records `0x604dc29c` + 20 x k -> 37 bytes at `0x604d9178`. 1.700 adds '_'
   there too (38 bytes at `0x600d9200`).
+- **8:** English language section (block 1 entry 8): UTF-16 strings, then a u32 RAM pointer per string id
+  (table at section offset `0x32c9c`, 3929 entries, RAM base `0xa402b560`), 74 zero bytes, then the
+  `OlympusLanguage_enutft` trailer. `tools/patch_owner_title.py` writes the text into that padding (max 36
+  characters) and repoints string `0x2e1` "Shooting Menu 1". '@' starts icon codes (`@A024@`), so emails fail.
+  The Certification page (menu item `0x13be`, strings `0xa6e`/`0xabb`) shows images, not text.

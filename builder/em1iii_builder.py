@@ -9,7 +9,7 @@ in this program: the mods are edit lists (builder/mods.json) applied to your own
   python3 builder/em1iii_builder.py --list             list the mods
   python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
                                     [--stock FILE] [--frame-width 3] [--underwater-tint 0..4]
-                                    [--custom-looks ID,ID,ID,ID,ID,ID]   (see --looks) [--custom-looks-sd]
+                                    [--custom-looks ID,ID,ID,ID,ID,ID]   (see --looks) [--custom-looks-sd] [--owner-text "NAME PHONE"]
                                     [--card-file CARD_DIR]   also write EM1MOD/LOOKS.BIN with those looks
                                                        no window ('--mods all' / '--mods none')
 
@@ -183,6 +183,8 @@ def cli(argv):
                 print("--custom-looks needs six look ids (see --looks)")
                 return 1
             options["custom_looks"] = {"look%d" % (i + 1): k for i, k in enumerate(ks)}
+        if arg("--owner-text"):
+            options["owner_title"] = {"text": arg("--owner-text")}
         if "--custom-looks-sd" in argv:
             options.setdefault("custom_looks", {})["sd"] = "on"
         if arg("--card-file"):
@@ -296,6 +298,12 @@ def gui():
                     ttk.Label(of, text=o["label"] + ":").pack(side="top", anchor="e")
                     ttk.Combobox(of, textvariable=var, values=labels, state="readonly", width=16).pack(side="top", anchor="e", padx=4)
                     continue
+                if o.get("text"):
+                    var = tk.StringVar(value=str(saved))
+                    opt_vars[(m["id"], name)] = (var, "text")
+                    ttk.Label(of, text=o["label"] + ":").pack(side="top", anchor="e")
+                    ttk.Entry(of, textvariable=var, width=30).pack(side="top", anchor="e", padx=4)
+                    continue
                 var = tk.StringVar(value=str(saved))
                 opt_vars[(m["id"], name)] = (var, None)
                 ttk.Label(of, text=o["label"] + ":").pack(side="left")
@@ -381,7 +389,8 @@ def gui():
         options = {}
         try:
             for (mid, name), (var, keymap) in opt_vars.items():
-                options.setdefault(mid, {})[name] = keymap[var.get()] if keymap else float(var.get())
+                options.setdefault(mid, {})[name] = (var.get().strip() if keymap == "text" else
+                                                     keymap[var.get()] if keymap else float(var.get()))
         except ValueError:
             messagebox.showerror(APP, "Please enter a number for the options.")
             return

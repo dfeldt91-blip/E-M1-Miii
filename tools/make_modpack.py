@@ -107,6 +107,12 @@ GENERATED = [
      "per build.",
      "Worked on the camera (1.6 build 1.674, neutral).", [],
      {"tint": {"label": "Tint (0 neutral, 1 sepia, 2 blue, 3 purple, 4 green)", "default": 0, "min": 0, "max": 4, "step": 1}}),
+    ("owner_title", "Owner name and phone in the main menu",
+     "The 'Shooting Menu 1' title at the top of the main menu shows your text instead, e.g. your name "
+     "and phone number, so a lost or stolen camera can be traced back to you. Up to 36 characters; "
+     "'@' (email) does not display. English menus only.",
+     "Worked on the camera (1.6 build 1.701; an email with @ did not display).", [],
+     {"text": {"label": "Owner text (name, phone)", "default": "", "text": True, "max_len": 36}}),
 ]
 
 

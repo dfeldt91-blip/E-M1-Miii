@@ -229,7 +229,22 @@ def _custom_looks(img, plains, opts, log):
         log("    Custom looks: " + ", ".join("%s = %s" % (s, n) for s, n in zip(pl.MENU_NAMES, names)))
 
 
+def _owner_title(img, plains, opts, log):
+    import patch_owner_title as ot
+    text = str(opts.get("text", "")).strip()
+    check(text, "type the owner text (name and phone) for the Owner title mod")
+    check(len(text) <= ot.MAX_CHARS, "owner text is %d characters; at most %d fit" % (len(text), ot.MAX_CHARS))
+    check(all(32 <= ord(c) < 127 for c in text), "owner text: use plain letters, digits and punctuation only")
+    check("@" not in text, "owner text: '@' does not display on the camera (it starts icon codes), leave the email out")
+    try:
+        plains[1][:] = ot.patch_block1(bytes(plains[1]), {ot.TITLE1: text})
+    except SystemExit as e:
+        raise BuildError(str(e))
+    log("    Shooting Menu 1 title: %s" % text)
+
+
 GENERATORS = {
+    "owner_title": _owner_title,
     "custom_looks": _custom_looks,
     "underwater_mono": _uw_mono,
     "xpan_icon": _xpan,

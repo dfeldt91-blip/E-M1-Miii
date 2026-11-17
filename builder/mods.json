@@ -2000,6 +2000,22 @@
      "step": 1
     }
    }
+  },
+  {
+   "id": "owner_title",
+   "title": "Owner name and phone in the main menu",
+   "description": "The 'Shooting Menu 1' title at the top of the main menu shows your text instead, e.g. your name and phone number, so a lost or stolen camera can be traced back to you. Up to 36 characters; '@' (email) does not display. English menus only.",
+   "camera": "Worked on the camera (1.6 build 1.701; an email with @ did not display).",
+   "requires": [],
+   "generator": "owner_title",
+   "options": {
+    "text": {
+     "label": "Owner text (name, phone)",
+     "default": "",
+     "text": true,
+     "max_len": 36
+    }
+   }
   }
  ]
 }
