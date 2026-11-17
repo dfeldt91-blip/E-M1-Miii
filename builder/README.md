@@ -83,7 +83,6 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `panorama` | Panorama aspect 65:24 (replaces 7:6) | worked (1.5 build) |
 | `multiexp` | Multiple Exposure with 3 and 4 frames | worked (1.5 build) |
 | `stack_any_lens` | In-camera focus stacking with any lens | worked (1.5 build) |
-| `stack16` | Focus stacking up to 16 frames | not tested |
 | `keyline_mono` | Key Line II in black and white | worked (1.5 build) |
 | `arrow_keys` | More arrow-key functions | not tested |
 | `hhrs_flash` | Flash in handheld High Res | worked (1.5 build) |

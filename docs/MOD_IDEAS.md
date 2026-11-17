@@ -17,7 +17,6 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | Panorama aspect 65:24 | `panorama` |
 | Multiple Exposure with 3 and 4 frames | `multiexp` |
 | Focus stacking with any lens | `stack_any_lens` |
-| Focus stacking up to 16 frames | `stack16` |
 | Key Line II in black and white | `keyline_mono` |
 | More arrow-key functions | `arrow_keys` |
 | Flash in handheld High Res | `hhrs_flash` |

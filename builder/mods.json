@@ -774,7 +774,7 @@
   {
    "id": "multiexp",
    "title": "Multiple Exposure: 3 and 4 frames",
-   "description": "Multiple Exposure accepts 3 or 4 frames, with the merged shots shown as the live overlay.",
+   "description": "Multiple Exposure accepts 3 or 4 frames. The live overlay shows after the first shot only (a fix for shots 2 and 3 is being tested).",
    "camera": "Worked on the camera (1.5 build).",
    "requires": [],
    "stock_sha256": "ba9b24d9a4cbdec0b43178b38412b62ff69c5491e95be2b483415597dc97a3ad",
@@ -853,36 +853,6 @@
      0,
      "0x606983f9",
      "cbcb"
-    ]
-   ]
-  },
-  {
-   "id": "stack16",
-   "title": "Focus stacking: up to 16 frames",
-   "description": "Focus stacking frame count goes up to 16 (stock 15; 16 is the merge engine limit).",
-   "camera": "Not tested on the camera yet.",
-   "requires": [],
-   "stock_sha256": "fe63f9414e8b81ec36e3858d39ce3d328cb5749eb78b242251e9e84b52125bba",
-   "edits": [
-    [
-     0,
-     "0x600d6f80",
-     "100000000f0000000e0000000d0000000c0000000b0000000a00000009000000080000000700000006000000050000000400000003000000"
-    ],
-    [
-     0,
-     "0x60df6ca4",
-     "0e"
-    ],
-    [
-     0,
-     "0x60df6cc7",
-     "10"
-    ],
-    [
-     0,
-     "0x60df6d58",
-     "806f0d60"
     ]
    ]
   },
