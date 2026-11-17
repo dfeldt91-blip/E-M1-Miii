@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Edit Filename: '_' as a character choice (EXPERIMENTAL, E-M1 Mark III 1.6).
 
-  python3 tools/patch_filename_char.py IN.BIN OUT.BIN [--version 0x1699]
+  python3 tools/patch_filename_char.py IN.BIN OUT.BIN [--version 0x1700]
 
 Settings 0x93..0x96 MODE_FILENAME_CUSTOM_SRGB1..4 and 0x97..0x9a ..._ADOBE1..4 hold one character
 each (0x20 = Off, keep the stock character). 0x602cca00 reads the four of the current colour space
@@ -14,7 +14,13 @@ RGB), u16 count 37, title, ?, list, ?} (looked up by key at 0x60ec5132); the lis
 37 records {u32 value, u16 type, u16 label, u32 ptr}: {0x20, 4, string 0x6a8 "Off"} and
 {'0'..'9', 'A'..'Z', 5 = one UTF-16 character at ptr}.
 
-Patch: a 38-entry list at 0x600d9000 (0xff padding in the base section, copied at boot): the stock 37
+The settings layer has its own value list: setting records {u16 id, u16 0x80, u32 values, u32 0, u16
+count, u16 1, u32} at 0x604dc29c + 20 x (id - 0x93) point to the 37 bytes " 0-9A-Z" at 0x604d9178.
+
+Camera 1.699 (picker list only): no '_' in the list, so the picker follows the setting's list.
+
+Patch: the eight setting records point to a 38-byte list " 0-9A-Z_" at 0x600d9200, count 38; and a
+38-entry picker list at 0x600d9000 (0xff padding in the base section, copied at boot): the stock 37
 plus {'_', 5, ptr 0x600411fe (the '_' of the UTF-16 table at 0x600411c2)}; both descriptors point
 to it with count 38.
 """
@@ -32,6 +38,7 @@ BLOB_B, BLOB_B_OFF = 0x60c6c000, 0xc4afe0
 DESCS = (0x61295740, 0x61295754)
 LIST, N = 0x6129554c, 37
 NEW_LIST = 0x600d9000
+SET_RECS, SET_VALUES, NEW_VALUES = 0x604dc29c, 0x604d9178, 0x600d9200
 UNDERSCORE = 0x600411fe
 CHARS = [0x20] + list(range(0x30, 0x3a)) + list(range(0x41, 0x5b))
 
@@ -66,6 +73,16 @@ def patch(main):
     data = b"".join(struct.pack("<IHHI", *r) for r in new)
     check(set(m[off(NEW_LIST) - 16:off(NEW_LIST) + len(data) + 16]) == {0xff}, "list area not free")
     m[off(NEW_LIST):off(NEW_LIST) + len(data)] = data
+    check(bytes(m[off(SET_VALUES):off(SET_VALUES) + N]) == bytes(CHARS), "setting value list differs")
+    vals = bytes(CHARS) + b"_"
+    check(set(m[off(NEW_VALUES) - 16:off(NEW_VALUES) + len(vals) + 16]) == {0xff}, "value list area not free")
+    m[off(NEW_VALUES):off(NEW_VALUES) + len(vals)] = vals
+    for k in range(8):
+        r = off(SET_RECS + 20 * k)
+        sid, fl, vp, z, n, one = struct.unpack_from("<HHIIHH", m, r)
+        check((sid, vp, z, n, one) == (0x93 + k, SET_VALUES, 0, N, 1), "setting record %#x differs" % (0x93 + k))
+        struct.pack_into("<I", m, r + 4, NEW_VALUES)
+        struct.pack_into("<H", m, r + 12, len(vals))
     for d in DESCS:
         struct.pack_into("<H", gui, g(d) + 2, len(new))
         struct.pack_into("<I", gui, g(d) + 12, NEW_LIST)
