@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ISO-Auto down to L64 (EXPERIMENTAL, E-M1 Mark III 1.6). Stage 1.
 
-  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1706]
+  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1707]
 
 ISO values are APEX Sv x 256: ISO 100 = 0x500, 1/3 EV = 0x55 (L64 0x455, L80 0x4aa, 100 0x500, 125
 0x555, 160 0x5aa, 200 0x600 ... 6400 0xb00). ISO-Auto Set (menu "Upper Limit / Default") uses settings
@@ -18,7 +18,12 @@ Camera 1.703 (no number list): ISO-Auto went down to 64; the new menu entries we
 Camera 1.704 (Default's own number list): still blank. The "Upper Limit / Default" screen (menu item
 0x68b) probably shows both columns through the 0x68b record, so 1.705 gives Upper Limit (0x68b) the
 same two lists too (Upper Limit can then also be set to 64..160).
-Camera finding: Default is not the lower bound (Default 1000 still went down to 64). ISO-Auto's floor
+Camera 1.705 (lists on both records): the new entries were not shown at all and ISO-Auto stopped at
+200. Camera 1.706 (clamps only): M goes down to 64 (Default ignored); in S and A, Default is the floor
+(200 and up work). 0x604372b3.. clamps Default into the per-mode copies 0x62167ed4..ede, which S/A use
+as the floor. 1.707: that clamp compares with 0x601 instead, so Default 200 gives L64 (no floor) and
+Default 250+ keeps working as the floor; 0x60434633 (M, P?) floor L64.
+Earlier note: Default is not the lower bound (Default 1000 still went down to 64). ISO-Auto's floor
 is the hard 0x600 clamp above, so the clamps alone give ISO-Auto L64..Upper Limit. Default: clamps
 only; --menu-lists adds the (still blank-labelled) Default/Upper Limit entries 64..160.
 """
@@ -41,7 +46,7 @@ NUMS = [64, 80, 100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 16
         5000, 6400]
 LOW = [0x455, 0x4aa, 0x500, 0x555, 0x5aa]
 CLAMPS = [  # (address, stock bytes, new bytes)
-    (0x604372ca, "fac80006", "fac85504"),   # cmp 0x600,d0 -> cmp 0x455,d0
+    (0x604372ca, "fac80006", "fac80106"),   # cmp 0x600,d0 -> cmp 0x601,d0: Default 200 (or less) -> L64
     (0x604372d0, "2e0006", "2e5504"),       # mov 0x600,d2 -> mov 0x455,d2
     (0x60434633, "fac80006", "fac85504"),
     (0x60434639, "2c0006", "2c5504"),       # mov 0x600,d0 -> mov 0x455,d0
