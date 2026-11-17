@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ISO-Auto down to L64 (EXPERIMENTAL, E-M1 Mark III 1.6). Stage 1.
 
-  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1705]
+  python3 tools/patch_iso_auto_low.py IN.BIN OUT.BIN [--version 0x1706]
 
 ISO values are APEX Sv x 256: ISO 100 = 0x500, 1/3 EV = 0x55 (L64 0x455, L80 0x4aa, 100 0x500, 125
 0x555, 160 0x5aa, 200 0x600 ... 6400 0xb00). ISO-Auto Set (menu "Upper Limit / Default") uses settings
@@ -18,6 +18,9 @@ Camera 1.703 (no number list): ISO-Auto went down to 64; the new menu entries we
 Camera 1.704 (Default's own number list): still blank. The "Upper Limit / Default" screen (menu item
 0x68b) probably shows both columns through the 0x68b record, so 1.705 gives Upper Limit (0x68b) the
 same two lists too (Upper Limit can then also be set to 64..160).
+Camera finding: Default is not the lower bound (Default 1000 still went down to 64). ISO-Auto's floor
+is the hard 0x600 clamp above, so the clamps alone give ISO-Auto L64..Upper Limit. Default: clamps
+only; --menu-lists adds the (still blank-labelled) Default/Upper Limit entries 64..160.
 """
 import hashlib
 import os
@@ -54,8 +57,14 @@ def off(a):
     return a - BASE
 
 
-def patch_at(m, base):
+def patch_at(m, base, lists=False):
     o = lambda a: a - base  # noqa: E731
+    for a, old, nw in CLAMPS:
+        old, nw = bytes.fromhex(old), bytes.fromhex(nw)
+        check(bytes(m[o(a):o(a) + len(old)]) == old, "clamp at %#x differs" % a)
+        m[o(a):o(a) + len(nw)] = nw
+    if not lists:
+        return 0
     for rec, sid0 in ((REC_DEFAULT, 0x68d), (REC_LIMIT, 0x68b)):
         sid, fl, vp, z, n, sz = struct.unpack_from("<HHIIHH", m, o(rec))
         check((sid, fl, vp, z, n, sz) == (sid0, 0x80, STOCK_LIST, STOCK_NUMS, 32, 2), "ISO-Auto record %#x differs" % sid0)
@@ -73,17 +82,13 @@ def patch_at(m, base):
         struct.pack_into("<I", m, o(rec) + 8, NEW_NUMS)
         struct.pack_into("<I", m, o(rec) + 4, NEW_LIST)
         struct.pack_into("<H", m, o(rec) + 12, len(data))
-    for a, old, nw in CLAMPS:
-        old, nw = bytes.fromhex(old), bytes.fromhex(nw)
-        check(bytes(m[o(a):o(a) + len(old)]) == old, "clamp at %#x differs" % a)
-        m[o(a):o(a) + len(nw)] = nw
     return len(new)
 
 
 def patch(main):
     m = bytearray(main)
-    n = patch_at(m, BASE)
-    print("  ISO-Auto Default: %d values from L64 (list %#x); exposure clamps 200 -> L64" % (n, NEW_LIST))
+    n = patch_at(m, BASE, "--menu-lists" in sys.argv)
+    print("  ISO-Auto lower bound 200 -> L64" + (" + menu lists (%d values)" % n if n else ""))
     return bytes(m)
 
 
