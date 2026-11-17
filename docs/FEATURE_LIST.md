@@ -11,7 +11,7 @@ works on the camera.
 | 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Dropped by the owner (would delay startup). |
 | 5 | **Looks in Custom (Caduceus-style)** | Custom shoots a look picked on the computer (hue/saturation/lightness per colour, tone, later grain/split tone); later loaded from the card on the first half-press. | Stage 1 test 1.682 (`tools/patch_looks.py --test1`): colour engine hook |
 | 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | 1.697 and 1.698: no change (still 120 fps). Paused: the value that drives the sensor is not found yet |
-| 7 | **'_' in Edit Filename** | The Edit Filename character picker also offers '_', so names can start with an underscore. | 1.699: no '_' shown. Test 1.700: also the setting's own value list |
+| 7 | **'_' in Edit Filename** | The Edit Filename character picker also offers '_', so names can start with an underscore. | **Done**: worked on the camera (1.700); in the app as `filename_underscore` |
 
 ## Leads
 

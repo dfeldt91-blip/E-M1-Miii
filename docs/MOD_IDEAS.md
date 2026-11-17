@@ -25,6 +25,7 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | SCP button cell opens the main menu | `scp_menu` |
 | Sharpness as a linear scale (−2 = off … +2 = stock +2) | `sharp_scale` |
 | Custom Modes C1–C4 save and open video | `cmode_video` |
+| Underscore `_` in Edit Filename | `filename_underscore` |
 | Frame art effect: plain white border, also in Panorama | `white_frame`, `white_frame_panorama` |
 | XPAN icon for Panorama on the SCP | `xpan_icon` |
 | Underwater picture mode in black and white | `underwater_mono` |

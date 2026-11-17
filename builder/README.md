@@ -91,6 +91,7 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `scp_menu` | SCP bottom-right cell (Button Function) opens the main menu, titled "Menu" | worked (1.6, 1.679) |
 | `sharp_scale` | Sharpness −2 off, −1 25 %, 0 50 %, +1 75 %, +2 100 % (stock +2) | worked (1.6, 1.680) |
 | `cmode_video` | Assign to Custom Mode works in movie mode; that C slot then opens in video | worked (1.6, 1.681) |
+| `filename_underscore` | Edit Filename also offers `_` after Z, so file names can start with an underscore | worked (1.6, 1.700) |
 | `white_frame` | Frame art effect as a plain white border; width setting (% of the short side) | worked (1.6, 1.664) |
 | `white_frame_panorama` | White frame in Panorama (needs `panorama` and `white_frame`) | worked (1.6, 1.665) |
 | `underwater_mono` | Underwater picture mode in black and white; tint setting | worked (1.6, 1.674) |

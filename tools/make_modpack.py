@@ -60,6 +60,10 @@ MODS = [
      "Assign to Custom Mode also works with the dial on movie. A C slot saved there opens in video "
      "mode with its movie settings; a slot saved in a photo mode stays photo.",
      "Worked on the camera (1.6 build 1.681).", []),
+    ("filename_underscore", "patch_filename_char.py", [], "Underscore in Edit Filename",
+     "Edit Filename also offers '_' (after Z), for sRGB and Adobe RGB, so a file name can start with "
+     "an underscore. Note: by the DCF standard a leading '_' marks Adobe RGB files.",
+     "Worked on the camera (1.6 build 1.700).", []),
 ]
 
 
