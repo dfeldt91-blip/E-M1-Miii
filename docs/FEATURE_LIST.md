@@ -10,7 +10,7 @@ works on the camera.
 | 3 | **C1–C4 remember photo / video** | Each C slot remembers whether the camera was in photo or video mode when it was saved; turning the dial to it opens that mode with its settings. (Stock already saves the movie settings, but Assign to Custom Mode is unavailable in movie mode and C positions are always photo.) | **Done**: worked on the camera (1.681); in the app as `cmode_video` |
 | 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Dropped by the owner (would delay startup). |
 | 5 | **Looks in Custom (Caduceus-style)** | Custom shoots a look picked on the computer (hue/saturation/lightness per colour, tone, later grain/split tone); later loaded from the card on the first half-press. | Stage 1 test 1.682 (`tools/patch_looks.py --test1`): colour engine hook |
-| 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | 1.697: no change (still 120 fps). Test 1.698 (`tools/patch_hs240.py`): mode changed where it is built |
+| 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | 1.697 and 1.698: no change (still 120 fps). Paused: the value that drives the sensor is not found yet |
 
 ## Leads
 
@@ -56,4 +56,8 @@ works on the camera.
   AE tables (`0x604325b7..`: 0xbf00/01/0a/0b with 240), so LSSC is real on this sensor. 1.697 set mode 2
   where the override would apply and the mode is 1: camera still 120 fps (clip 23.98p, 5x). 1.698 hooks the
   mode builder `0x60436f1e` (end `0x60436f3b`): 1 MSSC -> 2 LSSC and 9 MSPD -> 10 LSPD, in every mode.
-  Open: file frame rate, encoder rate, clip size.
+  Camera 1.698: still 120 fps (10 s -> about 48 s at 23.98p), so the exposure mode record does not drive the
+  sensor in High Speed movie. Next leads: the cam request queue (`0x6013b028`, list type 3 = frame rate at +8
+  compared with `0x6016e037`), and module `0x6016....` with its own mode copy `0x620c7860` (set at
+  `0x60163e56` from request+4; enum printed at `0x6016ada1`: STILL_HS 0, MOVIE_HS 1, HSSC 2, MSSC 3, LSSC 4,
+  CLIP 5, HSHR 6, MSHR 7, 4K 8, C4K 9, PD 10, MSPD 11, LSPD 12, HQ 13, FULL 14, STILL 16; table `0x601f2950`).
