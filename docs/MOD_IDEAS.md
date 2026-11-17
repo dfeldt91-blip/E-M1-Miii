@@ -107,7 +107,7 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | C12 | **Wider Contrast / Saturation / Gradation ranges** | **Plausible** | Same approach as the sharpness scale. |
 | C13 | **More white-balance presets / finer Kelvin** | **Plausible** | |
 | C14 | **Art filters: new variations** (e.g. more frame/effect options) | **Plausible** | White frame is an example. |
-| C15 | **On-camera look editor** (HSL screens like the E-P7 / PEN-F) | **No / very hard** | The editor screens don't exist in this firmware; it would mean writing a new GUI. |
+| C15 | **On-camera HSL editor** (hue / saturation / lightness per colour, like the E-P7 / PEN-F) | **Idea, being probed** | The hidden Color Profile feature's settings, strings and wheel-drawing code are still in the firmware; no menu opens its editor. Probe 1.712 (`tools/patch_cpc_probe.py`) asks for an unused screen (state 69) from SCP INFO on Color Creator. |
 
 ## Buttons, menus and display
 | # | Idea | Rating | Notes |
