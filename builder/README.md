@@ -92,6 +92,8 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `sharp_scale` | Sharpness −2 off, −1 25 %, 0 50 %, +1 75 %, +2 100 % (stock +2) | worked (1.6, 1.680) |
 | `cmode_video` | Assign to Custom Mode works in movie mode; that C slot then opens in video | worked (1.6, 1.681) |
 | `filename_underscore` | Edit Filename also offers `_` after Z, so file names can start with an underscore | worked (1.6, 1.700) |
+| `iso_auto_low` | ISO-Auto goes down to ISO 64 (in P/A/S with Default 200); Default 250+ still the floor | 1.6, 1.706-1.709 |
+| `rec_limit` | Movie recording limit 29 min / 2 h raised to 9 h | 1.6, 1.709 |
 | `owner_title` | The main menu's "Shooting Menu 1" title shows your own text (name, phone; up to 36 characters, no `@`) | worked (1.6, 1.701) |
 | `white_frame` | Frame art effect as a plain white border; width setting (% of the short side) | worked (1.6, 1.664) |
 | `white_frame_panorama` | White frame in Panorama (needs `panorama` and `white_frame`) | worked (1.6, 1.665) |

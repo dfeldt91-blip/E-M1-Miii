@@ -13,6 +13,8 @@ works on the camera.
 | 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | 1.697 and 1.698: no change (still 120 fps). Paused: the value that drives the sensor is not found yet |
 | 7 | **'_' in Edit Filename** | The Edit Filename character picker also offers '_', so names can start with an underscore. | **Done**: worked on the camera (1.700); in the app as `filename_underscore` |
 | 8 | **Owner name in the menu** | The main menu title "Shooting Menu 1" shows the owner's name and phone, typed in the app. | **Done**: worked on the camera (1.701, '@' does not display); in the app as `owner_title` |
+| 9 | **ISO-Auto down to L64** | ISO-Auto can choose ISO 64..160 in bright light. | In the app as `iso_auto_low` (camera 1.706: M; 1.708/1.709: P/A/S) |
+| 10 | **Recording limit 9 h** | 29 min / 2 h movie limit raised to 9 h. | In the app as `rec_limit` (test 1.709) |
 
 ## Leads
 
@@ -74,3 +76,8 @@ works on the camera.
   `OlympusLanguage_enutft` trailer. `tools/patch_owner_title.py` writes the text into that padding (max 36
   characters) and repoints string `0x2e1` "Shooting Menu 1". '@' starts icon codes (`@A024@`), so emails fail.
   The Certification page (menu item `0x13be`, strings `0xa6e`/`0xabb`) shows images, not text.
+- **9:** `tools/patch_iso_auto_low.py`: ISO-Auto floors 0x600 (ISO 200) -> 0x455 (L64) at `0x604372ca`,
+  `0x60434633` (M) and the ISO-Auto base `0x60433c7e` (P/A/S: floor, and Default 200 -> L64 in its Default
+  cases). The Default/Upper Limit menu cannot simply be extended (1.704/1.705: blank or missing entries).
+- **10:** `tools/patch_rec_limit.py`: `0x603442f5` (1740 s / 7200 s per movie type, as Caduceus E-P7) and the
+  1740 s caps at `0x603435bb` and `0x60352732` -> 32400 s.

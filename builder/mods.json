@@ -1142,6 +1142,71 @@
    ]
   },
   {
+   "id": "iso_auto_low",
+   "title": "ISO-Auto down to L64",
+   "description": "ISO-Auto can go down to ISO 64 instead of stopping at 200. In M it always can; in P, A and S set ISO-Auto Default to 200 for no floor (Default 250 or higher still works as the floor). Upper Limit and the menus are unchanged.",
+   "camera": "Camera: M down to 64 (1.706); P/A/S version in 1.708/1.709.",
+   "requires": [],
+   "stock_sha256": "2b94c13415229195a097acc4b7ed78942ec35852def4a0efae57acda499747d6",
+   "edits": [
+    [
+     0,
+     "0x600d9400",
+     "231af063f8be0ea000c80df06bfaca0006c9052e5504dceda83500"
+    ],
+    [
+     0,
+     "0x600d9440",
+     "901af17cf060f8be0ea000c80df068faca0006c9052e5504dc92a83500"
+    ],
+    [
+     0,
+     "0x60433c89",
+     "5504"
+    ],
+    [
+     0,
+     "0x60433ccc",
+     "dc3457caffcbcbcbcbcbcbf06bca2adc6557caffcbcbcbcbcbcbcbcbcbcb"
+    ],
+    [
+     0,
+     "0x60434635",
+     "5504c2072c5504"
+    ],
+    [
+     0,
+     "0x604372cc",
+     "5504c2072e5504"
+    ]
+   ]
+  },
+  {
+   "id": "rec_limit",
+   "title": "Movie recording limit 9 hours",
+   "description": "Raises the 29-minute (and 2-hour) movie recording limit to 9 hours. The camera still starts a new file at the file-size limit; card space, battery and the heat cut-out still stop recording. Same change as Caduceus' camera-tested E-P7 patch.",
+   "camera": "Built into test 1.709.",
+   "requires": [],
+   "stock_sha256": "154f16b6967b2c820543e861a807a2baf17c9087ebaecc783fe0572735c45212",
+   "edits": [
+    [
+     0,
+     "0x603435bc",
+     "907e"
+    ],
+    [
+     0,
+     "0x60344313",
+     "907eca052c907e"
+    ],
+    [
+     0,
+     "0x60352733",
+     "907e"
+    ]
+   ]
+  },
+  {
    "id": "white_frame",
    "title": "Frame art effect: plain white border",
    "description": "The Frame art effect becomes a clean white border instead of the grungy film edge.",

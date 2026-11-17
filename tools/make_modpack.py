@@ -64,6 +64,16 @@ MODS = [
      "Edit Filename also offers '_' (after Z), for sRGB and Adobe RGB, so a file name can start with "
      "an underscore. Note: by the DCF standard a leading '_' marks Adobe RGB files.",
      "Worked on the camera (1.6 build 1.700).", []),
+    ("iso_auto_low", "patch_iso_auto_low.py", [], "ISO-Auto down to L64",
+     "ISO-Auto can go down to ISO 64 instead of stopping at 200. In M it always can; in P, A and S set "
+     "ISO-Auto Default to 200 for no floor (Default 250 or higher still works as the floor). Upper Limit "
+     "and the menus are unchanged.",
+     "Camera: M down to 64 (1.706); P/A/S version in 1.708/1.709.", []),
+    ("rec_limit", "patch_rec_limit.py", [], "Movie recording limit 9 hours",
+     "Raises the 29-minute (and 2-hour) movie recording limit to 9 hours. The camera still starts a new "
+     "file at the file-size limit; card space, battery and the heat cut-out still stop recording. Same "
+     "change as Caduceus' camera-tested E-P7 patch.",
+     "Built into test 1.709.", []),
 ]
 
 
