@@ -11,6 +11,7 @@ works on the camera.
 | 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Dropped by the owner (would delay startup). |
 | 5 | **Looks in Custom (Caduceus-style)** | Custom shoots a look picked on the computer (hue/saturation/lightness per colour, tone, later grain/split tone); later loaded from the card on the first half-press. | Stage 1 test 1.682 (`tools/patch_looks.py --test1`): colour engine hook |
 | 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | 1.697 and 1.698: no change (still 120 fps). Paused: the value that drives the sensor is not found yet |
+| 7 | **'_' in Edit Filename** | The Edit Filename character picker also offers '_', so names can start with an underscore. | Test 1.699 (`tools/patch_filename_char.py`) |
 
 ## Leads
 
@@ -61,3 +62,7 @@ works on the camera.
   compared with `0x6016e037`), and module `0x6016....` with its own mode copy `0x620c7860` (set at
   `0x60163e56` from request+4; enum printed at `0x6016ada1`: STILL_HS 0, MOVIE_HS 1, HSSC 2, MSSC 3, LSSC 4,
   CLIP 5, HSHR 6, MSHR 7, 4K 8, C4K 9, PD 10, MSPD 11, LSPD 12, HQ 13, FULL 14, STILL 16; table `0x601f2950`).
+- **7:** settings 0x93..0x9a `MODE_FILENAME_CUSTOM_SRGB1..4` / `_ADOBE1..4` (one character each, 0x20 = Off);
+  read by `0x602cca00`; name builder `0x6065268f` ('P', month, day, number, then the custom characters, no
+  check). Picker list `0x6129554c` (37 records: Off, 0-9, A-Z), descriptors `0x61295740` / `0x61295754`.
+  1.699: 38-entry list at `0x600d9000` with '_' (UTF-16 '_' at `0x600411fe`).
