@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""240 fps High Speed movie (EXPERIMENTAL, E-M1 Mark III 1.6). Stage 1: sensor mode.
+"""240 fps High Speed movie (EXPERIMENTAL, E-M1 Mark III 1.6). Stage 2: sensor mode at the source.
 
-  MN10300_BIN=... python3 tools/patch_hs240.py IN.BIN OUT.BIN [--version 0x1697]
+  MN10300_BIN=... python3 tools/patch_hs240.py IN.BIN OUT.BIN [--version 0x1698]
 
-Stock High Speed movie (FHD 120 fps) runs the sensor in MSSC (120 fps). The sensor driver (cam.c,
-status names at 0x6160edb3, jump table 0x6160efbc) also has an LSSC state (240 fps), and the
-exposure code picks 240 fps live-view rates (0x604325b7.., AE tables 0xbf00/0xbf01/0xbf0a/0xbf0b).
-Cam command mode numbers (0x6013cd3c, table 0x601cd4ac): 0 HSSC, 1 MSSC, 2 LSSC, 3 CLIP, 4 HSHR,
-5 MSHR, 6 4K, 7 C4K, 8 PD, 9 MSPD, 10 LSPD, 11 HQ, 12 FULL, 13 FULL_LQ.
+Stock High Speed movie (FHD 120 fps) runs the sensor at 120 fps. The sensor driver (cam.c, status
+names at 0x6160edb3, jump table 0x6160efbc) also has 240 fps states, and the exposure code picks
+240 fps live-view rates (0x604325b7.., AE tables 0xbf00/0xbf01/0xbf0a/0xbf0b).
+Cam command modes (0x6013cd3f, table 0x601cd4b0): 0 HSSC, 1 MSSC (120), 2 LSSC (240), 3 CLIP,
+4 HSHR, 5 MSHR, 6 4K, 7 C4K, 8 PD, 9 MSPD (120, phase detect), 10 LSPD (240, phase detect), 11 HQ,
+12 FULL, 13 FULL_LQ. The debug override 0x60445254 ("exp movie cap 5/6", byte 0x6216c4ac) maps to
+the same numbers.
 
-The exposure movie set-up 0x60437545.. copies the current capture mode (0x62167f30) into its request
-(24,SP) and then asks the debug override 0x60445254 (shell command "exp movie cap N", byte
-0x6216c4ac): when (16,a2) == 1 or (12,a2) == 3 and the override is set, it replaces the mode
-(cap 5/6 "LSSC AB/A field" -> 2).
+Camera 1.697 (stage 1: only the movie set-up 0x60437547 turned 1 into 2): no change, 120 fps.
 
-Patch: after that call (0x604375e7), a stub keeps the override and, with the same condition and no
-override, turns mode 1 (MSSC) into 2 (LSSC), as "exp movie cap 5" would.
+Stage 2: the exposure capture-mode builder 0x60436f1e (all five callers; it writes the 12-byte
+mode record whose first word becomes 0x62167f30) ends `call 0x604398f1,[d2,d3,a2,a3],32; ret
+[d2,a2,a3],84` at 0x60436f3b. That becomes `jmp stub`: the stub makes the call, then turns mode 1
+into 2 and 9 into 10 in the record (d2), and returns. Applies in every mode (photo live view at
+120 fps too), as a test.
 """
 import hashlib
 import os
@@ -26,32 +28,22 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import olyfw  # noqa: E402
 
 BASE = 0x60021020
-SITE, SITE_STOCK, BACK = 0x604375e7, bytes.fromhex("14a001c90758305c1860"), 0x604375f1
-CALL_STOCK = (0x604375d7, bytes.fromhex("f8020cf806103c2030dd74dc0000"))   # args + call 0x60445254
+SITE, SITE_STOCK = 0x60436f3b, bytes.fromhex("cdb629f020dfb054")   # call 0x604398f1 ; ret
 STUB = 0x600d6ac0
-SRC = """extbu d0
-cmp 1,d0
-bne 1f
-mov (48,sp),d0
-mov (24,sp),a0
-mov d0,(a0)
-jmp back
-1:
-mov (16,a2),d1
-cmp 1,d1
-beq 2f
-mov (12,a2),d0
-cmp 3,d0
-bne 9f
-2:
-mov (24,sp),a0
+SRC = """call tgt,[d2,d3,a2,a3],32
+mov d2,a0
 mov (a0),d0
 cmp 1,d0
-bne 9f
+bne 1f
 mov 2,d0
 mov d0,(a0)
-9:
-jmp back"""
+1:
+cmp 9,d0
+bne 2f
+mov 10,d0
+mov d0,(a0)
+2:
+.byte 0xdf,0xb0,0x54"""
 
 
 def check(cond, msg):
@@ -63,10 +55,8 @@ def patch_at(m, base):
     """M: bytearray holding the base section at runtime address BASE."""
     import patch_aspect
     o = lambda a: a - base  # noqa: E731
-    check(bytes(m[o(SITE):o(SITE) + len(SITE_STOCK)]) == SITE_STOCK, "override use at %#x differs" % SITE)
-    a, b = CALL_STOCK
-    check(bytes(m[o(a):o(a) + len(b)]) == b, "override call at %#x differs" % a)
-    stub = patch_aspect.assemble_syms(SRC, STUB, {"back": BACK})
+    check(bytes(m[o(SITE):o(SITE) + len(SITE_STOCK)]) == SITE_STOCK, "mode builder end at %#x differs" % SITE)
+    stub = patch_aspect.assemble_syms(SRC, STUB, {"tgt": 0x604398f1})
     check(len(stub) <= 0x40 and m[o(STUB):o(STUB) + 0x40] == b"\xff" * 0x40, "stub space not free")
     jmp = patch_aspect.assemble_syms("jmp stub", SITE, {"stub": STUB})
     check(len(jmp) == 5, "jump is not 5 bytes")
@@ -78,7 +68,7 @@ def patch_at(m, base):
 def patch(main):
     m = bytearray(main)
     n = patch_at(m, BASE)
-    print("  High Speed movie sensor MSSC (120 fps) -> LSSC (240 fps) (stub %d B at %#x)" % (n, STUB))
+    print("  sensor modes MSSC/MSPD (120 fps) -> LSSC/LSPD (240 fps) (stub %d B at %#x)" % (n, STUB))
     return bytes(m)
 
 

@@ -10,7 +10,7 @@ works on the camera.
 | 3 | **C1–C4 remember photo / video** | Each C slot remembers whether the camera was in photo or video mode when it was saved; turning the dial to it opens that mode with its settings. (Stock already saves the movie settings, but Assign to Custom Mode is unavailable in movie mode and C positions are always photo.) | **Done**: worked on the camera (1.681); in the app as `cmode_video` |
 | 4 | **Startup text** | A text the owner sets in the app (e.g. "Hello NAME", or name and phone number), shown when the camera switches on. Baked into the firmware, so it marks the camera as the owner's. | Dropped by the owner (would delay startup). |
 | 5 | **Looks in Custom (Caduceus-style)** | Custom shoots a look picked on the computer (hue/saturation/lightness per colour, tone, later grain/split tone); later loaded from the card on the first half-press. | Stage 1 test 1.682 (`tools/patch_looks.py --test1`): colour engine hook |
-| 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | Test 1.697 (`tools/patch_hs240.py`): sensor mode switch only |
+| 6 | **240 fps slow motion** | High Speed movie runs the sensor in its 240 fps mode (LSSC) instead of 120 fps (MSSC). | 1.697: no change (still 120 fps). Test 1.698 (`tools/patch_hs240.py`): mode changed where it is built |
 
 ## Leads
 
@@ -53,5 +53,7 @@ works on the camera.
   7 HSHR, ... Cam command modes (`0x6013cd3c`): 0 HSSC, 1 MSSC, 2 LSSC, 3 CLIP, 4 HSHR, 6 4K, 7 C4K, 11 HQ.
   The exposure movie set-up `0x60437545..` takes the mode from `0x62167f30` and lets the debug override
   `0x60445254` ("exp movie cap 5/6" = LSSC, byte `0x6216c4ac`) replace it. Live view already uses 240 fps
-  AE tables (`0x604325b7..`: 0xbf00/01/0a/0b with 240), so LSSC is real on this sensor. 1.697 sets mode 2
-  where the override would apply and the mode is 1. Open: file frame rate, encoder rate, clip size.
+  AE tables (`0x604325b7..`: 0xbf00/01/0a/0b with 240), so LSSC is real on this sensor. 1.697 set mode 2
+  where the override would apply and the mode is 1: camera still 120 fps (clip 23.98p, 5x). 1.698 hooks the
+  mode builder `0x60436f1e` (end `0x60436f3b`): 1 MSSC -> 2 LSSC and 9 MSPD -> 10 LSPD, in every mode.
+  Open: file frame rate, encoder rate, clip size.
