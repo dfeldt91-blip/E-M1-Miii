@@ -56,6 +56,32 @@ jmp back
 last:
 clr d2
 jmp back"""
+# Overlay rebuild after each added shot (default; --no-rebuild leaves it out). Camera (app builds): with
+# 3-4 frames the overlay is shown after shot 1 and gone after shots 2 and 3. The overlay handle
+# (0x61e88abc) is built once, after shot 1 (rcvMultiExposureInitInfo -> getPlayScaleHandle 0x609c81d9,
+# which reuses an existing handle); stock never needs more (2 frames). ScaleDispForce (0x609c7b57,
+# used by the GUI 0x60a2da6a when the display changes) rebuilds the handle from all held shots
+# (makePlayScaleHandle 0x609450f6, takeHandles[1..n]). The GUI wrapper entryMesCombineImage
+# (0x60a2e615, after setMesCombineImage counted the shot in 0x61e88ab8) now calls ScaleDispForce
+# when 2 <= held shots < frames (not the last shot, which the camera merges itself).
+RB_SITE, RB_STOCK, RB_BACK = 0x60a2e640, bytes.fromhex("82fccc4036bf60"), 0x60a2e647
+RB_STUB = 0x600d9480
+RB_SRC = """mov d0,d2
+cmp 0,d2
+bne 9f
+movhu (0x61e88ab8),d0
+cmp 2,d0
+bcs 9f
+mov 0x10a,d0
+call getv,[],4
+movhu (0x61e88ab8),d1
+cmp d0,d1
+bcc 9f
+mov (728,a2),a0
+call sdf,[d2,a2,a3],24
+9:
+mov 0x60bf3640,d0
+jmp back"""
 # Camera (1.608 freeze probe): the success handler runs only after shot frames-1. The GUI at
 # 0x60a2d2ff posts the merge-and-overlay request (0x30000040) only when count+1 >= frames, i.e.
 # before the last shot (stock 2f: after shot 1). PREP_SITE: that `bcs` -> 2 nops, so the request is
@@ -160,6 +186,16 @@ def patch(main):
         a[PREP_SITE - BLOB_A:PREP_SITE - BLOB_A + 4] = PREP_NEW
         print("  overlay prepare after every shot: %#x -> cmp 0,d0; beq out" % PREP_SITE)
     stub = b""
+    if "--no-rebuild" not in sys.argv:
+        import patch_aspect
+        check(set(m[off(RB_STUB) - 16:off(RB_STUB + 0x50)]) == {0xff}, "rebuild stub area not free")
+        check(bytes(a[RB_SITE - BLOB_A:RB_SITE - BLOB_A + len(RB_STOCK)]) == RB_STOCK, "entryMesCombineImage site differs")
+        rb = patch_aspect.assemble_syms(RB_SRC, RB_STUB, {"back": RB_BACK, "getv": 0x602eeec8, "sdf": 0x609c7b57})
+        check(len(rb) <= 0x50, "rebuild stub too long")
+        m[off(RB_STUB):off(RB_STUB) + len(rb)] = rb
+        a[RB_SITE - BLOB_A:RB_SITE - BLOB_A + len(RB_STOCK)] = (
+            b"\xdc" + struct.pack("<i", RB_STUB - RB_SITE) + b"\xcb" * (len(RB_STOCK) - 5))
+        print("  overlay rebuild after shots 2..frames-1: %#x -> stub %#x (%d B)" % (RB_SITE, RB_STUB, len(rb)))
     if "--old-hooks" in sys.argv:
         import patch_aspect
         check(set(m[off(OVL_STUB):off(OVL_STUB + 0x40)]) == {0xff}, "overlay stub area not free")
