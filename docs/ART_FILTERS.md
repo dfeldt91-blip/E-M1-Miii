@@ -143,3 +143,6 @@ hidden SCP "Film Grain Effect" cell (record 0x3e) has no image code behind it. G
 look comes only from its toning entry (hash 0x6053e67c, handler 0x603dfd4a = always grey).
 `tools/patch_grainy_color.py` (1.731 = 1.728 + this) points Grainy Film II at the default handler
 0x603dfdc7 (colour); `--both` also does Grainy Film I.
+Camera 1.731: live view in colour, photo still mono. The photo pass 0x603dfe9f (pass 0x101) checks
+`cmp 0x1010068 / 0x1020068` at 0x603dfef3 / 0x603dfefb and calls the toning lookup with the mono flag.
+1.732 changes Grainy II's compare operand to 0x10f0068, so the photo pass clears toning (colour).
