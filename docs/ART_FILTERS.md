@@ -85,3 +85,6 @@ shows names or blank entries for them.
 
 Camera 1.716: works (options listed, live view and photos use the art curve), labels blank.
 1.717: labels from the camera's own art filter name strings (0x3c-0x45, 0xa75-0xa8a, 0xcde).
+
+Camera 1.719: works. The SCP Gradation picker shows the art filter icons for the 19 new options
+(the blank entries were that icon picker; tools/patch_art_gradation.py).

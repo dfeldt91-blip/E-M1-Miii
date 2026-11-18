@@ -24,7 +24,7 @@ live view and photo should change accordingly. Check that Auto / High / Normal /
 --diag-labels (1.718): Auto's label becomes "Pop Art I" (string 0xa75) and the first new value
 (Pop Art I curve) is labelled "High Key" (0x267): shows whether label edits on existing values
 show at all, and whether new values can show a string that this menu already draws.
-1.719: the SCP Gradation picker (record 0x611ef014, icon lists) gets 23 entries; new ones use the
+Camera 1.719: works (curves, SCP icons). 1.719: the SCP Gradation picker (record 0x611ef014, icon lists) gets 23 entries; new ones use the
 art filter icons from the SCP Picture Mode picker (record 0x611ef284). 1.718 (--diag-labels): no
 visible change, i.e. the screen with blank entries is this icon picker, not the text lists.
 Camera 1.716: boots; the 19 options are listed and change live view and photos; labels blank
