@@ -104,3 +104,6 @@ coefficient record 0x6053d31c, identity tone curve.
 `tools/patch_frame_switch.py`: the SCP Color Space item becomes a Frame on/off switch (setting 0x3c,
 icons/labels changed, its colour-space effect removed), and the chain builder adds the Frame stage
 for non-art jobs while it is on.
+Camera 1.722: no frame; SCP item still "Color Space" with Off / "2f 1.0EV" (borrowed icon ids are
+per picker). 1.723: instead of the chain flag, the snapshot's Art Effect read (property 0xf5d1 ->
+job +26825) returns Frame (3) when no effect is set and the switch is on; SCP icons back to stock.
