@@ -27,6 +27,8 @@ show at all, and whether new values can show a string that this menu already dra
 Camera 1.719: works (curves, SCP icons). 1.719: the SCP Gradation picker (record 0x611ef014, icon lists) gets 23 entries; new ones use the
 art filter icons from the SCP Picture Mode picker (record 0x611ef284). 1.718 (--diag-labels): no
 visible change, i.e. the screen with blank entries is this icon picker, not the text lists.
+--diag-cell (1.729): the Auto entry of the SCP Gradation icon lists gets the Pop Art I icons, to see
+whether the SCP grid cell (which showed AUTO for the new values in 1.728) uses these lists at all.
 1.728: the SCP panel label (cursor on Gradation, list at record 0x611ef038) also gets the 19 names.
 Camera 1.719: works (curves; names and icons in the SCP picker); the SCP panel label stayed empty.
 Camera 1.716: boots; the 19 options are listed and change live view and photos; labels blank
@@ -184,6 +186,9 @@ def patch(main):
         m[o(a):o(a) + len(lst)] = lst
         new.append(a)
         a += len(lst)
+    if "--diag-cell" in sys.argv:   # 1.729: stock Auto entry shows the Pop Art I icons
+        for nl in new:
+            struct.pack_into("<H", m, o(nl) + 6, struct.unpack_from("<H", m, o(nl) + 48 + 6)[0])
     struct.pack_into("<IIII", gui, GRAD_REC - BLOB_B + 4, new[0], new[1], 4 + N, 0)
     print("  SCP Gradation icons: record %#x -> %#x / %#x (%d entries)" % (GRAD_REC, new[0], new[1], 4 + N))
     tl, tn = struct.unpack_from("<II", gui, SCP_TEXT - BLOB_B)
