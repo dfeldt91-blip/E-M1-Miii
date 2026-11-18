@@ -24,6 +24,9 @@ live view and photo should change accordingly. Check that Auto / High / Normal /
 --diag-labels (1.718): Auto's label becomes "Pop Art I" (string 0xa75) and the first new value
 (Pop Art I curve) is labelled "High Key" (0x267): shows whether label edits on existing values
 show at all, and whether new values can show a string that this menu already draws.
+1.719: the SCP Gradation picker (record 0x611ef014, icon lists) gets 23 entries; new ones use the
+art filter icons from the SCP Picture Mode picker (record 0x611ef284). 1.718 (--diag-labels): no
+visible change, i.e. the screen with blank entries is this icon picker, not the text lists.
 Camera 1.716: boots; the 19 options are listed and change live view and photos; labels blank
 (type-1 ASCII entries are not drawn by this menu). 1.717: type-4 entries with the stock names:
 still blank, so new values are not labelled from this list at all (as with the ISO extension).
@@ -40,10 +43,16 @@ import olycompress  # noqa: E402
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_B_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 SITE, SITE_STOCK, BACK = 0x603df14e, bytes.fromhex("fa40050710"), 0x603df153
-FREE, FREE_END = 0x600dc000, 0x600de000   # padding below the vector table 0x600e0000 (0x600e0800+ is boot RAM)
+FREE, FREE_END = 0x600dc000, 0x600df000   # padding below the vector table 0x600e0000 (0x600e0800+ is boot RAM)
 RECORDS = [0x604da80c + 20 * i for i in range(14)]
 REC_SIDS = [0x69, 0x136, 0x137, 0x138, 0x139, 0x13a, 0x13b, 0xd0, 0x12e, 0xbb, 0xbf, 0xc3, 0xc7, 0xcc]
 STOCK_ALT = [3, 1, 2, 0]
+# SCP icon pickers (blob B): record {id, icon list 1, icon list 2, n, 0}; list entries
+# {GUI value, 3, icon id, cond}. Gradation 0x17 (4 entries), Picture Mode 0x22 (54, art icons).
+GRAD_REC, PM_REC = 0x611ef014, 0x611ef284
+ART_GUI = [0x10008, 0x20008, 0x9, 0x1000a, 0x2000a, 0xb, 0x1000c, 0x2000c, 0x1000d, 0x2000d, 0x1000e,
+           0x1000f, 0x2000f, 0x10, 0x10011, 0x1001a, 0x2001a, 0x3001a, 0x1003c]
+# ^ SCP Picture Mode value (variant << 16 | art GUI index) of each curve's filter
 CURVES = [  # (label, curve, string id) in menu order; curves from tools/art_filter_dump.py, strings
     # are the camera's own art filter names (@A050@/@A051@/@A052@ = the I/II/III glyphs)
     ("Pop Art I", 0x6050b566, 0xa75), ("Pop Art II", 0x6050c9a2, 0xa76), ("Soft Focus", 0x6050b306, 0x44),
@@ -151,6 +160,27 @@ def patch(main):
         struct.pack_into("<H", ol, 48 + 6, 0x267)
     m[o(olist):o(olist) + len(ol)] = ol
     a = olist + len(ol)
+    # SCP Gradation icon picker: new entries take the art filter's icons from the Picture Mode picker
+    def ent(p, k):
+        return struct.unpack_from("<iHHI", gui, p - BLOB_B + 12 * k)
+    rid, g1, g2, gn, _ = struct.unpack_from("<5I", gui, GRAD_REC - BLOB_B)
+    pid, p1, p2, pn, _ = struct.unpack_from("<5I", gui, PM_REC - BLOB_B)
+    check(rid == 0x17 and gn == 4 and ent(g1, 0)[:3] == (3, 3, 0x2130), "SCP Gradation record differs")
+    check(pid == 0x22 and pn == 54, "SCP Picture Mode record differs")
+    new = []
+    for src, pm in ((g1, p1), (g2, p2)):
+        icons = {ent(pm, k)[0]: ent(pm, k)[2] for k in range(pn)}
+        lst = bytearray(gui[src - BLOB_B:src - BLOB_B + 48])
+        c = ent(src, 0)[3]
+        for i, gv in enumerate(ART_GUI):
+            check(gv in icons, "no Picture Mode icon for GUI value %#x" % gv)
+            lst += struct.pack("<iHHI", 4 + i, 3, icons[gv], c)
+        a = (a + 15) & ~15
+        m[o(a):o(a) + len(lst)] = lst
+        new.append(a)
+        a += len(lst)
+    struct.pack_into("<IIII", gui, GRAD_REC - BLOB_B + 4, new[0], new[1], 4 + N, 0)
+    print("  SCP Gradation icons: record %#x -> %#x / %#x (%d entries)" % (GRAD_REC, new[0], new[1], 4 + N))
     check(a <= FREE_END, "free area overflow")
     nref = 0
     for li in lists:
