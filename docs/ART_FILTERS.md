@@ -154,3 +154,9 @@ Camera 1.733: photo still mono (live view colour). Toning is not the cause: with
 photo-pass call skipped, Grainy II photos are still grey, so the photo grain chain itself outputs
 luminance only (modules 0x60388169 / 0x6038385b / 0x60388295 / 0x603880f0, art builder
 0x603845c1-0x6038466e). Colour grain would need those modules changed; not pursued yet.
+
+## Bleach Bypass II softening, third try (test 1.734)
+
+0x603ce1a8 returns 0 for Grainy I/II, Vintage II and Bleach Bypass II (else 1, with ISO- and
+mode-dependent exceptions); 0x6038bcc1 stores it at job +1862. Probably the fine-detail /
+sharpening stage. 1.734 = 1.728 + `patch_bleach2.py --detail` (Bleach II gets 1 like other filters).

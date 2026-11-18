@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bleach Bypass II without its softening (TEST, E-M1 Mark III 1.6). Base section only.
 
-  python3 tools/patch_bleach2.py IN.BIN OUT.BIN --bit|--pass [--version 0x1720]
+  python3 tools/patch_bleach2.py IN.BIN OUT.BIN --bit|--pass|--detail [--version 0x1720]
 
 Bleach Bypass II (job key 0x0102007b) differs from Bleach Bypass I in a few places
 (docs/ART_FILTERS.md). Which one softens the photo is not known yet, so each test removes one:
@@ -13,6 +13,10 @@ Bleach Bypass II (job key 0x0102007b) differs from Bleach Bypass I in a few plac
         0x60385f31}, then the extra pass 0x603870db (own buffers, runs last). The second slot is
         dropped: `mov 0x603870db,d1; jmp 0x60384f0a` -> `mov 1,d3; jmp 0x60384f10` (the state the
         stock path reaches after storing it). Live view never runs that pass.
+--detail 0x603ce1a8 returns 0 for Grainy I/II, Vintage II and Bleach Bypass II (`cmp 0x102007b,d3` at
+        0x603ce1d4), else 1 unless ISO-dependent cases; callers store it at job +1862 (likely the
+        fine-detail / sharpening stage). The Bleach II operand becomes 0x10f007b, so it returns 1.
+        (1.720 --bit and 1.721 --pass made no visible difference.)
 """
 import hashlib
 import os
@@ -25,6 +29,7 @@ import olyfw  # noqa: E402
 BASE = 0x60021020
 BIT_SITE, BIT_STOCK, BIT_NEW = 0x603ddb0d, bytes.fromhex("fcc87b000201"), bytes.fromhex("fcc87b000f01")
 PASS_SITE, PASS_STOCK = 0x60384dfc, bytes.fromhex("fccddb703860cc0801")
+DETAIL_SITE, DETAIL_STOCK, DETAIL_NEW = 0x603ce1d4, bytes.fromhex("fccb7b000201"), bytes.fromhex("fccb7b000f01")
 PASS_NEW = bytes.fromhex("8f01") + b"\xcc" + struct.pack("<h", 0x60384f10 - (PASS_SITE + 2)) + b"\xcb" * 4
 
 
@@ -45,11 +50,15 @@ def patch(main, which):
         check(len(PASS_NEW) == 9, "replacement length")
         m[o(PASS_SITE):o(PASS_SITE) + 9] = PASS_NEW
         print("  Bleach Bypass II: photo chain without the final pass 0x603870db")
+    if "detail" in which:
+        check(bytes(m[o(DETAIL_SITE):o(DETAIL_SITE) + 6]) == DETAIL_STOCK, "Bleach II detail compare differs")
+        m[o(DETAIL_SITE):o(DETAIL_SITE) + 6] = DETAIL_NEW
+        print("  Bleach Bypass II: detail flag (job +1862) as for other filters")
     return bytes(m)
 
 
 def main(argv):
-    which = [w for w in ("bit", "pass") if "--" + w in argv]
+    which = [w for w in ("bit", "pass", "detail") if "--" + w in argv]
     if len(argv) < 3 or not which:
         print(__doc__)
         return 1
