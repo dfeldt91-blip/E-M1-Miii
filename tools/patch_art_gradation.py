@@ -78,7 +78,7 @@ CURVES = [  # (label, curve, string id) in menu order; curves from tools/art_fil
 # curves at CURVE_DATA + 512 * i, labels written into unused English camera strings (block 1), SCP
 # icon = the Gradation Normal icon. --art: the 19 art filter curves above, as in 1.719 / 1.728.
 ART = "--art" in sys.argv
-CURVE_DATA = 0x600d4000
+CURVE_DATA = 0x600d9600   # 19 x 512 B to 0x600dbc00 (0x600d3000-0x600d77d1 is the panorama mod's)
 if not ART:
     import gradation_curves as gc
     CURVES = [(name, CURVE_DATA + 512 * i, sid) for i, (name, pts, sid) in enumerate(gc.SET)]

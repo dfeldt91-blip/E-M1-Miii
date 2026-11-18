@@ -159,7 +159,7 @@ slots) + Custom1 washed-out flat, Custom2 strong contrast.
 ## Designed curve set (test 1.741)
 
 The 19 art curves are replaced by a designed set from washed out to contrasty
-(tools/gradation_curves.py; `--art` keeps the art curves). Curve data at 0x600d4000 (19 x 512 B).
+(tools/gradation_curves.py; `--art` keeps the art curves). Curve data at 0x600d9600 (19 x 512 B; 1.741 had it at 0x600d4000, which the panorama mod uses).
 Names are written in place over unused English strings (Color Profile 1-3 and icon variants,
 Monochrome Profile 1-3 and icon variants, Film Grain Effect labels, Mono Profile 1-2); SCP icon =
 Gradation Normal. 1.741 = 1.709 + this (Custom1/Custom2 identity).
