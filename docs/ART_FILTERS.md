@@ -88,3 +88,11 @@ Camera 1.716: works (options listed, live view and photos use the art curve), la
 
 Camera 1.719: works. The SCP Gradation picker shows the art filter icons for the 19 new options
 (the blank entries were that icon picker; tools/patch_art_gradation.py).
+
+## Bleach Bypass II softening (tests 1.720, 1.721)
+
+`tools/patch_bleach2.py`, both on 1.719. Bleach Bypass II's own extras: request +8 bit 28
+(0x603ddb0d) and, for photos only, a replaced main slot {0x60385e18, 0x60385f31} plus a final
+pass 0x603870db (live view uses {0x60383c69, 0x60385f5b} and no extra pass). 1.720 drops the bit,
+1.721 drops the final pass. Also special: no-NR-type flag 0x603ce1a8 (shared with Grainy, Vintage II),
+coefficient record 0x6053d31c, identity tone curve.
