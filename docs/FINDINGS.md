@@ -455,3 +455,25 @@ Tried in test builds 1.667-1.671 and dropped; notes for a later attempt:
   (0x604da438) allows 0,12,30,1,31,38,11,23,32,39,5,17,33,4,16,34,24,25,35,36; the SCP label list
   value 18 ("High Res Shot", 0x611eb134) is a display value, not a stored drive value: setting
   0xcc1 = 18 gave Single. How the SCP applies its High Res choice is still unknown.
+
+## Art filter parameters (first pass)
+
+- Art filters are picture-mode codes 0x64-0x6d and 0x77-0x7c (PM list 0x604bc4f4). Probable order
+  (menu order, not yet camera-checked): 0x64 Pop Art, 0x65 Soft Focus, 0x66 Pale&Light, 0x67 Light Tone,
+  0x68 Grainy Film, 0x69 Pin Hole, 0x6a Diorama, 0x6b Cross Process, 0x6c Gentle Sepia, 0x6d Dramatic Tone,
+  0x77 Key Line, 0x78 Watercolor, 0x79 Vintage, 0x7a Partial Color, 0x7b Bleach Bypass, 0x7c Instant Film.
+  Supporting hints: 0x6d and 0x77 share most special tables (Key Line is built on Dramatic Tone);
+  0x68 has the most (mono); 0x6c gets its own colour table 0x605230dc.
+- Image-processing jobs carry a key 0x01VV00MM at job +52 (MM = mode code, VV = variant 01 = I,
+  02 = II). 117 compares against these keys, all in 0x60380000-0x603e6000; most in 0x603ca27d and
+  the colour-table selector 0x603df05c (63 tables).
+- Special-case tables per key (selector, table loaded on match), from an automatic scan:
+  Pop I/II 0x6051affc; Pale&Light 0x6051a818; Grainy I 0x605064fc, 0x6050bda2 (II 0x6050cda2);
+  Gentle Sepia 0x605230dc; Dramatic I/II 0x6051b1ca, 0x6053b4c8, 0x60534460, 0x60537b60, 0x6053c4bc,
+  0x6053c728, 0x6051b934/0x6051b940, 0x6053e74c; Key Line I 0x60511d38, 0x6053c4c8, 0x6053c734,
+  0x6050d5a2, 0x6053e724 (II 0x6053c4d4, 0x6053c740, 0x6050d7a2, 0x6053e6fc); Watercolor II 0x6053010e;
+  Vintage 0x6053c0f0; Partial Color 0x6051b1ca (II 0x6051b7b0/0x6051b7d4); Bleach 0x605064fc;
+  Instant 0x6052edc4, 0x60528f7c; Light Tone/Cross Process none found by the scan.
+- Not done: which stage each table belongs to (curve, matrix, saturation, sharpness, vignette...)
+  and the table formats. The generic (non-special-case) path is not mapped. The listing has
+  undecoded opcodes (UDF) in this area, which slows reading.
