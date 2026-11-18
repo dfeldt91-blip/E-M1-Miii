@@ -11,7 +11,9 @@ space:
 - Image: the capture snapshot builders read the Art Effect (property 0xf5d1) into job +26825
   (0x602c31fa, 0x6147cf82). That read goes through a stub: no effect set and the colour-space
   property 0x8bf1 = 1 -> Art Effect 3 (Frame), so the job is built as with a real Frame selection.
-  (1.722 set job flag 0x8000 in the chain builder instead: no frame.)
+  (1.722 set job flag 0x8000 in the chain builder instead: no frame.) For picture modes the snapshot
+  builder then clears the art fields (0x6147d3e8); 1.723 lost the Frame there (camera: no frame),
+  1.724 makes that clear write Frame too when the switch is on.
 - Colour space stays sRGB: the two capture snapshot builders read property 0x8bf1 (setting 0x3c)
   into job +26086 (0x602c2e31, 0x6147cf10); their property calls become `clr d0`.
 - Labels: menus: title "Frame Effect" (string 0x2ff), values Off (0x5ae) / On (0xc6). SCP icons stay
@@ -36,6 +38,37 @@ BLOB_B, BLOB_B_OFF, BLOB_B_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 PROP_GET = 0x6005fa9c                      # property read: d0 = property, a0 = 0, d1 = 0
 EFF_SITES = [0x602c31fa, 0x6147cf82]        # call PROP_GET after `mov 0xf5d1,d0; mov 0,a0; clr d1`
 EFF_PRE = bytes.fromhex("fcccd1f50000900004")
+# Non-art normalisation in the snapshot builder (0x6147d3c0..): category +26087 1/8 -> 2 and
+# `clr d0` + clears of +26088, +26089, +26824 (art filter), +26825 (Art Effect), +26116. This wipes
+# the injected Frame for picture-mode shots (1.723: no frame). The block becomes `call clr2`.
+CLR_SITE, CLR_STOCK = 0x6147d3e8, bytes.fromhex("00fa53e865fa53e965fa53c868fa53c968fa530466")
+CLR_STUB = 0x600de040
+CLR_SRC = """add -12,sp
+mov d1,(4,sp)
+mov a0,(8,sp)
+clr d0
+movbu d0,(26088,a3)
+movbu d0,(26089,a3)
+movbu d0,(26824,a3)
+movbu d0,(26116,a3)
+mov 0x8bf1,d0
+mov 0,a0
+clr d1
+call prop,[d2,d3],12
+cmp 1,d0
+bne 1f
+mov 3,d0
+bra 2f
+1:
+clr d0
+2:
+movbu d0,(26825,a3)
+clr d0
+mov (4,sp),d1
+mov (8,sp),a0
+add 12,sp
+ret [],4
+"""
 STUB = 0x600de000
 SNAP = [0x602c2e31, 0x6147cf10]             # call 0x6005fa9c after `mov 0x8bf1,d0; mov 0,a0; clr d1`
 SNAP_PRE = bytes.fromhex("fcccf18b0000900004")
@@ -78,6 +111,13 @@ def patch(main):
         call = patch_aspect.assemble_syms("call eff,[],4", site, {"eff": STUB})
         check(len(call) == 7, "call length")
         m[o(site):o(site) + 7] = call
+    check(bytes(m[o(CLR_SITE):o(CLR_SITE) + 21]) == CLR_STOCK, "non-art clear block differs")
+    check(set(m[o(CLR_STUB):o(CLR_STUB) + 0x60]) == {0xff}, "clear stub area not free")
+    c2 = patch_aspect.assemble_syms(CLR_SRC, CLR_STUB, {"prop": PROP_GET})
+    m[o(CLR_STUB):o(CLR_STUB) + len(c2)] = c2
+    call = patch_aspect.assemble_syms("call clr2,[],4", CLR_SITE, {"clr2": CLR_STUB})
+    m[o(CLR_SITE):o(CLR_SITE) + 21] = call + b"\xcb" * (21 - len(call))
+    print("  non-art clear %#x -> stub %#x (%d B): Art Effect = Frame when the switch is on" % (CLR_SITE, CLR_STUB, len(c2)))
     for s in SNAP:
         check(bytes(m[o(s) - 9:o(s)]) == SNAP_PRE and m[o(s)] == 0xdd, "snapshot read at %#x differs" % s)
         m[o(s):o(s) + 7] = b"\x00" + b"\xcb" * 6          # clr d0 ; nop x6

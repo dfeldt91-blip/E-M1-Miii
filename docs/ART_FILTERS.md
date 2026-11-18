@@ -107,3 +107,5 @@ for non-art jobs while it is on.
 Camera 1.722: no frame; SCP item still "Color Space" with Off / "2f 1.0EV" (borrowed icon ids are
 per picker). 1.723: instead of the chain flag, the snapshot's Art Effect read (property 0xf5d1 ->
 job +26825) returns Frame (3) when no effect is set and the switch is on; SCP icons back to stock.
+Camera 1.723: SCP shows sRGB / Adobe RGB, no frame. Cause: the picture-mode normalisation at
+0x6147d3e8 clears the Art Effect after the snapshot. 1.724 writes Frame there when the switch is on.
