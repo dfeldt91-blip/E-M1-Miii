@@ -89,17 +89,9 @@ Camera 1.716: works (options listed, live view and photos use the art curve), la
 Camera 1.719: works. The SCP Gradation picker shows the art filter icons for the 19 new options
 (the blank entries were that icon picker; tools/patch_art_gradation.py).
 
-## Bleach Bypass II softening (tests 1.720, 1.721)
-
-`tools/patch_bleach2.py`, both on 1.719. Bleach Bypass II's own extras: request +8 bit 28
-(0x603ddb0d) and, for photos only, a replaced main slot {0x60385e18, 0x60385f31} plus a final
-pass 0x603870db (live view uses {0x60383c69, 0x60385f5b} and no extra pass). 1.720 drops the bit,
-1.721 drops the final pass. Also special: no-NR-type flag 0x603ce1a8 (shared with Grainy, Vintage II),
-coefficient record 0x6053d31c, identity tone curve.
-
 ## White frame for picture modes (test 1.722)
 
-1.720/1.721 (Bleach Bypass II) made no visible difference; dropped. 1.722 = 1.719 +
+1.722 = 1.719 +
 `patch_frame_white.py --no-white --layer0-white` (clean white border masks) +
 `tools/patch_frame_switch.py`: the SCP Color Space item becomes a Frame on/off switch (setting 0x3c,
 icons/labels changed, its colour-space effect removed), and the chain builder adds the Frame stage
@@ -154,29 +146,3 @@ Camera 1.733: photo still mono (live view colour). Toning is not the cause: with
 photo-pass call skipped, Grainy II photos are still grey, so the photo grain chain itself outputs
 luminance only (modules 0x60388169 / 0x6038385b / 0x60388295 / 0x603880f0, art builder
 0x603845c1-0x6038466e). Colour grain would need those modules changed; not pursued yet.
-
-## Bleach Bypass II softening, third try (test 1.734)
-
-0x603ce1a8 returns 0 for Grainy I/II, Vintage II and Bleach Bypass II (else 1, with ISO- and
-mode-dependent exceptions); 0x6038bcc1 stores it at job +1862. Probably the fine-detail /
-sharpening stage. 1.734 = 1.728 + `patch_bleach2.py --detail` (Bleach II gets 1 like other filters).
-Camera 1.734: no change. Described as "desharpening to the extreme". 1.735 = 1.728 +
-`patch_bleach2.py --params`: the per-pass parameter-set index 0x603e3d98 (hash 0x6053ea8c) gives
-Bleach II 34 / 35 for its passes 0xa01 / 0xa02; its entry now goes to the default handler 0x603e3ef4.
-Camera 1.735: no change. Both art-chain sites that add the photo main step {0x60385e18, 0x60385f31}
-(0x603848dd, 0x60384d7f) are Bleach II only; live view uses {0x60383c69, 0x60385f5b}. 0x60385e18 sizes
-its own buffer (width rounded to 32, 0x6037d7f7), possibly a reduced-size pass. 1.736 = 1.728 +
-`patch_bleach2.py --photo-step` (photos use the live-view pair).
-Camera 1.736: freezes and powers off on a Bleach II photo. The photo pipeline needs Bleach II's own
-main step; do not use 1.736. Summary of Bleach II softening tests: --bit (1.720), --pass (1.721),
---detail (1.734), --params (1.735) no change; --photo-step (1.736) crash.
-
-## Bleach Bypass I with Bleach II's colour (tests 1.737, 1.738)
-
-`tools/patch_bleach_color.py`: Bleach I gets an entry in the coefficient hash (empty slot 42 on its
-probe path) with Bleach II's handler, i.e. coefficient record 0x6053d31c. 1.737 = 1.728 + that;
-1.738 = also Bleach II's identity tone curve (`--curve`). Bleach I keeps its own chain.
-Camera 1.737 / 1.738: no visible change to Bleach I (Bleach II stock, still soft). The coefficient
-record is not what makes Bleach II look different. Conclusion: Bleach II's look and its softness both
-come from its own photo step (0x60385e18) / final pass, probably a blended reduced-size layer, so the
-colour cannot be moved to Bleach I with table changes. Parked.

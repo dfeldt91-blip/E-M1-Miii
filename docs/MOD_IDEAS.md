@@ -41,7 +41,7 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 - **All 31 looks in Custom's list.** Every entry past the sixth restarts the camera.
 - **Startup text.** Dropped by you, because it would slow startup.
 - **MENU as an assignable button.** It didn't work.
-- **Bleach Bypass II without its softening** (1.720, 1.721). No visible change.
+- **Bleach Bypass II without its softening, or its colour on Bleach I** (1.720, 1.721, 1.734–1.738). No change, or a crash; the look and the softness come from its own photo step. Tools removed.
 - **Frame for picture modes via the Color Space switch** (1.722–1.727). Picture modes don't run the art stages; forcing the art chain crashed (1.727).
 - **Art curve names in the SCP grid cell** (1.729, 1.730). Picker shows them; the grid cell stays AUTO. Left as is.
 - **On-camera HSL / Color Creator editor.** Not present in the image path on this body; dropped.
