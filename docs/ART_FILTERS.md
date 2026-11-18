@@ -119,3 +119,14 @@ art chain builder 0x60384438 while the switch is on (live view unchanged).
 Camera 1.727: switch on (Adobe RGB) + Natural photo -> crash and reboot; switch off (sRGB): no crash.
 The art chain builder cannot take picture-mode jobs as they are (some art-only setup missing). Do not
 use 1.727 with the switch on. Next idea: a neutral art filter (Art Effect Frame works natively).
+
+## SCP grid cell shows AUTO for art values (tests 1.729, 1.730)
+
+Camera 1.729 (`--diag-cell`, stock Auto entry given the Pop Art I icon): Auto showed ART 1, the art
+values still AUTO, and the picker reopens on the chosen curve. So the grid cell uses record 0x17's
+icon lists but its value is not found by the icon lookup 0x60e08efa (value d0, list a1, count d1;
+in blob B). The settings getter 0x602ca6a5 -> 0x602dbfba maps the 64-byte Gradation value
+{sid 0x69 raw, auto flag 0x9f} through the extended validator, so the value should be 4..22.
+1.730 (`--cell`): the lookup, for the two Gradation icon lists only, searches all 23 entries (in case
+the grid passes the stock count 4); if the value is still not found it shows entry (value mod 23),
+so the icon shown identifies the value passed.

@@ -87,6 +87,43 @@ jmp back
 """ % (3 + N)
 
 
+LOOKUP = 0x60e08efa
+CELL_SRC = """cmp l1,a1
+beq 1f
+cmp l2,a1
+beq 1f
+jmp orig
+1:
+mov a1,a2
+mov %(n)d,d3
+2:
+mov (a2),d2
+cmp d2,d0
+beq 3f
+add 12,a2
+add -1,d3
+bne 2b
+clr d3
+mov d3,mdr
+mov %(n)d,d2
+divu d2,d0
+mov mdr,d0
+mov d0,d2
+add d2,d2
+add d0,d2
+asl2 d2
+mov (d2,a1),d0
+3:
+mov %(n)d,d1
+orig:
+mov a0,(4,sp)
+clr d2
+clr d3
+cmp d2,d1
+jmp back
+"""
+
+
 def check(cond, msg):
     if not cond:
         sys.exit("refusing to patch: " + msg)
@@ -203,6 +240,18 @@ def patch(main):
     struct.pack_into("<II", gui, SCP_TEXT - BLOB_B, a, 4 + N)
     print("  SCP Gradation panel names: %#x -> %#x (%d entries)" % (SCP_TEXT, a, 4 + N))
     a += len(lst)
+    if "--cell" in sys.argv:
+        # SCP grid cell: icon lookup 0x60e08efa(d0 value, a1 list, d1 count). For the Gradation icon
+        # lists, search all 4 + N entries (the caller may pass the stock count 4); if the value is
+        # still not found, show entry (value mod 4+N) so the icon tells which value was passed.
+        check(bytes(gui[LOOKUP - BLOB_B:LOOKUP - BLOB_B + 5]) == bytes.fromhex("4304080ca9"), "icon lookup differs")
+        a = (a + 15) & ~15
+        code = patch_aspect.assemble_syms(CELL_SRC % {"n": 4 + N}, a,
+                                          {"l1": new[0], "l2": new[1], "back": LOOKUP + 5})
+        m[o(a):o(a) + len(code)] = code
+        gui[LOOKUP - BLOB_B:LOOKUP - BLOB_B + 5] = b"\xdc" + struct.pack("<i", a - LOOKUP)
+        print("  SCP grid cell: icon lookup hook %#x -> %#x" % (LOOKUP, a))
+        a += len(code)
     check(a <= FREE_END, "free area overflow")
     nref = 0
     for li in lists:
