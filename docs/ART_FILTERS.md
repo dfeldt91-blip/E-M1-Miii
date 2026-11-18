@@ -163,3 +163,7 @@ sharpening stage. 1.734 = 1.728 + `patch_bleach2.py --detail` (Bleach II gets 1 
 Camera 1.734: no change. Described as "desharpening to the extreme". 1.735 = 1.728 +
 `patch_bleach2.py --params`: the per-pass parameter-set index 0x603e3d98 (hash 0x6053ea8c) gives
 Bleach II 34 / 35 for its passes 0xa01 / 0xa02; its entry now goes to the default handler 0x603e3ef4.
+Camera 1.735: no change. Both art-chain sites that add the photo main step {0x60385e18, 0x60385f31}
+(0x603848dd, 0x60384d7f) are Bleach II only; live view uses {0x60383c69, 0x60385f5b}. 0x60385e18 sizes
+its own buffer (width rounded to 32, 0x6037d7f7), possibly a reduced-size pass. 1.736 = 1.728 +
+`patch_bleach2.py --photo-step` (photos use the live-view pair).

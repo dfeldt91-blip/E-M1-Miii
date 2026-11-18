@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bleach Bypass II without its softening (TEST, E-M1 Mark III 1.6). Base section only.
 
-  python3 tools/patch_bleach2.py IN.BIN OUT.BIN --bit|--pass|--detail|--params [--version 0x1720]
+  python3 tools/patch_bleach2.py IN.BIN OUT.BIN --bit|--pass|--detail|--params|--photo-step [--version 0x1720]
 
 Bleach Bypass II (job key 0x0102007b) differs from Bleach Bypass I in a few places
 (docs/ART_FILTERS.md). Which one softens the photo is not known yet, so each test removes one:
@@ -20,6 +20,10 @@ Bleach Bypass II (job key 0x0102007b) differs from Bleach Bypass I in a few plac
 --params 0x603e3d98 (hash 0x6053ea8c on key-11) picks a parameter-set index per pass; Bleach II's
         handler 0x603e3e89 returns 34 / 35 for passes 0xa01 / 0xa02. Its entry is pointed at the
         default 0x603e3ef4 (the index other filters get). (1.734 --detail: no change.)
+--photo-step  Bleach II photos (handlers 0x603848dd and 0x60384d7f, live-view flag job +11320 == 0) use
+        main step {0x60385e18, 0x60385f31}, which sizes its own buffer (rounded to 32) and may work
+        on a reduced image. Both sites get the live-view pair {0x60383c69, 0x60385f5b} instead.
+        (1.735 --params: no change.)
 """
 import hashlib
 import os
@@ -34,6 +38,7 @@ BIT_SITE, BIT_STOCK, BIT_NEW = 0x603ddb0d, bytes.fromhex("fcc87b000201"), bytes.
 PASS_SITE, PASS_STOCK = 0x60384dfc, bytes.fromhex("fccddb703860cc0801")
 DETAIL_SITE, DETAIL_STOCK, DETAIL_NEW = 0x603ce1d4, bytes.fromhex("fccb7b000201"), bytes.fromhex("fccb7b000f01")
 PARAM_SLOT, PARAM_STOCK, PARAM_DEFAULT = 0x6053eaa4, (0x102007b - 11, 0x603e3e89), 0x603e3ef4
+STEP_SITES = [0x603848ef, 0x60384de5]   # mov MODULE,d0 ; ... ; mov ARG,d0 at +7
 PASS_NEW = bytes.fromhex("8f01") + b"\xcc" + struct.pack("<h", 0x60384f10 - (PASS_SITE + 2)) + b"\xcb" * 4
 
 
@@ -62,11 +67,19 @@ def patch(main, which):
         check(struct.unpack_from("<II", m, o(PARAM_SLOT)) == PARAM_STOCK, "Bleach II parameter-set entry differs")
         struct.pack_into("<I", m, o(PARAM_SLOT) + 4, PARAM_DEFAULT)
         print("  Bleach Bypass II: default parameter set instead of 34 / 35")
+    if "photo-step" in which:
+        for site in STEP_SITES:
+            check(bytes(m[o(site):o(site) + 6]) == b"\xfc\xcc" + struct.pack("<I", 0x60385e18)
+                  and bytes(m[o(site) + 7:o(site) + 13]) == b"\xfc\xcc" + struct.pack("<I", 0x60385f31),
+                  "Bleach II photo step at %#x differs" % site)
+            struct.pack_into("<I", m, o(site) + 2, 0x60383c69)
+            struct.pack_into("<I", m, o(site) + 9, 0x60385f5b)
+        print("  Bleach Bypass II: photos use the live-view main step")
     return bytes(m)
 
 
 def main(argv):
-    which = [w for w in ("bit", "pass", "detail", "params") if "--" + w in argv]
+    which = [w for w in ("bit", "pass", "detail", "params", "photo-step") if "--" + w in argv]
     if len(argv) < 3 or not which:
         print(__doc__)
         return 1
