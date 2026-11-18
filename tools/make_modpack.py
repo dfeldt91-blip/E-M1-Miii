@@ -39,8 +39,9 @@ MODS = [
      "The arrow keys can be assigned 25 functions for stills and 15 for movies.",
      "Not tested on the camera yet.", []),
     ("hhrs_flash", "patch_hhrs_flash.py", [], "Flash in handheld High Res",
-     "Allows the flash setting in handheld High Res Shot.",
-     "Worked on the camera (1.5 build).", []),
+     "Allows the flash setting in handheld High Res Shot, with the same flash modes as tripod High Res "
+     "(by flash type), and Manual flash next to Fill In with TTL flashes (tripod and handheld).",
+     "Flash worked on the camera (1.5 build); Manual flash option: test 1.744.", []),
     ("hires_art", "patch_hires_art.py", [], "Art filters in High Res",
      "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the colour and tone, "
      "not the effect pass (no soft focus, frames or edges).",

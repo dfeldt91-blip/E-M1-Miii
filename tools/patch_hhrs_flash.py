@@ -16,6 +16,17 @@ record 0x60492988). MODE_STROBE rule 46 (entry 0x6047f42c) is the same handheld 
 map 0x6047efe0 {5,6,7,30,8,10,28 -> 10} (every flash mode -> off). Tripod High Res rules 29-45
 (handheld == 0) mostly use map 0x6047effc {all -> 5, 10 -> 10}; rule 46 is pointed there, so
 handheld High Res gets the same flash modes tripod High Res offers in the common case.
+
+Manual flash (MODE_STROBE value 28): tripod rules 29-45 pick the map by flash type, e.g. map
+0x6047f018 {all -> off, 28 -> 28} (Manual only) for some flashes, 0x6047effc (Fill In) for TTL ones.
+Rule 46 gave handheld the TTL map for every flash, so Manual was never offered. Rules 29-45 each have
+their own condition record (no other references) whose term 1 is (0x68f handheld, 0); it becomes
+(0x2f2 High Res, 1), a copy of term 0, so tripod and handheld High Res use the same rules. Rule 46
+(tripod map) is then only a fallback.
+The TTL-case map 0x6047effc offers only Fill In (all -> 5, Off -> Off, Manual -> 5). In rules 29-46
+(High Res, tripod and handheld) it is replaced by a new map MANUAL_MAP {all -> 5, 10 -> 10, 28 -> 28}
+in free space, so Manual stays selectable next to Fill In. The other users of 0x6047effc
+(rules 26 / 28, another mode) are unchanged.
 """
 import hashlib
 import os
@@ -30,6 +41,9 @@ RULE3 = 0x6048a958
 COND, FORCE0, IDENT = 0x60474170, 0x60470fc0, 0x60480ee4
 STROBE46, STB_OFF, STB_TRIPOD = 0x6047f42c, 0x6047efe0, 0x6047effc
 FLASH_VALUES = [5, 6, 7, 30, 8, 10, 28]
+STROBE_RULES = 0x6047f14c       # MODE_STROBE rule list (16-byte rules)
+TRIPOD_RULES = range(29, 46)
+MANUAL_MAP = 0x600dbf00          # free (0xff) in stock 1.6; 7 x {s16 from, s16 to}
 
 
 def check(cond, msg):
@@ -59,6 +73,25 @@ def patch_main(main):
     check([struct.unpack_from("<hh", m, off(STB_TRIPOD) + 4 * j) for j in range(7)] ==
           [(v, 10 if v == 10 else 5) for v in FLASH_VALUES], "tripod flash map differs")
     struct.pack_into("<I", m, off(STROBE46) + 8, STB_TRIPOD)
+    for i in TRIPOD_RULES:
+        cp, cn = struct.unpack_from("<IH", m, off(STROBE_RULES + 16 * i))
+        terms = [struct.unpack_from("<HHI", m, off(cp) + 8 * j) for j in range(cn)]
+        check(terms[0] == (0x2f2, 1, 0) and terms[1] == (0x68f, 0, 0),
+              "MODE_STROBE rule %d is not a tripod High Res rule" % i)
+        check(m.count(struct.pack("<I", cp)) == 1, "rule %d condition %#x is shared" % (i, cp))
+        struct.pack_into("<HH", m, off(cp) + 8, 0x2f2, 1)
+    check(set(m[off(MANUAL_MAP):off(MANUAL_MAP) + 28]) == {0xff}, "free space for the new map not free")
+    m[off(MANUAL_MAP):off(MANUAL_MAP) + 28] = b"".join(
+        struct.pack("<hh", v, v if v in (10, 28) else 5) for v in FLASH_VALUES)
+    n = 0
+    for i in list(TRIPOD_RULES) + [46]:
+        o = off(STROBE_RULES + 16 * i) + 8
+        if struct.unpack_from("<I", m, o)[0] == STB_TRIPOD:
+            struct.pack_into("<I", m, o, MANUAL_MAP)
+            n += 1
+    print("  MODE_STROBE: %d High Res TTL rules offer Manual too (map %#x)" % (n, MANUAL_MAP))
+    print("  MODE_STROBE rules %d-%d (tripod High Res, by flash type) also apply to handheld"
+          % (TRIPOD_RULES[0], TRIPOD_RULES[-1]))
     print("  MODE_STROBE rule 46 (handheld high res -> flash off) map %#x -> %#x" % (STB_OFF, STB_TRIPOD))
     print("  MODE_STB_GENERAL rule 3 (handheld high res -> flash off) map %#x -> %#x" % (FORCE0, IDENT))
     return bytes(m)
