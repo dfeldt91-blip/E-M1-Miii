@@ -74,10 +74,11 @@ names, not decoded.
   (needs a camera test to confirm).
 - Sharpness: stage not located yet.
 
-## Art curves as Gradation options (test 1.715)
+## Art curves as Gradation options (tests 1.715, 1.716)
 
 `tools/patch_art_gradation.py` (on 1.709): Gradation gets 19 more values (3..21 raw, GUI 4..22),
-one per distinct art curve, in every picture mode. The curve selector hook at 0x603df14e returns
+one per distinct art curve, in every picture mode. 1.715 boot-looped: its data was at 0x600e1000,
+a boot RAM pool (docs/FINDINGS.md); 1.716 puts it at 0x600dc000. The curve selector hook at 0x603df14e returns
 the art curve for those values. Menus show ASCII names after Low Key. Awaiting camera test.
 Unknown until tested: whether the new raw values reach job +1797 unchanged, and whether the SCP
 shows names or blank entries for them.

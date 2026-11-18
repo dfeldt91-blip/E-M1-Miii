@@ -34,7 +34,7 @@ import olycompress  # noqa: E402
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_B_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 SITE, SITE_STOCK, BACK = 0x603df14e, bytes.fromhex("fa40050710"), 0x603df153
-FREE, FREE_END = 0x600e1000, 0x600e3000
+FREE, FREE_END = 0x600dc000, 0x600de000   # padding below the vector table 0x600e0000 (0x600e0800+ is boot RAM)
 UNIT = 0x1b                       # empty unit string (camera-tested in tools/patch_looks.py)
 RECORDS = [0x604da80c + 20 * i for i in range(14)]
 REC_SIDS = [0x69, 0x136, 0x137, 0x138, 0x139, 0x13a, 0x13b, 0xd0, 0x12e, 0xbb, 0xbf, 0xc3, 0xc7, 0xcc]

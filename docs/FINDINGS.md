@@ -477,3 +477,11 @@ Tried in test builds 1.667-1.671 and dropped; notes for a later attempt:
 - Not done: which stage each table belongs to (curve, matrix, saturation, sharpness, vignette...)
   and the table formats. The generic (non-special-case) path is not mapped. The listing has
   undecoded opcodes (UDF) in this area, which slows reading.
+
+## Base-section 0xFF ranges that are NOT free (boot RAM pools)
+
+Boot code 0x600211ab..0x600211e1 registers memory pools at 0x602859a0, 0x6028f0c4, 0x60292804,
+0x6029952c and 0x600e0800 (stored at 0x6205f6c0..). The 0xFF-filled ranges starting there are
+runtime RAM: data put there is overwritten at boot. Test 1.715 (Gradation data at 0x600e1000)
+boot-looped because of this. Usable padding: 0x600d24f0-0x600dffff (below the vector table at
+0x600e0000), as used by all other patches.
