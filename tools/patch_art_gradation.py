@@ -21,8 +21,12 @@ same bank. This adds 19 Gradation values, 3..21, one per distinct art-filter cur
 Camera test: Picture Mode Natural (or any mode), Gradation: the list should show the 19 new names
 after Low Key. Pick e.g. "Pale&Light I" (lifted blacks) or "Grainy I" (very hard contrast):
 live view and photo should change accordingly. Check that Auto / High / Normal / Low still work.
+--diag-labels (1.718): Auto's label becomes "Pop Art I" (string 0xa75) and the first new value
+(Pop Art I curve) is labelled "High Key" (0x267): shows whether label edits on existing values
+show at all, and whether new values can show a string that this menu already draws.
 Camera 1.716: boots; the 19 options are listed and change live view and photos; labels blank
-(type-1 ASCII entries are not drawn by this menu). 1.717: type-4 entries with the stock names.
+(type-1 ASCII entries are not drawn by this menu). 1.717: type-4 entries with the stock names:
+still blank, so new values are not labelled from this list at all (as with the ISO extension).
 """
 import hashlib
 import os
@@ -70,6 +74,9 @@ jmp back
 def check(cond, msg):
     if not cond:
         sys.exit("refusing to patch: " + msg)
+
+
+DIAG = "--diag-labels" in sys.argv
 
 
 def patch(main):
@@ -139,6 +146,9 @@ def patch(main):
     ol = bytearray(stock4)
     for i in range(N):
         ol += struct.pack("<IHHI", 4 + i, 4, CURVES[i][2], cond)
+    if DIAG:     # label diagnostic: Auto -> "Pop Art I", first new value -> "High Key"
+        struct.pack_into("<H", ol, 6, 0xa75)
+        struct.pack_into("<H", ol, 48 + 6, 0x267)
     m[o(olist):o(olist) + len(ol)] = ol
     a = olist + len(ol)
     check(a <= FREE_END, "free area overflow")
