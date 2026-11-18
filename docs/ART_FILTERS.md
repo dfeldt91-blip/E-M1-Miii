@@ -150,3 +150,7 @@ Camera 1.732: photo still mono. The default toning handler 0x603dfdc7 still retu
 when the caller's mono flag (job +1801 in the first caller 0x603dfe30) is set, which stills
 apparently do for Grainy. 1.733 points Grainy II at 0x603dfe11 (no toning, ignores the flag), plus the
 1.732 photo-pass change. If 1.733 is still mono, the grey comes from the grain chain itself.
+Camera 1.733: photo still mono (live view colour). Toning is not the cause: with no toning and the
+photo-pass call skipped, Grainy II photos are still grey, so the photo grain chain itself outputs
+luminance only (modules 0x60388169 / 0x6038385b / 0x60388295 / 0x603880f0, art builder
+0x603845c1-0x6038466e). Colour grain would need those modules changed; not pursued yet.
