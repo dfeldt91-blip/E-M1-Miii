@@ -29,6 +29,10 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | XPAN icon for Panorama on the SCP | `xpan_icon` |
 | Underwater picture mode in black and white | `underwater_mono` |
 | Six film looks in Custom, picked in the app (Caduceus recipes) | `custom_looks` |
+| ISO-Auto down to L64 | `iso_auto_low` |
+| Movie recording limit 9 hours | `rec_limit` |
+| Owner name and phone in the main menu | `owner_title` |
+| Art filter tone curves as Gradation options (19 curves; SCP grid cell reads AUTO) | `art_gradation` |
 
 ## Built, not yet camera-tested
 - **Looks loaded from the SD card** (`custom_looks` → "Load looks from SD card"; test firmware 1.696). On the first half-press, the camera reads `EM1MOD\LOOKS.BIN`, so you can change the six looks without reflashing.
@@ -37,6 +41,11 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 - **All 31 looks in Custom's list.** Every entry past the sixth restarts the camera.
 - **Startup text.** Dropped by you, because it would slow startup.
 - **MENU as an assignable button.** It didn't work.
+- **Bleach Bypass II without its softening** (1.720, 1.721). No visible change.
+- **Frame for picture modes via the Color Space switch** (1.722–1.727). Picture modes don't run the art stages; forcing the art chain crashed (1.727).
+- **Art curve names in the SCP grid cell** (1.729, 1.730). Picker shows them; the grid cell stays AUTO. Left as is.
+- **On-camera HSL / Color Creator editor.** Not present in the image path on this body; dropped.
+- **Video to an external SSD.** No USB host or mass-storage code in the firmware. Use HDMI to an external recorder instead.
 
 ## Video
 | # | Idea | Rating | Notes |
@@ -108,6 +117,17 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | C13 | **More white-balance presets / finer Kelvin** | **Plausible** | |
 | C14 | **Art filters: new variations** (e.g. more frame/effect options) | **Plausible** | White frame is an example. |
 | C15 | **On-camera HSL editor** (hue / saturation / lightness per colour, like the E-P7 / PEN-F) | **Idea, being probed** | The hidden Color Profile feature's settings, strings and wheel-drawing code are still in the firmware; no menu opens its editor. Probe 1.712 (`tools/patch_cpc_probe.py`) asks for an unused screen (state 69) from SCP INFO on Color Creator. |
+
+## Super Control Panel cells
+| # | Idea | Rating | Notes |
+|---|---|---|---|
+| P1 | **Noise Filter cell** in the unused row-4 cells (picture modes) | **Plausible–hard** | No stock Noise Filter cell exists. Needs the grid layout code (built at run time, not found yet), a new cell record and the setting binding. Cheaper route: retarget the i-Enhance Effect cell (record 0x4e). |
+| P2 | **Film Grain cell** (Off/Low/Medium/High) | **Idea** | Hidden SCP record 0x3e exists with these four labels; whether image code still reads the setting is unchecked. |
+| P3 | **Hidden Color Profile / Monochrome Profile picture modes** (values 54 / 57) | **Idea** | Labels are in the SCP Picture Mode list; on other bodies these modes carry grain and shading (vignette). |
+| P4 | **Separate Tone cell for the art curves** | **Plausible** | Frees Gradation; avoids the AUTO cell issue. |
+| P5 | **Highlight & Shadow, Shading Comp., Keep Warm, Live ND, Focus BKT, Fisheye Comp. as cells** | **Plausible** | All are existing settings; same layout-code dependency as P1. |
+| P6 | **Vignette / frame / star light / blur for picture modes** | **Unlikely** | Art-only image stages; 1.727 crashed. |
+| P7 | **Art filter controls**: saturation (Pop Art matrix), colour parameters A/B, per-filter curves | **Plausible** | Tables decoded in docs/ART_FILTERS.md; meaning of A/B unknown. |
 
 ## Buttons, menus and display
 | # | Idea | Rating | Notes |
