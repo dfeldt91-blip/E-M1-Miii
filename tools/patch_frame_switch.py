@@ -35,6 +35,7 @@ import olycompress  # noqa: E402
 
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_B_END = 0x60c6c000, 0xc4afe0, 0x612f1000
+GET, SID = 0x602ca6a5, 0x3c          # settings getter (works in image code: tools/patch_looks.py)
 PROP_GET = 0x6005fa9c                      # property read: d0 = property, a0 = 0, d1 = 0
 EFF_SITES = [0x602c31fa, 0x6147cf82]        # call PROP_GET after `mov 0xf5d1,d0; mov 0,a0; clr d1`
 EFF_PRE = bytes.fromhex("fcccd1f50000900004")
@@ -51,10 +52,8 @@ movbu d0,(26088,a3)
 movbu d0,(26089,a3)
 movbu d0,(26824,a3)
 movbu d0,(26116,a3)
-mov 0x8bf1,d0
-mov 0,a0
-clr d1
-call prop,[d2,d3],12
+mov SID,d0
+call get,[],4
 cmp 1,d0
 bne 1f
 mov 3,d0
@@ -78,10 +77,8 @@ VAL_OLD = {0x6aa: 0x5ae, 0x673: 0xc6}   # -> the Off / On strings every On/Off m
 EFF_SRC = """call prop,[d2,d3],12
 cmp 0,d0
 bne 9f
-mov 0x8bf1,d0
-mov 0,a0
-clr d1
-call prop,[d2,d3],12
+mov SID,d0
+call get,[],4
 cmp 1,d0
 beq 8f
 clr d0
@@ -93,22 +90,24 @@ ret [],4
 """
 
 
-# --diag (1.725): (a) the tone-curve hook site 0x603df14e (jmp to the Gradation stub of
+# 1.725 read the switch as property 0x8bf1 (0x6005fa9c): no effect at all, so that read does not
+# give the live value in image code; 1.726 uses the settings getter 0x602ca6a5(0x3c) everywhere.
+# --diag (1.725/1.726): (a) the tone-curve hook site 0x603df14e (jmp to the Gradation stub of
 # patch_art_gradation) first checks property 0x8bf1: = 1 -> Grainy Film I curve 0x6050eba2 (an
 # obvious look), proving the switch reaches image processing; (b) 1.722's chain-builder flag hook
 # (job flag 0x8000 for non-art jobs) on top of 1.724's Art Effect injection.
 TONE_SITE = 0x603df14e
 DIAG_TONE_STUB, DIAG_CHAIN_STUB = 0x600de0a0, 0x600de100
-DIAG_TONE_SRC = """add -12,sp
+DIAG_TONE_SRC = """add -16,sp
 mov a0,(4,sp)
 mov d1,(8,sp)
-mov 0x8bf1,d0
-mov 0,a0
-clr d1
-call prop,[d2,d3],12
+mov a1,(12,sp)
+mov SID,d0
+call get,[],4
 mov (4,sp),a0
 mov (8,sp),d1
-add 12,sp
+mov (12,sp),a1
+add 16,sp
 cmp 1,d0
 bne 1f
 mov 0x6050eba2,a0
@@ -126,10 +125,8 @@ mov (a1),d1
 lsr 24,d1
 cmp 1,d1
 beq 8f
-mov 0x8bf1,d0
-mov 0,a0
-clr d1
-call prop,[d2,d3],12
+mov SID,d0
+call get,[],4
 cmp 1,d0
 bne 8f
 mov (12,sp),a0
@@ -149,8 +146,8 @@ def diag(m):
     j = bytes(m[o(TONE_SITE):o(TONE_SITE) + 5])
     check(j[0] == 0xdc, "tone-curve site is not hooked (needs patch_art_gradation first)")
     grad = TONE_SITE + struct.unpack_from("<i", j, 1)[0]
-    for a, src, syms in ((DIAG_TONE_STUB, DIAG_TONE_SRC, {"prop": PROP_GET, "grad": grad}),
-                         (DIAG_CHAIN_STUB, DIAG_CHAIN_SRC, {"prop": PROP_GET, "yes": 0x60385372, "no": 0x603853b4})):
+    for a, src, syms in ((DIAG_TONE_STUB, DIAG_TONE_SRC, {"prop": PROP_GET, "grad": grad, "get": GET, "SID": SID}),
+                         (DIAG_CHAIN_STUB, DIAG_CHAIN_SRC, {"prop": PROP_GET, "yes": 0x60385372, "no": 0x603853b4, "get": GET, "SID": SID})):
         check(set(m[o(a):o(a) + 0x60]) == {0xff}, "diag stub area %#x not free" % a)
         c = patch_aspect.assemble_syms(src, a, syms)
         check(len(c) <= 0x60, "diag stub too long")
@@ -171,7 +168,7 @@ def patch(main):
     m = bytearray(main)
     o = lambda a: a - BASE  # noqa: E731
     check(set(m[o(STUB):o(STUB) + 0x80]) == {0xff}, "stub area not free")
-    code = patch_aspect.assemble_syms(EFF_SRC, STUB, {"prop": PROP_GET})
+    code = patch_aspect.assemble_syms(EFF_SRC, STUB, {"prop": PROP_GET, "get": GET, "SID": SID})
     m[o(STUB):o(STUB) + len(code)] = code
     for site in EFF_SITES:
         check(bytes(m[o(site) - 9:o(site)]) == EFF_PRE and m[o(site)] == 0xdd and
@@ -181,7 +178,7 @@ def patch(main):
         m[o(site):o(site) + 7] = call
     check(bytes(m[o(CLR_SITE):o(CLR_SITE) + 21]) == CLR_STOCK, "non-art clear block differs")
     check(set(m[o(CLR_STUB):o(CLR_STUB) + 0x60]) == {0xff}, "clear stub area not free")
-    c2 = patch_aspect.assemble_syms(CLR_SRC, CLR_STUB, {"prop": PROP_GET})
+    c2 = patch_aspect.assemble_syms(CLR_SRC, CLR_STUB, {"prop": PROP_GET, "get": GET, "SID": SID})
     m[o(CLR_STUB):o(CLR_STUB) + len(c2)] = c2
     call = patch_aspect.assemble_syms("call clr2,[],4", CLR_SITE, {"clr2": CLR_STUB})
     m[o(CLR_SITE):o(CLR_SITE) + 21] = call + b"\xcb" * (21 - len(call))

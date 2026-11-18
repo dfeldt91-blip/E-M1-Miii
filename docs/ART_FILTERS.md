@@ -111,3 +111,5 @@ Camera 1.723: SCP shows sRGB / Adobe RGB, no frame. Cause: the picture-mode norm
 0x6147d3e8 clears the Art Effect after the snapshot. 1.724 writes Frame there when the switch is on.
 Camera 1.724: no frame (on or off). 1.725 (--diag): switch on -> Grainy I tone curve in picture
 modes (tests whether the switch reaches image processing) + 1.722's chain flag hook.
+Camera 1.725: nothing (no curve change, no frame): the property read 0x6005fa9c(0x8bf1) does not
+see the switch from image code. 1.726: all checks use the settings getter 0x602ca6a5(0x3c).
