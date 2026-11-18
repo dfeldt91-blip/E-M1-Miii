@@ -160,3 +160,6 @@ luminance only (modules 0x60388169 / 0x6038385b / 0x60388295 / 0x603880f0, art b
 0x603ce1a8 returns 0 for Grainy I/II, Vintage II and Bleach Bypass II (else 1, with ISO- and
 mode-dependent exceptions); 0x6038bcc1 stores it at job +1862. Probably the fine-detail /
 sharpening stage. 1.734 = 1.728 + `patch_bleach2.py --detail` (Bleach II gets 1 like other filters).
+Camera 1.734: no change. Described as "desharpening to the extreme". 1.735 = 1.728 +
+`patch_bleach2.py --params`: the per-pass parameter-set index 0x603e3d98 (hash 0x6053ea8c) gives
+Bleach II 34 / 35 for its passes 0xa01 / 0xa02; its entry now goes to the default handler 0x603e3ef4.

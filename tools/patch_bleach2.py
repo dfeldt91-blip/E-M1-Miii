@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bleach Bypass II without its softening (TEST, E-M1 Mark III 1.6). Base section only.
 
-  python3 tools/patch_bleach2.py IN.BIN OUT.BIN --bit|--pass|--detail [--version 0x1720]
+  python3 tools/patch_bleach2.py IN.BIN OUT.BIN --bit|--pass|--detail|--params [--version 0x1720]
 
 Bleach Bypass II (job key 0x0102007b) differs from Bleach Bypass I in a few places
 (docs/ART_FILTERS.md). Which one softens the photo is not known yet, so each test removes one:
@@ -17,6 +17,9 @@ Bleach Bypass II (job key 0x0102007b) differs from Bleach Bypass I in a few plac
         0x603ce1d4), else 1 unless ISO-dependent cases; callers store it at job +1862 (likely the
         fine-detail / sharpening stage). The Bleach II operand becomes 0x10f007b, so it returns 1.
         (1.720 --bit and 1.721 --pass made no visible difference.)
+--params 0x603e3d98 (hash 0x6053ea8c on key-11) picks a parameter-set index per pass; Bleach II's
+        handler 0x603e3e89 returns 34 / 35 for passes 0xa01 / 0xa02. Its entry is pointed at the
+        default 0x603e3ef4 (the index other filters get). (1.734 --detail: no change.)
 """
 import hashlib
 import os
@@ -30,6 +33,7 @@ BASE = 0x60021020
 BIT_SITE, BIT_STOCK, BIT_NEW = 0x603ddb0d, bytes.fromhex("fcc87b000201"), bytes.fromhex("fcc87b000f01")
 PASS_SITE, PASS_STOCK = 0x60384dfc, bytes.fromhex("fccddb703860cc0801")
 DETAIL_SITE, DETAIL_STOCK, DETAIL_NEW = 0x603ce1d4, bytes.fromhex("fccb7b000201"), bytes.fromhex("fccb7b000f01")
+PARAM_SLOT, PARAM_STOCK, PARAM_DEFAULT = 0x6053eaa4, (0x102007b - 11, 0x603e3e89), 0x603e3ef4
 PASS_NEW = bytes.fromhex("8f01") + b"\xcc" + struct.pack("<h", 0x60384f10 - (PASS_SITE + 2)) + b"\xcb" * 4
 
 
@@ -54,11 +58,15 @@ def patch(main, which):
         check(bytes(m[o(DETAIL_SITE):o(DETAIL_SITE) + 6]) == DETAIL_STOCK, "Bleach II detail compare differs")
         m[o(DETAIL_SITE):o(DETAIL_SITE) + 6] = DETAIL_NEW
         print("  Bleach Bypass II: detail flag (job +1862) as for other filters")
+    if "params" in which:
+        check(struct.unpack_from("<II", m, o(PARAM_SLOT)) == PARAM_STOCK, "Bleach II parameter-set entry differs")
+        struct.pack_into("<I", m, o(PARAM_SLOT) + 4, PARAM_DEFAULT)
+        print("  Bleach Bypass II: default parameter set instead of 34 / 35")
     return bytes(m)
 
 
 def main(argv):
-    which = [w for w in ("bit", "pass", "detail") if "--" + w in argv]
+    which = [w for w in ("bit", "pass", "detail", "params") if "--" + w in argv]
     if len(argv) < 3 or not which:
         print(__doc__)
         return 1
