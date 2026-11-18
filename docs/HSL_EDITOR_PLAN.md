@@ -80,10 +80,14 @@ Open questions for the camera: setting ranges (step 1); whether the Color Creato
 opened while Picture Mode is Custom (the screen may switch Picture Mode to Color Creator on OK; the
 commit hook covers that).
 
+## Status
+
+- 1.713 (step 1, tools/patch_hsl.py --seed, on 1.709): engine reads the 36 settings; SCP INFO on
+  Color Creator writes red hue +7, blue lightness +7, green saturation -5. Awaiting camera test.
+
 ## Risks
 
 - Every step needs a camera round; the screen hijack needs 3-5 rounds.
 - If the item objects clamp to their own ranges (30 / 8 positions), the -7..+7 range needs the
   label/limit tables changed, not just the setting ids.
-- The random freeze reported on 1.712 is not explained yet; it may come from the 1.711 multiple
-  exposure hook. Builds for this work start from a base without that hook until it is cleared.
+- Multiple exposure work is dropped; HSL builds start from 1.709 (before the 1.710/1.711 hooks).
