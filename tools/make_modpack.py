@@ -74,8 +74,8 @@ MODS = [
     ("art_gradation", "patch_art_gradation.py", [], "More tone curves in Gradation",
      "Gradation (every picture mode, menu and Super Control Panel) gets 19 more curves after Low Key, from "
      "washed out to contrasty: Faded Matte, Washed Out, Soft Matte, Airy Pastel, Low Con Film, Faded Blacks, "
-     "Cine Rolloff, Matte S, Neutral Soft, Bright Open, Soft S, Film S, Crisp, Dark Moody, Punchy S, Slide Film, "
-     "Hard S, Crushed Silver, Graphic (names in English menus). Highlight & Shadow Control applies on top. "
+     "Cine Rolloff, Matte S Curve, Neutral Soft, Bright Open, Soft S Curve, Film S Curve, Crisp, Dark Moody, Punchy S Curve, Slide Film, "
+     "Hard S Curve, Crushed Silver, Graphic (names in English menus). Highlight & Shadow Control applies on top. "
      "Two more options, Custom1 and Custom2, take your own curves: draw them with 'Edit curve' (empty = no change). "
      "The small Gradation cell in the SCP grid shows AUTO for all the new options; Contrast has no effect with them.",
      "Art curve version worked on the camera (1.719 / 1.728); user slots 1.740; designed set: test 1.741.", []),

@@ -1179,10 +1179,10 @@
   {
    "id": "art_gradation",
    "title": "More tone curves in Gradation",
-   "description": "Gradation (every picture mode, menu and Super Control Panel) gets 19 more curves after Low Key, from washed out to contrasty: Faded Matte, Washed Out, Soft Matte, Airy Pastel, Low Con Film, Faded Blacks, Cine Rolloff, Matte S, Neutral Soft, Bright Open, Soft S, Film S, Crisp, Dark Moody, Punchy S, Slide Film, Hard S, Crushed Silver, Graphic (names in English menus). Highlight & Shadow Control applies on top. Two more options, Custom1 and Custom2, take your own curves: draw them with 'Edit curve' (empty = no change). The small Gradation cell in the SCP grid shows AUTO for all the new options; Contrast has no effect with them.",
+   "description": "Gradation (every picture mode, menu and Super Control Panel) gets 19 more curves after Low Key, from washed out to contrasty: Faded Matte, Washed Out, Soft Matte, Airy Pastel, Low Con Film, Faded Blacks, Cine Rolloff, Matte S Curve, Neutral Soft, Bright Open, Soft S Curve, Film S Curve, Crisp, Dark Moody, Punchy S Curve, Slide Film, Hard S Curve, Crushed Silver, Graphic (names in English menus). Highlight & Shadow Control applies on top. Two more options, Custom1 and Custom2, take your own curves: draw them with 'Edit curve' (empty = no change). The small Gradation cell in the SCP grid shows AUTO for all the new options; Contrast has no effect with them.",
    "camera": "Art curve version worked on the camera (1.719 / 1.728); user slots 1.740; designed set: test 1.741.",
    "requires": [],
-   "stock_sha256": "1974b2ff955fb15cc46f595c8fde64b17ecb48fc578f9924154273f2a7343045",
+   "stock_sha256": "81312a78ebc454272f1f163216a993bb26f9de334f03fdc6f22cc35a6daf0021",
    "edits": [
     [
      0,
@@ -1537,7 +1537,7 @@
     [
      1,
      "0x24461e",
-     "61007400740065002000530000"
+     "61007400740065002000530020004300750072007600650000"
     ],
     [
      1,
@@ -1552,12 +1552,12 @@
     [
      1,
      "0x2446a6",
-     "53006f00660074002000530000"
+     "53006f00660074002000530020004300750072007600650000"
     ],
     [
      1,
      "0x2446dc",
-     "460069006c006d002000530000"
+     "460069006c006d002000530020004300750072007600650000"
     ],
     [
      1,
@@ -1572,7 +1572,7 @@
     [
      1,
      "0x2447da",
-     "500075006e006300680079002000530000"
+     "500075006e006300680079002000530020004300750072007600650000"
     ],
     [
      1,
@@ -1582,7 +1582,7 @@
     [
      1,
      "0x244838",
-     "48006100720064002000530000"
+     "48006100720064002000530020004300750072007600650000"
     ],
     [
      1,
