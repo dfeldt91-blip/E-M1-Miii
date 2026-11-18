@@ -170,3 +170,9 @@ its own buffer (width rounded to 32, 0x6037d7f7), possibly a reduced-size pass. 
 Camera 1.736: freezes and powers off on a Bleach II photo. The photo pipeline needs Bleach II's own
 main step; do not use 1.736. Summary of Bleach II softening tests: --bit (1.720), --pass (1.721),
 --detail (1.734), --params (1.735) no change; --photo-step (1.736) crash.
+
+## Bleach Bypass I with Bleach II's colour (tests 1.737, 1.738)
+
+`tools/patch_bleach_color.py`: Bleach I gets an entry in the coefficient hash (empty slot 42 on its
+probe path) with Bleach II's handler, i.e. coefficient record 0x6053d31c. 1.737 = 1.728 + that;
+1.738 = also Bleach II's identity tone curve (`--curve`). Bleach I keeps its own chain.
