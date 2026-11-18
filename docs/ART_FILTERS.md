@@ -96,3 +96,11 @@ Camera 1.719: works. The SCP Gradation picker shows the art filter icons for the
 pass 0x603870db (live view uses {0x60383c69, 0x60385f5b} and no extra pass). 1.720 drops the bit,
 1.721 drops the final pass. Also special: no-NR-type flag 0x603ce1a8 (shared with Grainy, Vintage II),
 coefficient record 0x6053d31c, identity tone curve.
+
+## White frame for picture modes (test 1.722)
+
+1.720/1.721 (Bleach Bypass II) made no visible difference; dropped. 1.722 = 1.719 +
+`patch_frame_white.py --no-white --layer0-white` (clean white border masks) +
+`tools/patch_frame_switch.py`: the SCP Color Space item becomes a Frame on/off switch (setting 0x3c,
+icons/labels changed, its colour-space effect removed), and the chain builder adds the Frame stage
+for non-art jobs while it is on.
