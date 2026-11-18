@@ -26,6 +26,8 @@ LOOKS = {
         "sat": [-2, -2, -3, -2, -2, -3, -4, -5, -2, -3, -3, -3], "hue": [0, 3, 2, 0, 0, 0, -2, -6, -4, 0, -1, -2], "light": [-1, -1, -2, -3, -3, -2, -2, -1, -1, -1, -1, -1]},
     'bleach': {"name": 'Bleach Byp.', "description": 'Silver-retained cinema look: near-monochrome, harsh contrast.',
         "sat": [-5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5], "hue": [0, 0, -2, -3, 0, 0, -3, -7, -5, 0, 0, 0], "light": [-2, -3, -4, -5, -4, -3, -1, -1, -1, -2, -3, -2]},
+    'bleach_green': {"name": 'Bleach Green', "description": 'Washed-out green-grey bleach bypass (Bleach Bypass II style, own recipe, not Caduceus): low saturation, greens kept a little, darker reds and blues. Pair with Gradation Bleach Bypass I and WB fine-tune toward G.',
+        "sat": [-3, -4, -4, -5, -5, -5, -5, -5, -4, -3, -2, -2], "hue": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "light": [-1, -2, -3, -3, -3, -2, -2, -2, -1, -1, -2, -1]},
     'kchrome': {"name": 'Kodachrome64', "description": 'Rich reds, deep cyan-blue skies, warm and dense.',
         "sat": [1, 1, 2, 2, 0, -1, 1, 1, 0, -1, -1, 0], "hue": [0, 0, 0, 0, 1, 0, -1, -2, -1, 1, -1, -1], "light": [-1, -2, -2, -2, -1, -1, -2, -1, -1, -1, -2, -2]},
     'portra': {"name": 'Portra 400', "description": 'Warm pastel portrait negative: glowing skin, soft contrast.',
