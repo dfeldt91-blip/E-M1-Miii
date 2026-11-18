@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Art filter tone curves as Gradation options for the picture modes (TEST, E-M1 Mark III 1.6).
+"""Extra tone curves as Gradation options for the picture modes (E-M1 Mark III 1.6).
 
-  MN10300_BIN=... python3 tools/patch_art_gradation.py IN.BIN OUT.BIN [--version 0x1715]
+  MN10300_BIN=... python3 tools/patch_art_gradation.py IN.BIN OUT.BIN [--art] [--version 0x1715]
+
+Default: a designed set of 19 curves from washed out to contrasty (tools/gradation_curves.py), named
+in the menus with their own English labels; --art: the 19 art filter curves (the original version
+below). Both add the user slots Custom1 / Custom2 (filled by the mod builder app).
 
 Gradation (Auto / High Key / Normal / Low Key) is chosen in the tone-curve selector 0x603df05c:
 job +1797 = 1 -> High Key curve 0x6050af06, -1 -> Low Key 0x6050b106, 2 -> Auto, 0 -> the
@@ -70,6 +74,15 @@ CURVES = [  # (label, curve, string id) in menu order; curves from tools/art_fil
     ("Vintage I", 0x6050e1a2, 0xa88), ("Vintage II", 0x6050e3a2, 0xa89), ("Vintage III", 0x6050e5a2, 0xa8a),
     ("Bleach Bypass I", 0x6050e7a2, 0xcde),
 ]
+# Default (without --art): a designed curve set, washed out -> contrasty (tools/gradation_curves.py),
+# curves at CURVE_DATA + 512 * i, labels written into unused English camera strings (block 1), SCP
+# icon = the Gradation Normal icon. --art: the 19 art filter curves above, as in 1.719 / 1.728.
+ART = "--art" in sys.argv
+CURVE_DATA = 0x600d4000
+if not ART:
+    import gradation_curves as gc
+    CURVES = [(name, CURVE_DATA + 512 * i, sid) for i, (name, pts, sid) in enumerate(gc.SET)]
+    ART_GUI = [None] * len(CURVES)          # None: the Gradation Normal icon
 # User curve slots (filled by the mod builder app, tools/modcore.py): 256 x u16 (0..1023) each at
 # USER_DATA + 512 * i, identity until the app writes a curve. Labels are the camera's own "Custom1" /
 # "Custom2" strings; SCP icon = the Custom picture mode's (GUI 6).
@@ -149,7 +162,14 @@ def patch(main):
     for i in range(len(USER)):     # user slots start as the identity curve
         m[o(USER_DATA + 512 * i):o(USER_DATA + 512 * (i + 1))] = m[o(IDENTITY):o(IDENTITY) + 512]
     check(bytes(m[o(SITE):o(SITE) + 5]) == SITE_STOCK, "Gradation read at %#x differs" % SITE)
-    for c in CURVES[:N_ART]:
+    if not ART:
+        import modcore
+        lo, hi = CURVE_DATA, CURVE_DATA + 512 * N_ART
+        check(set(m[o(lo):o(hi)]) == {0xff}, "curve area %#x-%#x not free" % (lo, hi))
+        for i, (name, pts, sid) in enumerate(gc.SET):
+            v = modcore.curve_from_points(modcore.parse_curve_points(pts))
+            m[o(CURVE_DATA + 512 * i):o(CURVE_DATA + 512 * (i + 1))] = struct.pack("<256H", *v)
+    for c in (CURVES[:N_ART] if ART else []):
         v = struct.unpack_from("<256H", m, o(c[1]))
         check(v[0] < 300 and v[255] > 800 and all(v[i] <= v[i + 1] for i in range(255)), "curve %#x differs" % c[1])
     stock_list = None
@@ -228,6 +248,9 @@ def patch(main):
         lst = bytearray(gui[src - BLOB_B:src - BLOB_B + 48])
         c = ent(src, 0)[3]
         for i, gv in enumerate(ART_GUI):
+            if gv is None:                  # designed curves: the Gradation Normal icon
+                lst += struct.pack("<iHHI", 4 + i, 3, ent(src, 1)[2], c)
+                continue
             check(gv in icons, "no Picture Mode icon for GUI value %#x" % gv)
             lst += struct.pack("<iHHI", 4 + i, 3, icons[gv], c)
         a = (a + 15) & ~15
@@ -288,6 +311,30 @@ def patch(main):
     return bytes(m)
 
 
+def label_block1(blk1):
+    """Write the designed curve names over unused English strings, in place (block 1)."""
+    import patch_owner_title as ot
+    d = bytearray(blk1)
+    a, n = struct.unpack_from("<II", d, 16 * ot.SECTION)
+    so = a - ot.B1_FLASH
+    for name, pts, sid in gc.SET:
+        check(sid < ot.COUNT, "string id %#x out of range" % sid)
+        p = struct.unpack_from("<I", d, so + ot.TAB + 4 * sid)[0]
+        check(ot.RAM <= p < ot.RAM + n, "string %#x pointer outside the English section" % sid)
+        o = so + p - ot.RAM
+        e = o
+        while d[e:e + 2] != b"\0\0":
+            e += 2
+        stock = d[o:e].decode("utf-16le")
+        check(stock == gc.STOCK_TEXT[sid], "string %#x is %r, expected %r" % (sid, stock, gc.STOCK_TEXT[sid]))
+        check(len(name) <= len(stock) and "@" not in name and all(32 <= ord(c) < 127 for c in name),
+              "label %r does not fit string %#x (%d characters)" % (name, sid, len(stock)))
+        new = name.encode("utf-16le") + b"\0\0"
+        d[o:o + len(new)] = new
+    print("  Gradation labels: %d English strings replaced (%s ...)" % (len(gc.SET), gc.SET[0][0]))
+    return bytes(d)
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__)
@@ -304,7 +351,8 @@ def main(argv):
         if i == 0 and ver is not None:
             struct.pack_into("<H", head, 16, ver)
             struct.pack_into("<H", tail, 16, ver)
-        out += olyfw.build_block(bytes(head), new_main if i == 0 else b["plain"], bytes(tail))
+        plain = new_main if i == 0 else (label_block1(b["plain"]) if i == 1 and not ART else b["plain"])
+        out += olyfw.build_block(bytes(head), plain, bytes(tail))
     check(len(out) == len(fw), "size changed")
     with open(dst, "wb") as fh:
         fh.write(out)

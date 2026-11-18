@@ -71,15 +71,14 @@ MODS = [
      "file at the file-size limit; card space, battery and the heat cut-out still stop recording. Same "
      "change as Caduceus' camera-tested E-P7 patch.",
      "Built into test 1.709.", []),
-    ("art_gradation", "patch_art_gradation.py", [], "Art filter tone curves as Gradation options",
-     "Gradation (every picture mode, menu and Super Control Panel) gets 19 more options after Low Key: "
-     "the tone curves of Pop Art I/II, Soft Focus, Pale&Light I/II, Light Tone, Grainy Film I/II, "
-     "Pin Hole I/II, Diorama, Cross Process I/II, Gentle Sepia, Dramatic Tone, Vintage I/II/III and "
-     "Bleach Bypass I. Only the curve is used (no grain, blur or colour effect); live view and photos. "
-     "The SCP picker shows the art filter icons; the small Gradation cell in the SCP grid still shows "
-     "AUTO for these options, and the main menu entries are blank. Contrast has no effect with an art curve. "
-     "Two more options, Custom1 and Custom2, take your own curves: draw them with 'Edit curve' (empty = no change).",
-     "Worked on the camera (1.6 builds 1.719 / 1.728).", []),
+    ("art_gradation", "patch_art_gradation.py", [], "More tone curves in Gradation",
+     "Gradation (every picture mode, menu and Super Control Panel) gets 19 more curves after Low Key, from "
+     "washed out to contrasty: Faded Matte, Washed Out, Soft Matte, Airy Pastel, Low Con Film, Faded Blacks, "
+     "Cine Rolloff, Matte S, Neutral Soft, Bright Open, Soft S, Film S, Crisp, Dark Moody, Punchy S, Slide Film, "
+     "Hard S, Crushed Silver, Graphic (names in English menus). Highlight & Shadow Control applies on top. "
+     "Two more options, Custom1 and Custom2, take your own curves: draw them with 'Edit curve' (empty = no change). "
+     "The small Gradation cell in the SCP grid shows AUTO for all the new options; Contrast has no effect with them.",
+     "Art curve version worked on the camera (1.719 / 1.728); user slots 1.740; designed set: test 1.741.", []),
 ]
 
 

@@ -155,3 +155,11 @@ camera's "Custom1" / "Custom2" strings (SCP icon: the Custom picture mode's). Th
 (tools/modcore.py `_user_curves`, points in:out 0..255, monotone cubic). The app has an 'Edit curve'
 window for each; CLI `--curve1 "0:40 64:82 192:186 255:225"`. 1.740 = 1.739 (1.709 + gradation with the
 slots) + Custom1 washed-out flat, Custom2 strong contrast.
+
+## Designed curve set (test 1.741)
+
+The 19 art curves are replaced by a designed set from washed out to contrasty
+(tools/gradation_curves.py; `--art` keeps the art curves). Curve data at 0x600d4000 (19 x 512 B).
+Names are written in place over unused English strings (Color Profile 1-3 and icon variants,
+Monochrome Profile 1-3 and icon variants, Film Grain Effect labels, Mono Profile 1-2); SCP icon =
+Gradation Normal. 1.741 = 1.709 + this (Custom1/Custom2 identity).
