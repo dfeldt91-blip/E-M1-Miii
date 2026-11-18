@@ -71,6 +71,14 @@ MODS = [
      "file at the file-size limit; card space, battery and the heat cut-out still stop recording. Same "
      "change as Caduceus' camera-tested E-P7 patch.",
      "Built into test 1.709.", []),
+    ("art_gradation", "patch_art_gradation.py", [], "Art filter tone curves as Gradation options",
+     "Gradation (every picture mode, menu and Super Control Panel) gets 19 more options after Low Key: "
+     "the tone curves of Pop Art I/II, Soft Focus, Pale&Light I/II, Light Tone, Grainy Film I/II, "
+     "Pin Hole I/II, Diorama, Cross Process I/II, Gentle Sepia, Dramatic Tone, Vintage I/II/III and "
+     "Bleach Bypass I. Only the curve is used (no grain, blur or colour effect); live view and photos. "
+     "The SCP picker shows the art filter icons; the small Gradation cell in the SCP grid still shows "
+     "AUTO for these options, and the main menu entries are blank. Contrast has no effect with an art curve.",
+     "Worked on the camera (1.6 builds 1.719 / 1.728).", []),
 ]
 
 
@@ -108,12 +116,6 @@ GENERATED = [
      "(button 'Write card file' below); without the file it uses the six looks picked here. "
      "Looks: Caduceus by cakelesscoder (Apache-2.0).",
      "Worked on the camera (1.6 build 1.691).", [], _look_options()),
-    ("underwater_mono", "Underwater picture mode in black and white",
-     "The Underwater picture mode becomes a second black-and-white mode (photo and live view), "
-     "with its own name and settings. It comes out a little brighter than Monotone. Tint is fixed "
-     "per build.",
-     "Worked on the camera (1.6 build 1.674, neutral).", [],
-     {"tint": {"label": "Tint (0 neutral, 1 sepia, 2 blue, 3 purple, 4 green)", "default": 0, "min": 0, "max": 4, "step": 1}}),
     ("owner_title", "Owner name and phone in the main menu",
      "The 'Shooting Menu 1' title at the top of the main menu shows your text instead, e.g. your name "
      "and phone number, so a lost or stolen camera can be traced back to you. Up to 36 characters; "
