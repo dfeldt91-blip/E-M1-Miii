@@ -10,6 +10,7 @@ in this program: the mods are edit lists (builder/mods.json) applied to your own
   python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
                                     [--stock FILE] [--frame-width 3] [--underwater-tint 0..4]
                                     [--custom-looks ID,ID,ID,ID,ID,ID]   (see --looks) [--custom-looks-sd] [--owner-text "NAME PHONE"]
+                                    [--curve1 "0:30 128:128 255:235"] [--curve2 ...]   Gradation Custom1/2 curves (in:out, 0-255)
                                     [--card-file CARD_DIR]   also write EM1MOD/LOOKS.BIN with those looks
                                                        no window ('--mods all' / '--mods none')
 
@@ -185,6 +186,9 @@ def cli(argv):
             options["custom_looks"] = {"look%d" % (i + 1): k for i, k in enumerate(ks)}
         if arg("--owner-text"):
             options["owner_title"] = {"text": arg("--owner-text")}
+        for i in (1, 2):
+            if arg("--curve%d" % i):
+                options.setdefault("art_gradation", {})["curve%d" % i] = arg("--curve%d" % i)
         if "--custom-looks-sd" in argv:
             options.setdefault("custom_looks", {})["sd"] = "on"
         if arg("--card-file"):
@@ -203,6 +207,114 @@ def cli(argv):
 
 
 # ---------------------------------------------------------------- window
+
+
+def curve_editor(root, var, title):
+    """Tone curve editor: drag points, double-click to add, right-click to remove. Writes 'in:out' points
+    (0-255) into VAR; the camera gets the smooth curve through them (tools/modcore.py)."""
+    import tkinter as tk
+    from tkinter import ttk
+    import modcore
+    S, P = 512, 24                       # canvas size, margin
+    win = tk.Toplevel(root)
+    win.title(title)
+    try:
+        pts = modcore.parse_curve_points(var.get())
+    except Exception:
+        pts = [(0, 0), (255, 255)]
+    pts = [list(p) for p in pts]
+    cv = tk.Canvas(win, width=S + 2 * P, height=S + 2 * P, bg="white")
+    cv.pack(padx=8, pady=8)
+    info = ttk.Label(win, text="")
+    info.pack()
+    sx = lambda x: P + x * S / 255.0                 # noqa: E731
+    sy = lambda y: P + S - y * S / 255.0             # noqa: E731
+    vx = lambda X: max(0, min(255, round((X - P) * 255.0 / S)))      # noqa: E731
+    vy = lambda Y: max(0, min(255, round((P + S - Y) * 255.0 / S)))  # noqa: E731
+    drag = {"i": None}
+
+    def draw():
+        cv.delete("all")
+        for k in range(5):
+            g = k * 255 / 4
+            cv.create_line(sx(g), sy(0), sx(g), sy(255), fill="#ddd")
+            cv.create_line(sx(0), sy(g), sx(255), sy(g), fill="#ddd")
+        cv.create_line(sx(0), sy(0), sx(255), sy(255), fill="#bbb", dash=(3, 3))
+        pts.sort()
+        curve = modcore.curve_from_points([tuple(p) for p in pts])
+        cv.create_line(*[c for x in range(256) for c in (sx(x), sy(curve[x] * 255 / 1023.0))], fill="#0a5", width=2)
+        for x, y in pts:
+            cv.create_oval(sx(x) - 5, sy(y) - 5, sx(x) + 5, sy(y) + 5, fill="#06c", outline="")
+        info.config(text="  ".join("%d:%d" % tuple(p) for p in pts) +
+                    "     drag points, double-click adds, right-click removes")
+
+    def nearest(e):
+        best = None
+        for i, (x, y) in enumerate(pts):
+            d = (sx(x) - e.x) ** 2 + (sy(y) - e.y) ** 2
+            if d < 100 and (best is None or d < best[0]):
+                best = (d, i)
+        return None if best is None else best[1]
+
+    def press(e):
+        drag["i"] = nearest(e)
+
+    def move(e):
+        i = drag["i"]
+        if i is None:
+            return
+        x, y = vx(e.x), vy(e.y)
+        if pts[i][0] in (0, 255):          # end points move up and down only
+            x = pts[i][0]
+        elif any(j != i and p[0] == x for j, p in enumerate(pts)):
+            return
+        pts[i][:] = [x, y]
+        draw()
+
+    def add(e):
+        x, y = vx(e.x), vy(e.y)
+        if all(p[0] != x for p in pts):
+            pts.append([x, y])
+            draw()
+
+    def remove(e):
+        i = nearest(e)
+        if i is not None and pts[i][0] not in (0, 255):
+            del pts[i]
+            draw()
+
+    cv.bind("<ButtonPress-1>", press)
+    cv.bind("<B1-Motion>", move)
+    cv.bind("<ButtonRelease-1>", lambda e: drag.update(i=None))
+    cv.bind("<Double-Button-1>", add)
+    cv.bind("<Button-3>", remove)
+    cv.bind("<Button-2>", remove)
+    presets = {"Straight (no change)": [(0, 0), (255, 255)],
+               "Soft contrast": [(0, 0), (64, 56), (192, 200), (255, 255)],
+               "Strong contrast": [(0, 0), (64, 40), (192, 215), (255, 255)],
+               "Faded (lifted blacks)": [(0, 32), (128, 128), (255, 240)],
+               "Washed out, flat": [(0, 40), (64, 82), (192, 186), (255, 225)]}
+    bar = ttk.Frame(win)
+    bar.pack(fill="x", padx=8, pady=(0, 8))
+    pv = tk.StringVar(value="Presets...")
+
+    def preset(*_):
+        if pv.get() in presets:
+            pts[:] = [list(p) for p in presets[pv.get()]]
+            draw()
+    ttk.Combobox(bar, textvariable=pv, values=list(presets), state="readonly", width=22).pack(side="left")
+    pv.trace_add("write", preset)
+
+    def ok():
+        pts.sort()
+        var.set("" if pts == [[0, 0], [255, 255]] else " ".join("%d:%d" % tuple(p) for p in pts))
+        win.destroy()
+    ttk.Button(bar, text="Cancel", command=win.destroy).pack(side="right")
+    ttk.Button(bar, text="OK", command=ok).pack(side="right", padx=6)
+    draw()
+    win.transient(root)
+    win.grab_set()
+
 
 def gui():
     import tkinter as tk
@@ -303,6 +415,9 @@ def gui():
                     opt_vars[(m["id"], name)] = (var, "text")
                     ttk.Label(of, text=o["label"] + ":").pack(side="top", anchor="e")
                     ttk.Entry(of, textvariable=var, width=30).pack(side="top", anchor="e", padx=4)
+                    if o.get("curve"):
+                        ttk.Button(of, text="Edit curve...", command=lambda v=var, t=o["label"]: curve_editor(root, v, t)).pack(
+                            side="top", anchor="e", padx=4)
                     continue
                 var = tk.StringVar(value=str(saved))
                 opt_vars[(m["id"], name)] = (var, None)

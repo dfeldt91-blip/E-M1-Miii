@@ -70,6 +70,15 @@ CURVES = [  # (label, curve, string id) in menu order; curves from tools/art_fil
     ("Vintage I", 0x6050e1a2, 0xa88), ("Vintage II", 0x6050e3a2, 0xa89), ("Vintage III", 0x6050e5a2, 0xa8a),
     ("Bleach Bypass I", 0x6050e7a2, 0xcde),
 ]
+# User curve slots (filled by the mod builder app, tools/modcore.py): 256 x u16 (0..1023) each at
+# USER_DATA + 512 * i, identity until the app writes a curve. Labels are the camera's own "Custom1" /
+# "Custom2" strings; SCP icon = the Custom picture mode's (GUI 6).
+USER_DATA = 0x600dec00
+USER = [("Custom1", 0x734), ("Custom2", 0x735)]
+IDENTITY = 0x60508f06
+N_ART = len(CURVES)
+CURVES = CURVES + [(lab, USER_DATA + 512 * i, sid) for i, (lab, sid) in enumerate(USER)]
+ART_GUI = ART_GUI + [6] * len(USER)
 N = len(CURVES)
 STUB_SRC = """movbu (1797,a0),d0
 extb d0
@@ -137,8 +146,10 @@ def patch(main):
     m = bytearray(main)
     o = lambda a: a - BASE  # noqa: E731
     check(set(m[o(FREE):o(FREE_END)]) == {0xff}, "free area %#x-%#x not free" % (FREE, FREE_END))
+    for i in range(len(USER)):     # user slots start as the identity curve
+        m[o(USER_DATA + 512 * i):o(USER_DATA + 512 * (i + 1))] = m[o(IDENTITY):o(IDENTITY) + 512]
     check(bytes(m[o(SITE):o(SITE) + 5]) == SITE_STOCK, "Gradation read at %#x differs" % SITE)
-    for c in CURVES:
+    for c in CURVES[:N_ART]:
         v = struct.unpack_from("<256H", m, o(c[1]))
         check(v[0] < 300 and v[255] > 800 and all(v[i] <= v[i + 1] for i in range(255)), "curve %#x differs" % c[1])
     stock_list = None
@@ -252,7 +263,7 @@ def patch(main):
         gui[LOOKUP - BLOB_B:LOOKUP - BLOB_B + 5] = b"\xdc" + struct.pack("<i", a - LOOKUP)
         print("  SCP grid cell: icon lookup hook %#x -> %#x" % (LOOKUP, a))
         a += len(code)
-    check(a <= FREE_END, "free area overflow")
+    check(a <= USER_DATA, "free area overflow")
     nref = 0
     for li in lists:
         ptr = BLOB_B + li

@@ -243,7 +243,78 @@ def _owner_title(img, plains, opts, log):
     log("    Shooting Menu 1 title: %s" % text)
 
 
+# ---------------------------------------------------------------- user tone curves (Gradation)
+# The art_gradation mod reserves USER_SLOTS curves (256 x u16, output 0..1023) at USER_CURVES; they
+# hold the identity curve until the app writes the user's curve. Points are "in:out" pairs, 0..255.
+USER_CURVES, USER_SLOTS, IDENTITY_CURVE = 0x600dec00, 2, 0x60508f06
+
+
+def parse_curve_points(text):
+    """'0:10 128:120 255:240' -> sorted [(x, y)] with both ends present (0..255)."""
+    pts = {}
+    for tok in str(text).replace(",", " ").replace(";", " ").split():
+        check(":" in tok, "curve point '%s': write in:out, e.g. 128:120" % tok)
+        x, y = tok.split(":", 1)
+        try:
+            x, y = int(round(float(x))), int(round(float(y)))
+        except ValueError:
+            raise BuildError("curve point '%s' is not a number pair" % tok)
+        check(0 <= x <= 255 and 0 <= y <= 255, "curve point '%s': values are 0..255" % tok)
+        pts[x] = y
+    pts.setdefault(0, 0)
+    pts.setdefault(255, 255)
+    return sorted(pts.items())
+
+
+def curve_from_points(points):
+    """256 output values (0..1023) through POINTS [(x, y)] 0..255: monotone cubic (Fritsch-Carlson)
+    where the points rise, so the curve has no overshoot."""
+    xs = [float(p[0]) for p in points]
+    ys = [float(p[1]) for p in points]
+    n = len(xs)
+    if n == 2:
+        ms = [(ys[1] - ys[0]) / (xs[1] - xs[0])] * 2
+    else:
+        d = [(ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) for i in range(n - 1)]
+        ms = [d[0]] + [0.0 if d[i - 1] * d[i] <= 0 else (d[i - 1] + d[i]) / 2 for i in range(1, n - 1)] + [d[-1]]
+        for i in range(n - 1):
+            if d[i] == 0:
+                ms[i] = ms[i + 1] = 0.0
+                continue
+            a, b = ms[i] / d[i], ms[i + 1] / d[i]
+            h = a * a + b * b
+            if h > 9:
+                t = 3 / h ** 0.5
+                ms[i], ms[i + 1] = t * a * d[i], t * b * d[i]
+    out = []
+    k = 0
+    for x in range(256):
+        while k < n - 2 and x > xs[k + 1]:
+            k += 1
+        h = xs[k + 1] - xs[k]
+        t = (x - xs[k]) / h
+        h00, h10, h01, h11 = 2 * t ** 3 - 3 * t ** 2 + 1, t ** 3 - 2 * t ** 2 + t, -2 * t ** 3 + 3 * t ** 2, t ** 3 - t ** 2
+        y = h00 * ys[k] + h10 * h * ms[k] + h01 * ys[k + 1] + h11 * h * ms[k + 1]
+        out.append(max(0, min(1023, int(round(y * 1023 / 255)))))
+    return out
+
+
+def _user_curves(img, plains, opts, log):
+    ident = bytes(img[IDENTITY_CURVE - BASE:IDENTITY_CURVE - BASE + 512])
+    for i in range(USER_SLOTS):
+        o = USER_CURVES + 512 * i - BASE
+        check(bytes(img[o:o + 512]) == ident, "Gradation curve slot %d not found (art_gradation mod)" % (i + 1))
+        text = str(opts.get("curve%d" % (i + 1), "")).strip()
+        if not text:
+            log("    Custom%d curve: none (identity)" % (i + 1))
+            continue
+        pts = parse_curve_points(text)
+        img[o:o + 512] = struct.pack("<256H", *curve_from_points(pts))
+        log("    Custom%d curve: %s" % (i + 1, " ".join("%d:%d" % p for p in pts)))
+
+
 GENERATORS = {
+    "art_gradation": _user_curves,
     "owner_title": _owner_title,
     "custom_looks": _custom_looks,
     "underwater_mono": _uw_mono,

@@ -77,7 +77,8 @@ MODS = [
      "Pin Hole I/II, Diorama, Cross Process I/II, Gentle Sepia, Dramatic Tone, Vintage I/II/III and "
      "Bleach Bypass I. Only the curve is used (no grain, blur or colour effect); live view and photos. "
      "The SCP picker shows the art filter icons; the small Gradation cell in the SCP grid still shows "
-     "AUTO for these options, and the main menu entries are blank. Contrast has no effect with an art curve.",
+     "AUTO for these options, and the main menu entries are blank. Contrast has no effect with an art curve. "
+     "Two more options, Custom1 and Custom2, take your own curves: draw them with 'Edit curve' (empty = no change).",
      "Worked on the camera (1.6 builds 1.719 / 1.728).", []),
 ]
 
@@ -177,6 +178,11 @@ def main(argv):
         if chain != [bytes(x) for x in merged]:
             sys.exit("merged edit lists differ from the chained tools")
         print("merged edit lists == chained tools")
+    for m in pack["mods"]:                 # edit-list mods that also take build-time options
+        if m["id"] == "art_gradation":
+            m["generator"] = "art_gradation"
+            m["options"] = {"curve%d" % i: {"label": "Custom%d curve (in:out points, 0-255)" % i, "default": "",
+                                            "text": True, "curve": True} for i in (1, 2)}
     for mid, title, desc, status, req, opts in GENERATED:
         pack["mods"].append({"id": mid, "title": title, "description": desc, "camera": status, "requires": req,
                              "generator": mid, "options": opts})

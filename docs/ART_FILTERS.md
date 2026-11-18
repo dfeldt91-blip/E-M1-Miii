@@ -146,3 +146,12 @@ Camera 1.733: photo still mono (live view colour). Toning is not the cause: with
 photo-pass call skipped, Grainy II photos are still grey, so the photo grain chain itself outputs
 luminance only (modules 0x60388169 / 0x6038385b / 0x60388295 / 0x603880f0, art builder
 0x603845c1-0x6038466e). Colour grain would need those modules changed; not pursued yet.
+
+## User curves in Gradation (test 1.740)
+
+`patch_art_gradation.py` adds two more Gradation values after the art curves, labelled with the
+camera's "Custom1" / "Custom2" strings (SCP icon: the Custom picture mode's). Their curves sit at
+0x600dec00 / 0x600dee00 (256 x u16, 0..1023), identity until the mod builder writes the user's curve
+(tools/modcore.py `_user_curves`, points in:out 0..255, monotone cubic). The app has an 'Edit curve'
+window for each; CLI `--curve1 "0:40 64:82 192:186 255:225"`. 1.740 = 1.739 (1.709 + gradation with the
+slots) + Custom1 washed-out flat, Custom2 strong contrast.
