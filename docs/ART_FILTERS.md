@@ -176,3 +176,7 @@ main step; do not use 1.736. Summary of Bleach II softening tests: --bit (1.720)
 `tools/patch_bleach_color.py`: Bleach I gets an entry in the coefficient hash (empty slot 42 on its
 probe path) with Bleach II's handler, i.e. coefficient record 0x6053d31c. 1.737 = 1.728 + that;
 1.738 = also Bleach II's identity tone curve (`--curve`). Bleach I keeps its own chain.
+Camera 1.737 / 1.738: no visible change to Bleach I (Bleach II stock, still soft). The coefficient
+record is not what makes Bleach II look different. Conclusion: Bleach II's look and its softness both
+come from its own photo step (0x60385e18) / final pass, probably a blended reduced-size layer, so the
+colour cannot be moved to Bleach I with table changes. Parked.
