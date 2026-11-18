@@ -93,6 +93,74 @@ ret [],4
 """
 
 
+# --diag (1.725): (a) the tone-curve hook site 0x603df14e (jmp to the Gradation stub of
+# patch_art_gradation) first checks property 0x8bf1: = 1 -> Grainy Film I curve 0x6050eba2 (an
+# obvious look), proving the switch reaches image processing; (b) 1.722's chain-builder flag hook
+# (job flag 0x8000 for non-art jobs) on top of 1.724's Art Effect injection.
+TONE_SITE = 0x603df14e
+DIAG_TONE_STUB, DIAG_CHAIN_STUB = 0x600de0a0, 0x600de100
+DIAG_TONE_SRC = """add -12,sp
+mov a0,(4,sp)
+mov d1,(8,sp)
+mov 0x8bf1,d0
+mov 0,a0
+clr d1
+call prop,[d2,d3],12
+mov (4,sp),a0
+mov (8,sp),d1
+add 12,sp
+cmp 1,d0
+bne 1f
+mov 0x6050eba2,a0
+ret [d2,d3,a2,a3],24
+1:
+jmp grad
+"""
+CHAIN_SITE, CHAIN_STOCK = 0x6038536c, bytes.fromhex("faec0080c844")
+DIAG_CHAIN_SRC = """mov (12,sp),a0
+mov (a0),d0
+btst 0x8000,d0
+bne 7f
+mov (16,sp),a1
+mov (a1),d1
+lsr 24,d1
+cmp 1,d1
+beq 8f
+mov 0x8bf1,d0
+mov 0,a0
+clr d1
+call prop,[d2,d3],12
+cmp 1,d0
+bne 8f
+mov (12,sp),a0
+mov (a0),d0
+or 0x8000,d0
+mov d0,(a0)
+7:
+jmp yes
+8:
+jmp no
+"""
+
+
+def diag(m):
+    import patch_aspect
+    o = lambda a: a - BASE  # noqa: E731
+    j = bytes(m[o(TONE_SITE):o(TONE_SITE) + 5])
+    check(j[0] == 0xdc, "tone-curve site is not hooked (needs patch_art_gradation first)")
+    grad = TONE_SITE + struct.unpack_from("<i", j, 1)[0]
+    for a, src, syms in ((DIAG_TONE_STUB, DIAG_TONE_SRC, {"prop": PROP_GET, "grad": grad}),
+                         (DIAG_CHAIN_STUB, DIAG_CHAIN_SRC, {"prop": PROP_GET, "yes": 0x60385372, "no": 0x603853b4})):
+        check(set(m[o(a):o(a) + 0x60]) == {0xff}, "diag stub area %#x not free" % a)
+        c = patch_aspect.assemble_syms(src, a, syms)
+        check(len(c) <= 0x60, "diag stub too long")
+        m[o(a):o(a) + len(c)] = c
+    m[o(TONE_SITE):o(TONE_SITE) + 5] = patch_aspect.assemble_syms("jmp t", TONE_SITE, {"t": DIAG_TONE_STUB})
+    check(bytes(m[o(CHAIN_SITE):o(CHAIN_SITE) + 6]) == CHAIN_STOCK, "chain Frame test differs")
+    m[o(CHAIN_SITE):o(CHAIN_SITE) + 6] = patch_aspect.assemble_syms("jmp t", CHAIN_SITE, {"t": DIAG_CHAIN_STUB}) + b"\xcb"
+    print("  diag: switch on -> Grainy I curve in picture modes (via %#x); chain flag hook %#x" % (grad, DIAG_CHAIN_STUB))
+
+
 def check(cond, msg):
     if not cond:
         sys.exit("refusing to patch: " + msg)
@@ -167,6 +235,8 @@ def patch(main):
         m[BLOB_B_OFF + 32 + len(cg):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(cg))
     struct.pack_into("<I", m, BLOB_B_OFF + 16, len(cg))
     check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "blob B does not decode to the edit")
+    if "--diag" in sys.argv:
+        diag(m)
     print("  labels: %d value lists Off/On, %d titles 'Frame Effect'" % (nval, ntitle))
     return bytes(m)
 

@@ -109,3 +109,5 @@ per picker). 1.723: instead of the chain flag, the snapshot's Art Effect read (p
 job +26825) returns Frame (3) when no effect is set and the switch is on; SCP icons back to stock.
 Camera 1.723: SCP shows sRGB / Adobe RGB, no frame. Cause: the picture-mode normalisation at
 0x6147d3e8 clears the Art Effect after the snapshot. 1.724 writes Frame there when the switch is on.
+Camera 1.724: no frame (on or off). 1.725 (--diag): switch on -> Grainy I tone curve in picture
+modes (tests whether the switch reaches image processing) + 1.722's chain flag hook.
