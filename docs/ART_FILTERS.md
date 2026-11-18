@@ -82,3 +82,6 @@ a boot RAM pool (docs/FINDINGS.md); 1.716 puts it at 0x600dc000. The curve selec
 the art curve for those values. Menus show ASCII names after Low Key. Awaiting camera test.
 Unknown until tested: whether the new raw values reach job +1797 unchanged, and whether the SCP
 shows names or blank entries for them.
+
+Camera 1.716: works (options listed, live view and photos use the art curve), labels blank.
+1.717: labels from the camera's own art filter name strings (0x3c-0x45, 0xa75-0xa8a, 0xcde).

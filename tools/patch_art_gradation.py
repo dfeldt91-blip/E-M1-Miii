@@ -13,14 +13,16 @@ same bank. This adds 19 Gradation values, 3..21, one per distinct art-filter cur
   {value, flag}, GUI alt list [3, 1, 2, 0]) get one shared list of 4 + 19 entries: the stock four,
   then raw values 3..21 with GUI values 4..22.
 - Menus: the Gradation item records (42 sub-lists {cond, list, 4} in the three GUI copies, blob B)
-  point at one shared option list: the stock four entries, then type-1 entries with ASCII names
-  (the form camera-tested in 1.689).
+  point at one shared option list: the stock four entries, then type-4 entries with the camera's own
+  art filter name strings (1.716 used type-1 ASCII labels: options worked but showed blank).
 - Image: `movbu (1797,a0),d0; extb d0` at 0x603df14e jumps to a stub that returns the art curve for
   values 3..21 and otherwise goes on as stock.
 
 Camera test: Picture Mode Natural (or any mode), Gradation: the list should show the 19 new names
 after Low Key. Pick e.g. "Pale&Light I" (lifted blacks) or "Grainy I" (very hard contrast):
 live view and photo should change accordingly. Check that Auto / High / Normal / Low still work.
+Camera 1.716: boots; the 19 options are listed and change live view and photos; labels blank
+(type-1 ASCII entries are not drawn by this menu). 1.717: type-4 entries with the stock names.
 """
 import hashlib
 import os
@@ -35,18 +37,18 @@ BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_B_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 SITE, SITE_STOCK, BACK = 0x603df14e, bytes.fromhex("fa40050710"), 0x603df153
 FREE, FREE_END = 0x600dc000, 0x600de000   # padding below the vector table 0x600e0000 (0x600e0800+ is boot RAM)
-UNIT = 0x1b                       # empty unit string (camera-tested in tools/patch_looks.py)
 RECORDS = [0x604da80c + 20 * i for i in range(14)]
 REC_SIDS = [0x69, 0x136, 0x137, 0x138, 0x139, 0x13a, 0x13b, 0xd0, 0x12e, 0xbb, 0xbf, 0xc3, 0xc7, 0xcc]
 STOCK_ALT = [3, 1, 2, 0]
-CURVES = [  # (label, curve) in menu order; addresses from tools/art_filter_dump.py
-    ("Pop Art I", 0x6050b566), ("Pop Art II", 0x6050c9a2), ("Soft Focus", 0x6050b306),
-    ("Pale&Light I", 0x6050b7a2), ("Pale&Light II", 0x6050c7a2), ("Light Tone", 0x6050b9a2),
-    ("Grainy I", 0x6050eba2), ("Grainy II", 0x6050eda2), ("Pin Hole I", 0x6050bba2),
-    ("Pin Hole II", 0x6050cba2), ("Diorama", 0x6050bfa2), ("Cross Proc. I", 0x6050c1a2),
-    ("Cross Proc. II", 0x6050dfa2), ("Gentle Sepia", 0x6050c5a2), ("Dramatic Tone", 0x6050cfa2),
-    ("Vintage I", 0x6050e1a2), ("Vintage II", 0x6050e3a2), ("Vintage III", 0x6050e5a2),
-    ("Bleach Bypass", 0x6050e7a2),
+CURVES = [  # (label, curve, string id) in menu order; curves from tools/art_filter_dump.py, strings
+    # are the camera's own art filter names (@A050@/@A051@/@A052@ = the I/II/III glyphs)
+    ("Pop Art I", 0x6050b566, 0xa75), ("Pop Art II", 0x6050c9a2, 0xa76), ("Soft Focus", 0x6050b306, 0x44),
+    ("Pale&Light I", 0x6050b7a2, 0xa77), ("Pale&Light II", 0x6050c7a2, 0xa78), ("Light Tone", 0x6050b9a2, 0x41),
+    ("Grainy I", 0x6050eba2, 0xa79), ("Grainy II", 0x6050eda2, 0xa7a), ("Pin Hole I", 0x6050bba2, 0xa7b),
+    ("Pin Hole II", 0x6050cba2, 0xa7c), ("Diorama", 0x6050bfa2, 0x3d), ("Cross Proc. I", 0x6050c1a2, 0xa80),
+    ("Cross Proc. II", 0x6050dfa2, 0xa81), ("Gentle Sepia", 0x6050c5a2, 0x3f), ("Dramatic Tone", 0x6050cfa2, 0x3e),
+    ("Vintage I", 0x6050e1a2, 0xa88), ("Vintage II", 0x6050e3a2, 0xa89), ("Vintage III", 0x6050e5a2, 0xa8a),
+    ("Bleach Bypass I", 0x6050e7a2, 0xcde),
 ]
 N = len(CURVES)
 STUB_SRC = """movbu (1797,a0),d0
@@ -108,12 +110,6 @@ def patch(main):
     tab = (a + 3) & ~3
     m[o(tab):o(tab) + 4 * N] = struct.pack("<%dI" % N, *[c[1] for c in CURVES])
     a = tab + 4 * N
-    names = []
-    for label, _ in CURVES:
-        b = label.encode() + b"\0"
-        names.append(a)
-        m[o(a):o(a) + len(b)] = b
-        a += (len(b) + 3) & ~3
     stub = (a + 15) & ~15
     code = patch_aspect.assemble_syms(STUB_SRC, stub, {"tab": tab, "back": BACK})
     m[o(stub):o(stub) + len(code)] = code
@@ -142,7 +138,7 @@ def patch(main):
     cond = struct.unpack_from("<I", stock4, 8)[0]
     ol = bytearray(stock4)
     for i in range(N):
-        ol += struct.pack("<IHHI", 4 + i, 1, UNIT, names[i])
+        ol += struct.pack("<IHHI", 4 + i, 4, CURVES[i][2], cond)
     m[o(olist):o(olist) + len(ol)] = ol
     a = olist + len(ol)
     check(a <= FREE_END, "free area overflow")
