@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""Art filter tone curves as Gradation options for the picture modes (TEST, E-M1 Mark III 1.6).
+
+  MN10300_BIN=... python3 tools/patch_art_gradation.py IN.BIN OUT.BIN [--version 0x1715]
+
+Gradation (Auto / High Key / Normal / Low Key) is chosen in the tone-curve selector 0x603df05c:
+job +1797 = 1 -> High Key curve 0x6050af06, -1 -> Low Key 0x6050b106, 2 -> Auto, 0 -> the
+Contrast-setting curves (docs/ART_FILTERS.md). The art filters use fixed 256-point curves from the
+same bank. This adds 19 Gradation values, 3..21, one per distinct art-filter curve:
+
+- Validator: the 14 settings that share the 4-value Gradation list (0x69, 0x136-0x13b, 0xd0
+  Custom, 0x12e, 0xbb, 0xbf, 0xc3, 0xc7, 0xcc; records 0x604da80c..0x604da910, 64-byte entries
+  {value, flag}, GUI alt list [3, 1, 2, 0]) get one shared list of 4 + 19 entries: the stock four,
+  then raw values 3..21 with GUI values 4..22.
+- Menus: the Gradation item records (42 sub-lists {cond, list, 4} in the three GUI copies, blob B)
+  point at one shared option list: the stock four entries, then type-1 entries with ASCII names
+  (the form camera-tested in 1.689).
+- Image: `movbu (1797,a0),d0; extb d0` at 0x603df14e jumps to a stub that returns the art curve for
+  values 3..21 and otherwise goes on as stock.
+
+Camera test: Picture Mode Natural (or any mode), Gradation: the list should show the 19 new names
+after Low Key. Pick e.g. "Pale&Light I" (lifted blacks) or "Grainy I" (very hard contrast):
+live view and photo should change accordingly. Check that Auto / High / Normal / Low still work.
+"""
+import hashlib
+import os
+import struct
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import olyfw  # noqa: E402
+import olycompress  # noqa: E402
+
+BASE = 0x60021020
+BLOB_B, BLOB_B_OFF, BLOB_B_END = 0x60c6c000, 0xc4afe0, 0x612f1000
+SITE, SITE_STOCK, BACK = 0x603df14e, bytes.fromhex("fa40050710"), 0x603df153
+FREE, FREE_END = 0x600e1000, 0x600e3000
+UNIT = 0x1b                       # empty unit string (camera-tested in tools/patch_looks.py)
+RECORDS = [0x604da80c + 20 * i for i in range(14)]
+REC_SIDS = [0x69, 0x136, 0x137, 0x138, 0x139, 0x13a, 0x13b, 0xd0, 0x12e, 0xbb, 0xbf, 0xc3, 0xc7, 0xcc]
+STOCK_ALT = [3, 1, 2, 0]
+CURVES = [  # (label, curve) in menu order; addresses from tools/art_filter_dump.py
+    ("Pop Art I", 0x6050b566), ("Pop Art II", 0x6050c9a2), ("Soft Focus", 0x6050b306),
+    ("Pale&Light I", 0x6050b7a2), ("Pale&Light II", 0x6050c7a2), ("Light Tone", 0x6050b9a2),
+    ("Grainy I", 0x6050eba2), ("Grainy II", 0x6050eda2), ("Pin Hole I", 0x6050bba2),
+    ("Pin Hole II", 0x6050cba2), ("Diorama", 0x6050bfa2), ("Cross Proc. I", 0x6050c1a2),
+    ("Cross Proc. II", 0x6050dfa2), ("Gentle Sepia", 0x6050c5a2), ("Dramatic Tone", 0x6050cfa2),
+    ("Vintage I", 0x6050e1a2), ("Vintage II", 0x6050e3a2), ("Vintage III", 0x6050e5a2),
+    ("Bleach Bypass", 0x6050e7a2),
+]
+N = len(CURVES)
+STUB_SRC = """movbu (1797,a0),d0
+extb d0
+cmp 3,d0
+blt 1f
+cmp %d,d0
+bge 1f
+add -3,d0
+asl2 d0
+mov tab,a0
+mov (d0,a0),a0
+ret [d2,d3,a2,a3],24
+1:
+jmp back
+""" % (3 + N)
+
+
+def check(cond, msg):
+    if not cond:
+        sys.exit("refusing to patch: " + msg)
+
+
+def patch(main):
+    import patch_aspect
+    m = bytearray(main)
+    o = lambda a: a - BASE  # noqa: E731
+    check(set(m[o(FREE):o(FREE_END)]) == {0xff}, "free area %#x-%#x not free" % (FREE, FREE_END))
+    check(bytes(m[o(SITE):o(SITE) + 5]) == SITE_STOCK, "Gradation read at %#x differs" % SITE)
+    for c in CURVES:
+        v = struct.unpack_from("<256H", m, o(c[1]))
+        check(v[0] < 300 and v[255] > 800 and all(v[i] <= v[i + 1] for i in range(255)), "curve %#x differs" % c[1])
+    stock_list = None
+    for rec, sid in zip(RECORDS, REC_SIDS):
+        r = bytes(m[o(rec):o(rec) + 20])
+        lst, alt = struct.unpack_from("<II", r, 4)
+        check(struct.unpack_from("<H", r, 0)[0] == sid and struct.unpack_from("<H", r, 12)[0] == 256
+              and r[17] == 6, "Gradation record %#x differs" % rec)
+        check(list(struct.unpack_from("<4i", m, o(alt))) == STOCK_ALT, "alt list %#x differs" % alt)
+        body = bytes(m[o(lst):o(lst) + 256])
+        stock_list = stock_list or body
+        check(body == stock_list, "value list %#x differs" % lst)
+    check([struct.unpack_from("<i", stock_list, 64 * j)[0] for j in range(4)] == [0, 0, 1, -1],
+          "Gradation values differ")
+
+    a = FREE
+    vlist = a
+    data = bytearray(stock_list)
+    for i in range(N):
+        e = bytearray(64)
+        struct.pack_into("<i", e, 0, 3 + i)
+        data += e
+    a += len(data)
+    m[o(vlist):o(vlist) + len(data)] = data
+    alist = a
+    alt = STOCK_ALT + [4 + i for i in range(N)]
+    m[o(alist):o(alist) + 4 * len(alt)] = struct.pack("<%di" % len(alt), *alt)
+    a += 4 * len(alt)
+    tab = (a + 3) & ~3
+    m[o(tab):o(tab) + 4 * N] = struct.pack("<%dI" % N, *[c[1] for c in CURVES])
+    a = tab + 4 * N
+    names = []
+    for label, _ in CURVES:
+        b = label.encode() + b"\0"
+        names.append(a)
+        m[o(a):o(a) + len(b)] = b
+        a += (len(b) + 3) & ~3
+    stub = (a + 15) & ~15
+    code = patch_aspect.assemble_syms(STUB_SRC, stub, {"tab": tab, "back": BACK})
+    m[o(stub):o(stub) + len(code)] = code
+    a = stub + len(code)
+    for rec in RECORDS:
+        struct.pack_into("<II", m, o(rec) + 4, vlist, alist)
+        struct.pack_into("<H", m, o(rec) + 12, 64 * (4 + N))
+    jmp = patch_aspect.assemble_syms("jmp stub", SITE, {"stub": stub})
+    check(len(jmp) == 5, "jump is not 5 bytes")
+    m[o(SITE):o(SITE) + 5] = jmp
+
+    # menus (blob B): one shared option list, stock four entries first
+    check(bytes(m[BLOB_B_OFF:BLOB_B_OFF + 11]) == b"olycompress", "blob B header not found")
+    csz = struct.unpack_from("<I", m, BLOB_B_OFF + 16)[0]
+    gui = bytearray(olycompress.unpack(m, BLOB_B_OFF))
+    check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
+          "blob B does not recompress identically")
+    lists = []
+    for i in range(0, len(gui) - 48, 4):
+        e = [struct.unpack_from("<iHHI", gui, i + 12 * k) for k in range(4)]
+        if [x[0] for x in e] == [3, 2, 1, 0] and e[1][2] == 0x267 and e[3][2] == 0x269:
+            lists.append(i)
+    check(len(lists) == 42, "Gradation option lists: %d (expected 42)" % len(lists))
+    olist = (a + 15) & ~15
+    stock4 = bytes(gui[lists[0]:lists[0] + 48])
+    cond = struct.unpack_from("<I", stock4, 8)[0]
+    ol = bytearray(stock4)
+    for i in range(N):
+        ol += struct.pack("<IHHI", 4 + i, 1, UNIT, names[i])
+    m[o(olist):o(olist) + len(ol)] = ol
+    a = olist + len(ol)
+    check(a <= FREE_END, "free area overflow")
+    nref = 0
+    for li in lists:
+        ptr = BLOB_B + li
+        pat = struct.pack("<II", ptr, 4)
+        i = gui.find(pat)
+        while i >= 0:
+            if i % 4 == 0:
+                struct.pack_into("<II", gui, i, olist, 4 + N)
+                nref += 1
+            i = gui.find(pat, i + 1)
+    check(nref == 42, "Gradation item references: %d (expected 42)" % nref)
+    cg = olycompress.pack(bytes(gui))
+    check(len(cg) <= (BLOB_B_END - BASE) - (BLOB_B_OFF + 32), "blob B does not fit")
+    old_end = BLOB_B_OFF + 32 + csz
+    m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + len(cg)] = cg
+    if len(cg) < csz:
+        m[BLOB_B_OFF + 32 + len(cg):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(cg))
+    struct.pack_into("<I", m, BLOB_B_OFF + 16, len(cg))
+    check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "blob B does not decode to the edit")
+    print("  Gradation +%d art curves: 14 records -> list %#x/alt %#x, stub %#x, %d menu refs -> %#x "
+          "(cond %#x), data to %#x" % (N, vlist, alist, stub, nref, olist, cond, a))
+    return bytes(m)
+
+
+def main(argv):
+    if len(argv) < 2:
+        print(__doc__)
+        return 1
+    src, dst = argv[0], argv[1]
+    fw = olyfw.read(src)
+    blocks = olyfw.unpack_blocks(fw)
+    check(all(b["stored"] == b["calc"] for b in blocks), "input has a bad block checksum")
+    new_main = patch(blocks[0]["plain"])
+    ver = int(argv[argv.index("--version") + 1], 0) if "--version" in argv else None
+    out = bytearray()
+    for i, b in enumerate(blocks):
+        head, tail = bytearray(b["head"]), bytearray(b["tail"])
+        if i == 0 and ver is not None:
+            struct.pack_into("<H", head, 16, ver)
+            struct.pack_into("<H", tail, 16, ver)
+        out += olyfw.build_block(bytes(head), new_main if i == 0 else b["plain"], bytes(tail))
+    check(len(out) == len(fw), "size changed")
+    with open(dst, "wb") as fh:
+        fh.write(out)
+    again = olyfw.unpack_blocks(open(dst, "rb").read())
+    check(all(b["stored"] == b["calc"] for b in again), "output checksum check failed")
+    print("wrote %s  sha256 %s  version %#06x" % (dst, hashlib.sha256(out).hexdigest(),
+                                                   struct.unpack_from("<H", again[0]["head"], 16)[0]))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

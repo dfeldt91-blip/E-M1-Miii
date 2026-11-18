@@ -73,3 +73,11 @@ names, not decoded.
 - **Saturation**: Pop Art via its matrix; other filters probably via colour parameter A
   (needs a camera test to confirm).
 - Sharpness: stage not located yet.
+
+## Art curves as Gradation options (test 1.715)
+
+`tools/patch_art_gradation.py` (on 1.709): Gradation gets 19 more values (3..21 raw, GUI 4..22),
+one per distinct art curve, in every picture mode. The curve selector hook at 0x603df14e returns
+the art curve for those values. Menus show ASCII names after Low Key. Awaiting camera test.
+Unknown until tested: whether the new raw values reach job +1797 unchanged, and whether the SCP
+shows names or blank entries for them.
