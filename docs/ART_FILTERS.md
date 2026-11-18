@@ -146,3 +146,7 @@ look comes only from its toning entry (hash 0x6053e67c, handler 0x603dfd4a = alw
 Camera 1.731: live view in colour, photo still mono. The photo pass 0x603dfe9f (pass 0x101) checks
 `cmp 0x1010068 / 0x1020068` at 0x603dfef3 / 0x603dfefb and calls the toning lookup with the mono flag.
 1.732 changes Grainy II's compare operand to 0x10f0068, so the photo pass clears toning (colour).
+Camera 1.732: photo still mono. The default toning handler 0x603dfdc7 still returns a mono vector
+when the caller's mono flag (job +1801 in the first caller 0x603dfe30) is set, which stills
+apparently do for Grainy. 1.733 points Grainy II at 0x603dfe11 (no toning, ignores the flag), plus the
+1.732 photo-pass change. If 1.733 is still mono, the grey comes from the grain chain itself.

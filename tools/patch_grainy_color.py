@@ -26,7 +26,7 @@ SLOTS = {"I": (0x6053e69c, 0x1010068), "II": (0x6053e6a4, 0x1020068)}
 # photo pass 0x101 (0x603dfe9f): `cmp KEY,d0` for Grainy I / II, then the toning lookup with the mono
 # flag set. The key operand is changed to a key no job has, so the pass takes the colour path.
 PHOTO_CMP = {"I": (0x603dfef3, 0x1010068, 0x10e0068), "II": (0x603dfefb, 0x1020068, 0x10f0068)}
-STOCK_H, COLOUR = 0x603dfd4a, 0x603dfdc7
+STOCK_H, COLOUR = 0x603dfd4a, 0x603dfe11   # 0x603dfe11: "no toning" exit (1.731/1.732 used 0x603dfdc7)
 
 
 def check(cond, msg):
