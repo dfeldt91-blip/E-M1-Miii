@@ -82,8 +82,10 @@ commit hook covers that).
 
 ## Status
 
-- 1.713 (step 1, tools/patch_hsl.py --seed, on 1.709): engine reads the 36 settings; SCP INFO on
-  Color Creator writes red hue +7, blue lightness +7, green saturation -5. Awaiting camera test.
+- 1.713: seed on SCP INFO on Color Creator, but this body has no Color Creator picture mode (so the
+  1.712 state-69 probe never ran either). 1.714: seed moved to SCP INFO on the Picture Mode item.
+- Step 1 (tools/patch_hsl.py --seed, on 1.709): engine reads the 36 settings; SCP INFO on
+  Picture Mode writes red hue +7, blue lightness +7, green saturation -5. Awaiting camera test (1.714).
 
 ## Risks
 

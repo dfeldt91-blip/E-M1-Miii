@@ -14,16 +14,18 @@ builder call at 0x603def9a jumps to a stub that, before the builder, writes the 
 12 records (record r = sector 2*(r%6)+r/6, through fishcu's step tables). Values out of range are
 clamped, so whatever the hidden settings hold by default, the result stays within the editor range.
 
---seed (test only, until the editor exists): INFO on Color Creator in the Super Control Panel first
-writes red hue +7 (0x3a8), blue lightness +7 (0x3b7) and green saturation -5 (0x3a3) through the
-GUI setter 0x602ca855, then opens the Color Creator screen as before (the call to PostEventToCA at
-0x60e7e644, blob B, goes through the seed stub).
+--seed (test only, until the editor exists): INFO on the Picture Mode item in the Super Control Panel
+(SCP INFO handler 0x60e7e4e1, branch after the key check 0x60e7080f == 2) writes red hue +7 (0x3a8),
+blue lightness +7 (0x3b7) and green saturation -5 (0x3a3) through the GUI setter 0x602ca855, then
+carries on as stock (the branch's first call, facade 0x608a8852 at 0x60e7e50c in blob B, goes
+through the seed stub). 1.713 hooked INFO on Color Creator, which this body's Picture Mode list
+does not offer (so the 1.712 state-69 probe was never reached either).
 
 Camera test:
  1. Before pressing anything, Custom should look like Natural (the hidden settings' defaults are 0);
     any colour shift there means their defaults are not 0.
- 2. Picture Mode Color Creator, SCP, INFO (the Color Creator screen opens), Back, then Picture Mode
-    Custom: reds shift in hue, blues get lighter, greens get duller (live view and photos).
+ 2. Picture Mode Custom, SCP, highlight Picture Mode, press INFO (whatever opens, back out):
+    reds shift in hue, blues get lighter, greens get duller (live view and photos).
  3. Power off, battery out, back on: Custom still shows the shift (the values were saved).
 """
 import hashlib
@@ -38,11 +40,12 @@ import patch_looks as pl  # noqa: E402
 
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_B_END = 0x60c6c000, 0xc4afe0, 0x612f1000
-GET, SET, POST = 0x602ca6a5, 0x602ca855, 0x60ed53f2
+GET, SET = 0x602ca6a5, 0x602ca855
 SAT0, HUE0, LIGHT0 = 0x399, 0x3a5, 0x3b1
 STUB, SEED = 0x600d5a00, 0x600d5c00
-INFO_CALL = 0x60e7e644                       # call PostEventToCA,[d2,d3,a2],48 after mov 33,d0; mov 48,d1
-INFO_STOCK = bytes.fromhex("80218530")        # at INFO_CALL - 4
+FACADE = 0x608a8852
+INFO_CALL = 0x60e7e50c          # call facade,[],4: first call in the SCP INFO handler's Picture Mode branch
+INFO_STOCK = bytes.fromhex("c805ccde01")      # beq/jmp after `cmp 2,d0` (0x60e7e507), before INFO_CALL
 SEEDS = [(HUE0 + 3, 7), (LIGHT0 + 6, 7), (SAT0 + 10, -5)]
 
 ENGINE = """add -24,sp
@@ -136,7 +139,7 @@ hue:
 
 SEED_SRC = "add -12,sp\nmov d0,(4,sp)\nmov d1,(8,sp)\n" + "".join(
     "mov %#x,d0\nmov %d,d1\ncall set,[d2,d3],16\n" % (sid, val) for sid, val in SEEDS) + \
-    "mov (4,sp),d0\nmov (8,sp),d1\nadd 12,sp\ncall post,[d2,d3,a2],48\nret [],4\n"
+    "mov (4,sp),d0\nmov (8,sp),d1\nadd 12,sp\ncall facade,[],4\nret [],4\n"
 
 
 def check(cond, msg):
@@ -157,7 +160,7 @@ def patch(main, seed=False):
     check(bytes(m[o(pl.SITE):o(pl.SITE) + 5]) == pl.SITE_STOCK, "colour builder call differs")
     check(bytes(m[o(pl.SITE) - len(pl.SITE_PRE):o(pl.SITE)]) == pl.SITE_PRE, "colour selector differs")
     check(set(m[o(STUB):o(STUB) + 0x300]) == {0xff}, "stub area not free")
-    syms = dict(get=GET, set=SET, post=POST, builder=pl.BUILDER, resume=pl.RESUME,
+    syms = dict(get=GET, set=SET, facade=FACADE, builder=pl.BUILDER, resume=pl.RESUME,
                 SAT0=SAT0, HUE0=HUE0, LIGHT0=LIGHT0)
     eng = asm(ENGINE, STUB, syms)
     check(len(eng) <= 0x200, "engine stub too long")
@@ -178,9 +181,9 @@ def patch(main, seed=False):
         check(olycompress.pack(bytes(gui)) == bytes(m[BLOB_B_OFF + 32:BLOB_B_OFF + 32 + csz]),
               "blob B does not recompress identically")
         g = INFO_CALL - BLOB_B
-        stock_call = asm("call post,[d2,d3,a2],48", INFO_CALL, syms)
-        check(bytes(gui[g - 4:g]) == INFO_STOCK and bytes(gui[g:g + 7]) == stock_call,
-              "SCP INFO Color Creator post differs")
+        stock_call = asm("call facade,[],4", INFO_CALL, syms)
+        check(bytes(gui[g - len(INFO_STOCK):g]) == INFO_STOCK and bytes(gui[g:g + 7]) == stock_call,
+              "SCP INFO Picture Mode branch differs")
         new_call = asm("call seed,[],4", INFO_CALL, dict(syms, seed=SEED))
         check(len(new_call) == 7, "seed call is not 7 bytes")
         gui[g:g + 7] = new_call
@@ -192,7 +195,7 @@ def patch(main, seed=False):
             m[BLOB_B_OFF + 32 + len(cg):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(cg))
         struct.pack_into("<I", m, BLOB_B_OFF + 16, len(cg))
         check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "blob B does not decode to the edit")
-        print("  seed: SCP INFO on Color Creator writes %s" %
+        print("  seed: SCP INFO on Picture Mode writes %s" %
               ", ".join("%#x=%d" % s for s in SEEDS))
     return bytes(m)
 
