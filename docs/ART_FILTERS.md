@@ -130,3 +130,7 @@ in blob B). The settings getter 0x602ca6a5 -> 0x602dbfba maps the 64-byte Gradat
 1.730 (`--cell`): the lookup, for the two Gradation icon lists only, searches all 23 entries (in case
 the grid passes the stock count 4); if the value is still not found it shows entry (value mod 23),
 so the icon shown identifies the value passed.
+Camera 1.730: still AUTO for every art value. With the hook, any call of 0x60e08efa with the Gradation
+lists would have shown an icon, so for art values the grid never looks them up in these lists (it
+must take a separate path, e.g. a range check before the lookup, that falls back to AUTO). Left as
+is: the curves work, the cell just reads AUTO. `--cell` is not used in builds.
