@@ -134,3 +134,12 @@ Camera 1.730: still AUTO for every art value. With the hook, any call of 0x60e08
 lists would have shown an icon, so for art values the grid never looks them up in these lists (it
 must take a separate path, e.g. a range check before the lookup, that falls back to AUTO). Left as
 is: the curves work, the cell just reads AUTO. `--cell` is not used in builds.
+
+## Grain in colour (test 1.731)
+
+Picture modes cannot take grain: the grain modules (0x60388169, 0x60388295, 0x60388384) are only
+added by the art chain builder 0x60384438; the picture-mode builder 0x60398689 has none, and the
+hidden SCP "Film Grain Effect" cell (record 0x3e) has no image code behind it. Grainy Film's mono
+look comes only from its toning entry (hash 0x6053e67c, handler 0x603dfd4a = always grey).
+`tools/patch_grainy_color.py` (1.731 = 1.728 + this) points Grainy Film II at the default handler
+0x603dfdc7 (colour); `--both` also does Grainy Film I.
