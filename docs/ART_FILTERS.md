@@ -113,3 +113,6 @@ Camera 1.724: no frame (on or off). 1.725 (--diag): switch on -> Grainy I tone c
 modes (tests whether the switch reaches image processing) + 1.722's chain flag hook.
 Camera 1.725: nothing (no curve change, no frame): the property read 0x6005fa9c(0x8bf1) does not
 see the switch from image code. 1.726: all checks use the settings getter 0x602ca6a5(0x3c).
+Camera 1.726: switch reaches image code (Grainy curve on), still no frame. Cause: chain dispatch
+0x603816c5 sends picture modes to builder 0x60395eb9 (no art effects). 1.727: photo jobs go to the
+art chain builder 0x60384438 while the switch is on (live view unchanged).

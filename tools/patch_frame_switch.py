@@ -92,6 +92,7 @@ ret [],4
 
 # 1.725 read the switch as property 0x8bf1 (0x6005fa9c): no effect at all, so that read does not
 # give the live value in image code; 1.726 uses the settings getter 0x602ca6a5(0x3c) everywhere.
+# Camera 1.726: switch on -> Grainy curve (getter works), still no frame.
 # --diag (1.725/1.726): (a) the tone-curve hook site 0x603df14e (jmp to the Gradation stub of
 # patch_art_gradation) first checks property 0x8bf1: = 1 -> Grainy Film I curve 0x6050eba2 (an
 # obvious look), proving the switch reaches image processing; (b) 1.722's chain-builder flag hook
@@ -140,22 +141,58 @@ jmp no
 """
 
 
+# Chain dispatch 0x603816c5: job type (+8 of the job info) 1, or kind (+11308) 12 -> art chain builder
+# 0x60384438 (the only one with art effects); 0 / 2 otherwise -> 0x60395eb9 (picture modes, no
+# effects). That is why 1.722-1.726 drew no frame. While the switch is on, photo jobs (live-view
+# flag +11320 == 0) go to the art chain builder too (its default path for non-art keys).
+DISP_SITE, DISP_STOCK = 0x60381706, bytes.fromhex("fa022c2ca00cc90a")
+DISP_STUB = 0x600de160
+DISP_ART, DISP_NORMAL = 0x6038170e, 0x60381716
+DISP_SRC = """mov (11308,a2),d0
+cmp 12,d0
+beq 7f
+movbu (11320,a2),d1
+cmp 0,d1
+bne 8f
+mov SID,d0
+call get,[],4
+cmp 1,d0
+bne 8f
+7:
+jmp art
+8:
+jmp normal
+"""
+
+
+def chain(m):
+    import patch_aspect
+    o = lambda a: a - BASE  # noqa: E731
+    check(bytes(m[o(DISP_SITE):o(DISP_SITE) + 8]) == DISP_STOCK, "chain dispatch differs")
+    for a, src, syms in ((DISP_STUB, DISP_SRC, {"get": GET, "SID": SID, "art": DISP_ART, "normal": DISP_NORMAL}),
+                         (DIAG_CHAIN_STUB, DIAG_CHAIN_SRC, {"prop": PROP_GET, "yes": 0x60385372, "no": 0x603853b4,
+                                                            "get": GET, "SID": SID})):
+        check(set(m[o(a):o(a) + 0x60]) == {0xff}, "stub area %#x not free" % a)
+        c = patch_aspect.assemble_syms(src, a, syms)
+        check(len(c) <= 0x60, "stub too long")
+        m[o(a):o(a) + len(c)] = c
+    m[o(DISP_SITE):o(DISP_SITE) + 8] = patch_aspect.assemble_syms("jmp t", DISP_SITE, {"t": DISP_STUB}) + b"\xcb" * 3
+    check(bytes(m[o(CHAIN_SITE):o(CHAIN_SITE) + 6]) == CHAIN_STOCK, "chain Frame test differs")
+    m[o(CHAIN_SITE):o(CHAIN_SITE) + 6] = patch_aspect.assemble_syms("jmp t", CHAIN_SITE, {"t": DIAG_CHAIN_STUB}) + b"\xcb"
+    print("  photo jobs -> art chain builder while on (%#x -> %#x); Frame flag hook %#x" % (DISP_SITE, DISP_STUB, DIAG_CHAIN_STUB))
+
+
 def diag(m):
     import patch_aspect
     o = lambda a: a - BASE  # noqa: E731
     j = bytes(m[o(TONE_SITE):o(TONE_SITE) + 5])
     check(j[0] == 0xdc, "tone-curve site is not hooked (needs patch_art_gradation first)")
     grad = TONE_SITE + struct.unpack_from("<i", j, 1)[0]
-    for a, src, syms in ((DIAG_TONE_STUB, DIAG_TONE_SRC, {"prop": PROP_GET, "grad": grad, "get": GET, "SID": SID}),
-                         (DIAG_CHAIN_STUB, DIAG_CHAIN_SRC, {"prop": PROP_GET, "yes": 0x60385372, "no": 0x603853b4, "get": GET, "SID": SID})):
-        check(set(m[o(a):o(a) + 0x60]) == {0xff}, "diag stub area %#x not free" % a)
-        c = patch_aspect.assemble_syms(src, a, syms)
-        check(len(c) <= 0x60, "diag stub too long")
-        m[o(a):o(a) + len(c)] = c
+    check(set(m[o(DIAG_TONE_STUB):o(DIAG_TONE_STUB) + 0x60]) == {0xff}, "diag stub area not free")
+    c = patch_aspect.assemble_syms(DIAG_TONE_SRC, DIAG_TONE_STUB, {"prop": PROP_GET, "grad": grad, "get": GET, "SID": SID})
+    m[o(DIAG_TONE_STUB):o(DIAG_TONE_STUB) + len(c)] = c
     m[o(TONE_SITE):o(TONE_SITE) + 5] = patch_aspect.assemble_syms("jmp t", TONE_SITE, {"t": DIAG_TONE_STUB})
-    check(bytes(m[o(CHAIN_SITE):o(CHAIN_SITE) + 6]) == CHAIN_STOCK, "chain Frame test differs")
-    m[o(CHAIN_SITE):o(CHAIN_SITE) + 6] = patch_aspect.assemble_syms("jmp t", CHAIN_SITE, {"t": DIAG_CHAIN_STUB}) + b"\xcb"
-    print("  diag: switch on -> Grainy I curve in picture modes (via %#x); chain flag hook %#x" % (grad, DIAG_CHAIN_STUB))
+    print("  diag: switch on -> Grainy I curve in picture modes (via %#x)" % grad)
 
 
 def check(cond, msg):
@@ -232,6 +269,7 @@ def patch(main):
         m[BLOB_B_OFF + 32 + len(cg):old_end] = b"\xff" * (old_end - BLOB_B_OFF - 32 - len(cg))
     struct.pack_into("<I", m, BLOB_B_OFF + 16, len(cg))
     check(olycompress.unpack(m, BLOB_B_OFF) == bytes(gui), "blob B does not decode to the edit")
+    chain(m)
     if "--diag" in sys.argv:
         diag(m)
     print("  labels: %d value lists Off/On, %d titles 'Frame Effect'" % (nval, ntitle))
