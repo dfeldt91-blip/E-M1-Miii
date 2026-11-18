@@ -116,3 +116,6 @@ see the switch from image code. 1.726: all checks use the settings getter 0x602c
 Camera 1.726: switch reaches image code (Grainy curve on), still no frame. Cause: chain dispatch
 0x603816c5 sends picture modes to builder 0x60395eb9 (no art effects). 1.727: photo jobs go to the
 art chain builder 0x60384438 while the switch is on (live view unchanged).
+Camera 1.727: switch on (Adobe RGB) + Natural photo -> crash and reboot; switch off (sRGB): no crash.
+The art chain builder cannot take picture-mode jobs as they are (some art-only setup missing). Do not
+use 1.727 with the switch on. Next idea: a neutral art filter (Art Effect Frame works natively).
