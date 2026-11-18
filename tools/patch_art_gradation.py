@@ -27,6 +27,8 @@ show at all, and whether new values can show a string that this menu already dra
 Camera 1.719: works (curves, SCP icons). 1.719: the SCP Gradation picker (record 0x611ef014, icon lists) gets 23 entries; new ones use the
 art filter icons from the SCP Picture Mode picker (record 0x611ef284). 1.718 (--diag-labels): no
 visible change, i.e. the screen with blank entries is this icon picker, not the text lists.
+1.728: the SCP panel label (cursor on Gradation, list at record 0x611ef038) also gets the 19 names.
+Camera 1.719: works (curves; names and icons in the SCP picker); the SCP panel label stayed empty.
 Camera 1.716: boots; the 19 options are listed and change live view and photos; labels blank
 (type-1 ASCII entries are not drawn by this menu). 1.717: type-4 entries with the stock names:
 still blank, so new values are not labelled from this list at all (as with the ISO extension).
@@ -50,6 +52,9 @@ STOCK_ALT = [3, 1, 2, 0]
 # SCP icon pickers (blob B): record {id, icon list 1, icon list 2, n, 0}; list entries
 # {GUI value, 3, icon id, cond}. Gradation 0x17 (4 entries), Picture Mode 0x22 (54, art icons).
 GRAD_REC, PM_REC = 0x611ef014, 0x611ef284
+# SCP panel label (cursor on Gradation): {list, n} at 0x611ef038 -> 0x611eb26c, 4 entries
+# {3 "Shadow Adj", 1 "Gradation Normal", 2 "Gradation High Key", 0 "Gradation Low Key"}
+SCP_TEXT = 0x611ef038
 ART_GUI = [0x10008, 0x20008, 0x9, 0x1000a, 0x2000a, 0xb, 0x1000c, 0x2000c, 0x1000d, 0x2000d, 0x1000e,
            0x1000f, 0x2000f, 0x10, 0x10011, 0x1001a, 0x2001a, 0x3001a, 0x1003c]
 # ^ SCP Picture Mode value (variant << 16 | art GUI index) of each curve's filter
@@ -181,6 +186,18 @@ def patch(main):
         a += len(lst)
     struct.pack_into("<IIII", gui, GRAD_REC - BLOB_B + 4, new[0], new[1], 4 + N, 0)
     print("  SCP Gradation icons: record %#x -> %#x / %#x (%d entries)" % (GRAD_REC, new[0], new[1], 4 + N))
+    tl, tn = struct.unpack_from("<II", gui, SCP_TEXT - BLOB_B)
+    check(tn == 4 and [ent(tl, k)[0] for k in range(4)] == [3, 1, 2, 0] and ent(tl, 2)[2] == 0x8c,
+          "SCP Gradation text list differs")
+    tc = ent(tl, 0)[3]
+    lst = bytearray(gui[tl - BLOB_B:tl - BLOB_B + 48])
+    for i in range(N):
+        lst += struct.pack("<iHHI", 4 + i, 4, CURVES[i][2], tc)
+    a = (a + 15) & ~15
+    m[o(a):o(a) + len(lst)] = lst
+    struct.pack_into("<II", gui, SCP_TEXT - BLOB_B, a, 4 + N)
+    print("  SCP Gradation panel names: %#x -> %#x (%d entries)" % (SCP_TEXT, a, 4 + N))
+    a += len(lst)
     check(a <= FREE_END, "free area overflow")
     nref = 0
     for li in lists:
