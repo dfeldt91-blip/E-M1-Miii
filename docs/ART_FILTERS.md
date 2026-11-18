@@ -167,3 +167,6 @@ Camera 1.735: no change. Both art-chain sites that add the photo main step {0x60
 (0x603848dd, 0x60384d7f) are Bleach II only; live view uses {0x60383c69, 0x60385f5b}. 0x60385e18 sizes
 its own buffer (width rounded to 32, 0x6037d7f7), possibly a reduced-size pass. 1.736 = 1.728 +
 `patch_bleach2.py --photo-step` (photos use the live-view pair).
+Camera 1.736: freezes and powers off on a Bleach II photo. The photo pipeline needs Bleach II's own
+main step; do not use 1.736. Summary of Bleach II softening tests: --bit (1.720), --pass (1.721),
+--detail (1.734), --params (1.735) no change; --photo-step (1.736) crash.
