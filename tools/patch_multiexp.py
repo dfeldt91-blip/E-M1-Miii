@@ -14,6 +14,11 @@ Camera (1.601): the tab descriptors alone do not change the Number of Frames row
 The sequencer (0x609c7bff / 0x609c857c / 0x609c8da5) already counts to the setting, and its frame
 handle array is malloc(20) = 5 slots, so 5 is the ceiling. With Auto Gain On each frame gets 1/N
 (an average); with it Off the frames are summed, as stock does for 2.
+
+--overlay keeps the live overlay visible after every shot except the last (test 1.746). The stock
+success handler refreshes it only when the shot number is 1; the old hook compared the shot number
+and frame setting the wrong way round. This version uses the stock refresh path for shot numbers
+below the frame setting, so with 4 frames the preview is shown after shots 1, 2 and 3.
 """
 import hashlib
 import os
@@ -51,6 +56,22 @@ bcs keep
 mov a3,a0
 call sdf,[d2,a2,a3],24
 keep:
+mov 1,d2
+jmp back
+last:
+clr d2
+jmp back"""
+# Corrected refresh condition (test 1.746): the old OVL hook above compared the shot number and the
+# frame setting the wrong way round, so it still dropped the overlay after shot 2. This version keeps
+# the stock refresh path for every shot except the last (shot number < frames). It deliberately does
+# not rebuild the overlay handle: the merge in rcvOperationSuccessIn_EXECUTE has already put the
+# accumulated image into the display, so the stock refresh shows it.
+OVL_REFRESH_SRC = """exthu d1
+mov d1,d2
+mov 266,d0
+call getv,[],4
+cmp d0,d2
+bcs last
 mov 1,d2
 jmp back
 last:
@@ -201,6 +222,19 @@ def patch(main):
         a[RB_SITE - BLOB_A:RB_SITE - BLOB_A + len(RB_STOCK)] = (
             b"\xdc" + struct.pack("<i", RB_STUB - RB_SITE) + b"\xcb" * (len(RB_STOCK) - 5))
         print("  overlay rebuild after shots 2..frames-1: %#x -> stub %#x (%d B)" % (RB_SITE, RB_STUB, len(rb)))
+    if "--overlay" in sys.argv:
+        import patch_aspect
+        check(set(m[off(OVL_STUB):off(OVL_STUB + 0x40)]) == {0xff}, "overlay stub area not free")
+        check(bytes(a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)]) == OVL_STOCK,
+              "overlay site differs")
+        ovl = patch_aspect.assemble_syms(OVL_REFRESH_SRC, OVL_STUB,
+                                         {"back": OVL_BACK, "getv": 0x602eeec8})
+        check(len(ovl) <= 0x40, "overlay stub too long")
+        m[off(OVL_STUB):off(OVL_STUB) + len(ovl)] = ovl
+        a[OVL_SITE - BLOB_A:OVL_SITE - BLOB_A + len(OVL_STOCK)] = (
+            b"\xdc" + struct.pack("<i", OVL_STUB - OVL_SITE) + b"\xcb" * (len(OVL_STOCK) - 5))
+        print("  overlay refresh after shots 1..frames-1: %#x -> stub %#x (%d B)"
+              % (OVL_SITE, OVL_STUB, len(ovl)))
     if "--old-hooks" in sys.argv:
         import patch_aspect
         check(set(m[off(OVL_STUB):off(OVL_STUB + 0x40)]) == {0xff}, "overlay stub area not free")

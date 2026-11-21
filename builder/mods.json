@@ -774,10 +774,10 @@
   {
    "id": "multiexp",
    "title": "Multiple Exposure: 3 and 4 frames",
-   "description": "Multiple Exposure accepts 3 or 4 frames. The live overlay shows after the first shot only (a fix for shots 2 and 3 is being tested).",
-   "camera": "Worked on the camera (1.5 build).",
+   "description": "Multiple Exposure accepts 3 or 4 frames. The live overlay should stay visible after every shot except the last, so you can compose the next frame on the accumulated image.",
+   "camera": "3 and 4 frames worked on the camera (1.5 build); overlay after shots 2 and 3: test 1.746, awaiting camera result.",
    "requires": [],
-   "stock_sha256": "ba9b24d9a4cbdec0b43178b38412b62ff69c5491e95be2b483415597dc97a3ad",
+   "stock_sha256": "f3a37855bc2aa4d2a599043512c4e4ad8dc5a580a2b3fff63f492154d0d3808f",
    "edits": [
     [
      0,
@@ -791,8 +791,18 @@
     ],
     [
      0,
+     "0x600d6f80",
+     "1d862c0a01dd437f21000004a2c4098a01dc2e1d8f0008dc281d8f00"
+    ],
+    [
+     0,
      "0x604dc908",
      "006d0d600000000004"
+    ],
+    [
+     0,
+     "0x609c8ca8",
+     "dcd8e270ffcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcb"
     ],
     [
      0,
