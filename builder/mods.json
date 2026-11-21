@@ -934,10 +934,10 @@
   {
    "id": "hhrs_flash",
    "title": "Flash in handheld High Res",
-   "description": "Allows the flash setting in handheld High Res Shot, with the same flash modes as tripod High Res (by flash type), and Manual flash next to Fill In with TTL flashes (tripod and handheld).",
-   "camera": "Flash worked on the camera (1.5 build); Manual flash option: test 1.744.",
+   "description": "Allows the flash setting in handheld High Res Shot and offers both Fill In and Manual flash with every flash type (tripod and handheld).",
+   "camera": "Flash worked on the camera (1.5 build); Fill In + Manual for all flash types: test 1.745.",
    "requires": [],
-   "stock_sha256": "29f4c38a794f18d87c9bc81b305c88b36c0d7a3a4ef3d681f2fe4f31c362ccd8",
+   "stock_sha256": "b86c54274f1e701e6fa4998a138b1e383b4f3e7ba62e321bd889e79cba8eecbf",
    "edits": [
     [
      0,
@@ -1041,12 +1041,27 @@
     ],
     [
      0,
+     "0x6047f344",
+     "00bf0d"
+    ],
+    [
+     0,
+     "0x6047f354",
+     "00bf0d"
+    ],
+    [
+     0,
      "0x6047f364",
      "00bf0d"
     ],
     [
      0,
      "0x6047f374",
+     "00bf0d"
+    ],
+    [
+     0,
+     "0x6047f384",
      "00bf0d"
     ],
     [
@@ -1061,6 +1076,16 @@
     ],
     [
      0,
+     "0x6047f3b4",
+     "00bf0d"
+    ],
+    [
+     0,
+     "0x6047f3c4",
+     "00bf0d"
+    ],
+    [
+     0,
      "0x6047f3d4",
      "00bf0d"
     ],
@@ -1071,7 +1096,17 @@
     ],
     [
      0,
+     "0x6047f3f4",
+     "00bf0d"
+    ],
+    [
+     0,
      "0x6047f404",
+     "00bf0d"
+    ],
+    [
+     0,
+     "0x6047f414",
      "00bf0d"
     ],
     [
