@@ -30,10 +30,18 @@ The stub calls the stock setting API 0x60cb1b1e(sid) / 0x60cb1a73(sid, value)
 and tail-jumps to the stock action-99 return at 0x60cc4aab. The release jump
 table is left alone, so the normal button-release cleanup still runs.
 
-0x6f stores an INDEX into its validator list, not a GUI value. Stock indexes:
-  0 i-Finish, 1 Vivid, 2 Natural, 3 Muted, 4 Portrait, 5 Monotone, 6 Custom,
-  7 e-Portrait, 8 Underwater, 9 Color Creator, 10..25 Art Filters / Vintage /
-  Partial Color / monochrome variants. --all cycles every stock index.
+0x6f stores an INDEX into its 26-entry validator list at 0x604bc4f4. The first
+indexes map to these displayed modes (confirmed on camera):
+  0 i-Enhance, 1 Soft Focus, 2 Vivid, 3 Natural, 4 Muted, 5 Monochrome,
+  6 Custom, 7 Underwater, 8 Color Creator, 9 Art Filter, 10..25 more filters.
+The setter takes the DISPLAY VALUE directly (confirmed on camera), not a
+validator-list index. The wanted values are:
+  7 i-Enhance, 0 Vivid, 1 Natural, 2 Muted, 3 Monochrome.
+The cycle table is left BYTE-FOR-BYTE as the stock 9-value list, because the
+camera stores a parameter with the custom-button assignment and drops the
+function if the table changes. Instead the stub maps the five values itself:
+  7 -> 0 -> 1 -> 2 -> 3 -> 7.
+Use --all/--modes to change the table for a fresh assignment.
 
 Every byte the patch relies on is checked first. Requires no binutils: the
 stub is pre-assembled below; set MN10300_BIN to also verify it against source.
@@ -78,37 +86,49 @@ LABELS = (                                    # (address, stock code/type/label,
     (0x61295f20, (284, 4, 0x169), (4, NAME_SID)),
     (0x6129649c, (284, 4, 0x170), (4, HELP_SID)),
 )
-DEFAULT_MODES = [0, 1, 2, 3, 4, 5, 6, 7, 9]
+DEFAULT_MODES = [0, 1, 2, 3, 4, 5, 6, 7, 9]  # unchanged; stub filters the cycle
 
 # mn10300-elf-as / -ld / -objcopy at STUB_AT. Registers a2/d2 are saved by the
-# CALL forms; d3 is scratch. Wraps to the first entry on a miss or at the end.
+# CALL forms; d3 is scratch. The cycle table is deliberately NOT consulted: it
+# stays stock so the camera keeps the custom-button assignment. This stub maps
+# the five wanted values directly and treats anything else as a wrap to 0.
 SRC = """mov 0x6f,d0
 call get,[d2,a2],24
 mov d0,d3
-mov table,a0
-scan:
-movhu (a0),d0
-cmp 0xffff,d0
-beq wrap
-cmp d3,d0
-bne next
-movhu (2,a0),d0
-cmp 0xffff,d0
-beq wrap
+cmp 7,d3
+bne L1
+mov 0,d0
 bra go
-next:
-add 2,a0
-bra scan
-wrap:
-movhu (table),d0
+L1:
+cmp 0,d3
+bne L2
+mov 1,d0
+bra go
+L2:
+cmp 1,d3
+bne L3
+mov 2,d0
+bra go
+L3:
+cmp 2,d3
+bne L4
+mov 3,d0
+bra go
+L4:
+cmp 3,d3
+bne L5
+mov 7,d0
+bra go
+L5:
+mov 7,d0
 go:
 mov d0,d1
 mov 0x6f,d0
 call set,[d2,a2],20
 jmp back"""
 STUB = bytes.fromhex(
-    "806fdd9cb9bd00a01883fcdce0620d60f060fcc8ffff0000c816acc90ff86002"
-    "fcc8ffff0000c808ca0c2002cae4fcace0620d6081806fddbcb8bd00a014"
+    "806fdd9cb9bd00a01883af07c9068000ca24af00c9068001ca1caf01c9068002"
+    "ca14af02c9068003ca0caf03c9068007ca04800781806fddbcb8bd00a014"
     "dcede8be00")
 
 
@@ -164,7 +184,7 @@ def patch_main(main, modes):
 
     if os.environ.get("MN10300_BIN"):
         assembled = patch_aspect.assemble_syms(SRC, STUB_AT, {
-            "get": GET, "set": SET, "table": TABLE_AT, "back": BACK})
+            "get": GET, "set": SET, "back": BACK})
         check(assembled == STUB, "pre-assembled stub differs from the assembled source")
     m[off(STUB_AT):off(STUB_AT) + len(STUB)] = STUB
 
