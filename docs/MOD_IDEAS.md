@@ -95,7 +95,7 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | S21 | **Keystone / fisheye correction options** | **Idea** | |
 | S22 | **Multiple Exposure with more than 4 frames** | **Plausible** | 3 and 4 already done. |
 | S23 | **Digital teleconverter at other factors (1.4×, 3×)** | **Idea** | |
-| S24 | **Subject detection: more subjects** (e.g. bird, animal) | **Unlikely** | The E-M1 III has no trained subject detection models. |
+| S24 | **Subject detection: more subjects** (e.g. bird, animal) | **Unlikely** | The E-M1 III has no trained subject detection models. Deep-learning path: `MODE_SUBJECT_DETECT` (`0x693`) validator list is `[0,1,2,3]` (Off + 3 types); pipeline is `MDET_DL_*` / `DeepLearningSubjectDetect` (`0x6161a86c`) feeding `mdet_laf_judge_dl_subject`. See `docs/BIRD_AF.md`. |
 | S25 | **Face/eye AF in more modes** | **Idea** | |
 | S26 | **C-AF tracking sensitivity −5..+5** | **Plausible** | |
 
