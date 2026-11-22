@@ -884,10 +884,10 @@
   {
    "id": "mono_slots",
    "title": "Monochrome II picture profile",
-   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile.",
-   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible.",
+   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. The two art-filter Shade Effect options are hidden because they can leave the camera blank on the next restart.",
+   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. Shade-effect hiding added after a blank-on-restart report; needs camera re-test.",
    "requires": [],
-   "stock_sha256": "6e791650ab095cfeda9deb8a1a2a4aa8bde911d092cde5fac2257768cb3855c1",
+   "stock_sha256": "bbdcc1ce687db289f9019d9d409cd975af8918b19d649e94af28cf0e5eca5008",
    "edits": [
     [
      0,
@@ -903,6 +903,61 @@
      0,
      "0x604bc6f4",
      "0500000001"
+    ],
+    [
+     0,
+     "0x604d961d",
+     "0707"
+    ],
+    [
+     0,
+     "0x604d994e",
+     "0707"
+    ],
+    [
+     0,
+     "0x604d9bd7",
+     "0707"
+    ],
+    [
+     0,
+     "0x604da2de",
+     "0707"
+    ],
+    [
+     0,
+     "0x604dd25c",
+     "08"
+    ],
+    [
+     0,
+     "0x604dddc4",
+     "08"
+    ],
+    [
+     0,
+     "0x604dddd8",
+     "08"
+    ],
+    [
+     0,
+     "0x604dddec",
+     "08"
+    ],
+    [
+     0,
+     "0x604dea30",
+     "08"
+    ],
+    [
+     0,
+     "0x604e0588",
+     "08"
+    ],
+    [
+     0,
+     "0x604e059c",
+     "08"
     ],
     [
      0,

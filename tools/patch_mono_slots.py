@@ -13,6 +13,8 @@ E-M1 Mark III 1.6. Takes the stock firmware and:
      language block (block 1).
   3. Re-labels i-Finish, Monotone, Underwater and e-Portrait in the Picture
      Mode menu lists as "Monochrome II/1/2/3" and moves i-Finish after Monotone.
+   4. Hides the two art-filter "Shade Effect" values (8/9) from their validators.
+      They can leave the camera blank on the next restart.
 
 Verified-data-only except for the compressed GUI blob, which is recompressed
 and checked round-trip. Every byte relied on is checked before writing.
@@ -39,6 +41,20 @@ BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 MENU_DESCS = (0x611af718, 0x61206bc8, 0x6128837c)
 MENU_HEAD = [7, 0, 1, 2, 5, 3, 6, 0x14, 0x1c, 0x15]
 STR_MONO1, STR_MONO2, STR_MONO3 = 0xac5, 0xac6, 0xac7
+
+# Art-filter "Add Effects" validators. Values 8/9 are the two Shade effects;
+# they can leave the camera blank on the next boot. Cut them from the lists.
+SHADE_VALIDATORS = (
+    (0x604dd250, 0x59e, 0x604d9615),
+    (0x604dddb8, 0x292, 0x604d9946),
+    (0x604dddcc, 0x36d, 0x604d9946),
+    (0x604ddde0, 0x36e, 0x604d9946),
+    (0x604dea24, 0x362, 0x604d9bcf),
+    (0x604e057c, 0x590, 0x604da2d6),
+    (0x604e0590, 0x591, 0x604da2d6),
+)
+SHADE_STOCK = bytes([0, 1, 2, 4, 3, 5, 6, 7, 8, 9])
+SHADE_HIDDEN = bytes([0, 1, 2, 4, 3, 5, 6, 7, 7, 7])
 
 # Language block constants
 B1_FLASH = 0x42400000
@@ -127,6 +143,37 @@ def patch_lang(blk1):
     return bytes(d)
 
 
+def hide_shade_effects(m):
+    """Remove art-filter Shade Effect values 8/9 from their validators.
+
+    Menus enumerate the validator, so shortening each list to the first eight
+    values hides both Shade options. The list tail is set to the last safe
+    value too, in case any code ignores the shortened count.
+    """
+    groups = {}
+    for rec, sid, lp in SHADE_VALIDATORS:
+        groups.setdefault(lp, []).append((rec, sid))
+
+    for lp, recs in groups.items():
+        lo = off(lp)
+        cur = bytes(m[lo:lo + 10])
+        check(cur in (SHADE_STOCK, SHADE_HIDDEN),
+              "art-effect validator list %#x differs from stock" % lp)
+        if cur == SHADE_STOCK:
+            m[lo:lo + 10] = SHADE_HIDDEN
+        for rec, sid in recs:
+            o = off(rec)
+            got = struct.unpack_from("<HHIIHHBBH", m, o)
+            check((got[0], got[2], got[3], got[5], got[7]) == (sid, lp, 0, 1, 1),
+                  "art-effect validator %#x differs from stock" % rec)
+            expected = 10 if cur == SHADE_STOCK else 8
+            check(got[4] == expected,
+                  "art-effect validator %#x has an unexpected count" % rec)
+            struct.pack_into("<H", m, o + 12, 8)
+            print("  validator: hidden Shade Effect values 8/9 for setting 0x%03x" % sid)
+    return m
+
+
 def patch(main):
     m = bytearray(main)
 
@@ -148,6 +195,8 @@ def patch(main):
     for idx in (I_IFINISH, I_UNDERWATER, I_EPORTRAIT):
         m[off(LIST) + ELEM * idx:off(LIST) + ELEM * (idx + 1)] = mono_entry
     print("  validator: i-Finish, Underwater & e-Portrait -> Monotone ({5,1})")
+
+    hide_shade_effects(m)
 
     # --- GUI: re-label and re-order the three Picture Mode menu lists (in place) ---
     check(bytes(m[BLOB_B_OFF:BLOB_B_OFF + 11]) == b"olycompress", "blob B header not found")

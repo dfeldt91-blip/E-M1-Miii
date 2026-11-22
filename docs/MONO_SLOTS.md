@@ -42,6 +42,15 @@ that removed the Monochrome II cell itself, so it was reverted. Removing only
 the effect-strength cell needs a proper Blob A code patch and is not solved
 here.
 
+## Shade effects hidden
+
+The two art-filter **Shade Effect** options (`Left and Right` / `Top and
+Bottom`) are removed from every validator that offers them (settings `0x59e`,
+`0x292`, `0x36d`, `0x36e`, `0x362`, `0x590`, `0x591`). Menus enumerate the
+validator, so the options no longer appear, and a stored value of 8 or 9 is
+no longer valid. This was added after a report that using a Shade effect left
+the screen blank on the next restart.
+
 ## Build and check
 
 ```bash
