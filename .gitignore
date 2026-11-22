@@ -6,3 +6,9 @@ build/
 dist/
 *.spec
 out_frame/
+
+# local test firmware builds (never publish firmware)
+E1399999_*.BIN
+
+# local editor config
+opencode.jsonc
