@@ -42,18 +42,33 @@ that removed the Monochrome II cell itself, so it was reverted. Removing only
 the effect-strength cell needs a proper Blob A code patch and is not solved
 here.
 
-## Shade effects hidden
+## Problem art effects hidden and Star Light disabled
 
-The two art-filter **Shade Effect** options (`Left and Right` / `Top and
-Bottom`) are removed from every validator that offers them (settings `0x59e`,
-`0x292`, `0x36d`, `0x36e`, `0x362`, `0x590`, `0x591`). Menus enumerate the
-validator, so the options no longer appear, and a stored value of 8 or 9 is
-no longer valid. This was added after a report that using a Shade effect left
-the screen blank on the next restart.
+The art-filter **Star Light Effect** (value 5) and the two **Shade Effect**
+options (`Left and Right` / `Top and Bottom`, values 9 and 8) are removed from
+every validator that offers them (settings `0x59e`, `0x292`, `0x36d`, `0x36e`,
+`0x362`, `0x590`, `0x591`). Menus enumerate the validator, so the options no
+longer appear, and a stored value of 5, 8 or 9 is no longer valid. Star Light
+is replaced by Off in place; the two Shade entries are replaced by Blur
+Effect: Left and Right, and the validator count is cut from 10 to 8. The Add
+Effects picker records in Blob B are also changed: every Star Light option
+(value 5, string `Star Light Effect`) becomes value 0 with the label `Off`.
+
+Hiding the option is not enough for Star Light: a value saved before the mod
+would still be read by the image-processing code. Both snapshot builders
+therefore read Add Effect (property `0xf5d1`) through a stub at
+`0x600d2f80` that converts value 5 into Off (0) before the job is built. The
+effect itself is disabled,
+not merely relabelled. The patch checks the two original call sites
+(`0x602c31fa`, `0x6147cf82`) and the free stub area before writing.
+
+These changes were added after reports that the effects caused camera
+problems, including a blank screen on the next restart with a Shade effect.
 
 ## Build and check
 
 ```bash
+MN10300_BIN=/path/to/mn10300-elf/bin \
 python3 tools/patch_mono_slots.py E1399999_Focus_Stack.BIN out/E1399999.BIN \
     --version 0x1780 --report
 python3 tools/olyfw.py info out/E1399999.BIN

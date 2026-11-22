@@ -884,11 +884,21 @@
   {
    "id": "mono_slots",
    "title": "Monochrome II picture profile",
-   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. The two art-filter Shade Effect options are hidden because they can leave the camera blank on the next restart.",
-   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. Shade-effect hiding added after a blank-on-restart report; needs camera re-test.",
+   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. The art-filter Star Light Effect and the two Shade Effect options are hidden because they have caused camera problems. Star Light is also disabled at runtime: both image-processing snapshot builders map Add Effect value 5 to Off, so a saved selection cannot make the effect run.",
+   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. Star Light/Shade hiding and the runtime Star Light disable need camera re-test.",
    "requires": [],
-   "stock_sha256": "bbdcc1ce687db289f9019d9d409cd975af8918b19d649e94af28cf0e5eca5008",
+   "stock_sha256": "7258de621db9169ca484fcb83b9a25bd2238364b5b4016b16024e6114fc32078",
    "edits": [
+    [
+     0,
+     "0x600d2f80",
+     "dd1ccbf8ffc00c14a005c90300df0004"
+    ],
+    [
+     0,
+     "0x602c31fb",
+     "86fde0ff0004"
+    ],
     [
      0,
      "0x604bc4f4",
@@ -906,23 +916,23 @@
     ],
     [
      0,
-     "0x604d961d",
-     "0707"
+     "0x604d961a",
+     "0006070707"
     ],
     [
      0,
-     "0x604d994e",
-     "0707"
+     "0x604d994b",
+     "0006070707"
     ],
     [
      0,
-     "0x604d9bd7",
-     "0707"
+     "0x604d9bd4",
+     "0006070707"
     ],
     [
      0,
-     "0x604da2de",
-     "0707"
+     "0x604da2db",
+     "0006070707"
     ],
     [
      0,
@@ -961,6 +971,21 @@
     ],
     [
      0,
+     "0x60fb7588",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x60fb866c",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x60fb90ac",
+     "000000000400ae05"
+    ],
+    [
+     0,
      "0x611aeddc",
      "000000000300c31938c51a61010000000300c11938c51a61020000000300c01938c51a61050000000300bf1938c51a61030000000400c50a38c51a610700000004009100"
     ],
@@ -973,6 +998,16 @@
      0,
      "0x611aee40",
      "0400c60a"
+    ],
+    [
+     0,
+     "0x611d7b5c",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x611eead0",
+     "000000000400ae05"
     ],
     [
      0,
@@ -991,6 +1026,26 @@
     ],
     [
      0,
+     "0x61231038",
+     "000000000000ae05"
+    ],
+    [
+     0,
+     "0x612352f0",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x61238738",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x612472b4",
+     "000000000400ae05"
+    ],
+    [
+     0,
      "0x61287a40",
      "000000000300c319dc752761010000000300c119dc752761020000000300c019dc752761050000000300bf19dc752761030000000400c50adc7527610700000004009100"
     ],
@@ -1003,6 +1058,46 @@
      0,
      "0x61287aa4",
      "0400c60a"
+    ],
+    [
+     0,
+     "0x61291ef0",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x61291fac",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x61292a34",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x61292d54",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x61293074",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x61293258",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x612933e0",
+     "000000000400ae05"
+    ],
+    [
+     0,
+     "0x6147cf83",
+     "fe5fc5fe0004"
     ],
     [
      1,
@@ -1279,7 +1374,7 @@
   {
    "id": "hires_art",
    "title": "Art filters in High Res",
-   "description": "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the colour and tone, not the effect pass (no soft focus, frames or edges).",
+   "description": "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the filter's colour and tone, but High Res Shot has no art-effect pass.",
    "camera": "Worked on the camera (1.5 build), colour only.",
    "requires": [],
    "stock_sha256": "a1341f9539adbaf16144d180a6aaf611191a182e69bd8fab527af8c04903f6fa",
@@ -1293,29 +1388,6 @@
      0,
      "0x604761d8",
      "002f0d"
-    ]
-   ]
-  },
-  {
-   "id": "hires_frame",
-   "title": "Frame art effect in High Res",
-   "description": "Runs the art chain builder for High Res Shot photo jobs so the Frame art effect (with the white-border masks from the White Frame mod) is blended into handheld High Res JPEGs. Requires Art filters in High Res and White Frame. Experimental: may not work on all jobs.",
-   "camera": "Needs camera test (test 1.732).",
-   "requires": [
-    "hires_art",
-    "white_frame"
-   ],
-   "stock_sha256": "6df20dc94e09773256c97db1a1dc1e526cde8c3f8e4f32b8b911fc0b0f2ee516",
-   "edits": [
-    [
-     0,
-     "0x600df000",
-     "fa022c2ca00cc813fcccf2020000dd97b61e000004a001c907dcf5262a00dcf8262a00"
-    ],
-    [
-     0,
-     "0x60381706",
-     "dcfad8d5ffcbcbcb"
     ]
    ]
   },

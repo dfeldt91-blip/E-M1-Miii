@@ -40,10 +40,11 @@ MODS = [
      "with its own settings, moved after Monotone in the Picture Mode menu lists. The "
      "'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength "
      "cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. "
-     "The two art-filter Shade Effect options are hidden because they can leave the camera "
-     "blank on the next restart.",
+     "The art-filter Star Light Effect and the two Shade Effect options are hidden because they "
+     "have caused camera problems. Star Light is also disabled at runtime: both image-processing "
+     "snapshot builders map Add Effect value 5 to Off, so a saved selection cannot make the effect run.",
      "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. "
-     "Shade-effect hiding added after a blank-on-restart report; needs camera re-test.", []),
+     "Star Light/Shade hiding and the runtime Star Light disable need camera re-test.", []),
     ("arrow_keys", "patch_buttons.py", [], "More arrow-key functions",
      "The arrow keys can be assigned 25 functions for stills and 15 for movies.",
      "Not tested on the camera yet.", []),
