@@ -117,6 +117,7 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | C13 | **More white-balance presets / finer Kelvin** | **Plausible** | |
 | C14 | **Art filters: new variations** (e.g. more frame/effect options) | **Plausible** | White frame is an example. |
 | C15 | **On-camera HSL editor** (hue / saturation / lightness per colour, like the E-P7 / PEN-F) | **Idea, being probed** | The hidden Color Profile feature's settings, strings and wheel-drawing code are still in the firmware; no menu opens its editor. Probe 1.712 (`tools/patch_cpc_probe.py`) asks for an unused screen (state 69) from SCP INFO on Color Creator. |
+| C16 | **Highlight & Shadow Control saved per picture mode** (instead of one global setting) | **Idea / Plausible-hard** | Tone curve adjust (`MODE_TONE_CONTROL_HIGH/MIDDLE/LOW`, ids 0x17f/0x2b2/0x17e) is currently a global setting applied on top of every picture mode. Per-mode tone already exists via `MODE_TONE_*` (0x137..) and `MODE_CUSTOM_TONE_*` (0xbb..), so the precedent is there, but making the H&S adjustment per-mode means storing 3 values per picture mode and switching them on mode change, plus UI work. Needs the picture-mode component/switching code. |
 
 ## Super Control Panel cells
 | # | Idea | Rating | Notes |
