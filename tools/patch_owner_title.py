@@ -9,8 +9,7 @@ strings, then a table of u32 RAM pointers, one per string id (English: table at 
 "OlympusLanguage_..." trailer. String 0x2e1 = "Shooting Menu 1" (main menu tab title), 0x1ee =
 "Shooting Menu 2". '@' starts icon codes in the text (e.g. "@A024@").
 
-Patch: a text no longer than the stock one replaces it in place (space padded); a longer one goes into the zero padding after the pointer table (up to 36 characters), and
-the string's pointer is repointed to it. Every other string is unchanged. English only.
+Patch: a text no longer than the stock one replaces it in place (space padded); a longer one goes into even-aligned zero padding in the language section (up to 36 characters), and the string's pointer is repointed to it. The 74-byte gap after the pointer table is used first; if other mods have used it, the zero area after the English trailer is used instead. Every other string is unchanged. English only.
 --text2 (test) does the same for "Shooting Menu 2".
 """
 import hashlib
@@ -54,9 +53,24 @@ def patch_block1(blk1, texts):
     check(not (RAM <= struct.unpack_from("<I", sec, TAB - 4)[0] < RAM + n), "pointer table start differs")
     t = sec.find(TRAILER.encode("utf-16le"))
     check(t > tab_end, "language trailer not found")
-    free = t - tab_end
-    check(set(sec[tab_end:t]) == {0}, "padding after the pointer table is not free")
-    at = tab_end
+    t_end = t + len(TRAILER.encode("utf-16le")) + 2
+    check(t_end <= n, "language trailer overruns the section")
+
+    used = []
+
+    def allocate(raw):
+        # The gap before the trailer is preferred; the zero area after it is a
+        # fallback for when other mods (e.g. Monochrome II) already used the gap.
+        for lo, hi in ((tab_end, t), (t_end, n)):
+            for at in range(lo + (lo & 1), hi - len(raw) + 1, 2):
+                if any(at < b and a < at + len(raw) for a, b in used):
+                    continue
+                if all(c == 0 for c in sec[at:at + len(raw)]):
+                    sec[at:at + len(raw)] = raw
+                    used.append((at, at + len(raw)))
+                    return at
+        check(False, "not enough even-aligned free space in the language section")
+
     for sid, text in texts.items():
         p = struct.unpack_from("<I", sec, TAB + 4 * sid)[0]
         check(string_at(sec, p) == STOCK[sid], "string %#x is not %r" % (sid, STOCK[sid]))
@@ -66,11 +80,14 @@ def patch_block1(blk1, texts):
             sec[p - RAM:p - RAM + 2 * len(STOCK[sid])] = text.ljust(len(STOCK[sid])).encode("utf-16le")
             LOG("  string %#x %r -> %r (in place)" % (sid, STOCK[sid], text))
             continue
-        check(at + len(raw) + 2 <= t, "not enough free space after the pointer table (%d bytes)" % free)
-        sec[at:at + len(raw)] = raw
+        at = allocate(raw)
         struct.pack_into("<I", sec, TAB + 4 * sid, RAM + at)
         LOG("  string %#x %r -> %r (at section %#x)" % (sid, STOCK[sid], text, at))
-        at += len(raw)
+
+    for sid, text in texts.items():
+        p = struct.unpack_from("<I", sec, TAB + 4 * sid)[0]
+        check(string_at(sec, p).rstrip() == text,
+              "string %#x did not round-trip" % sid)
     d[o:o + n] = sec
     return bytes(d)
 

@@ -29,6 +29,11 @@ from the earlier experiment; those slots are labelled Monochrome 2 and 3.
 Blob B is unpacked, edited, LZ4-repacked and verified to round-trip. Every
 stock byte relied on is checked before writing.
 
+The two renamed strings use 68 of the 74 bytes in the gap after the language
+pointer table. The **Owner title** mod can still be selected: when that gap is
+full it writes longer owner text into the unused zero area after the English
+trailer instead of failing.
+
 ## Effect-strength cell
 
 The i-Enhance effect-strength cell (`Low / Standard / High`) still appears.
