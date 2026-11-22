@@ -35,6 +35,11 @@ MODS = [
     ("keyline_mono", "patch_keyline_mono.py", [], "Key Line II in black and white",
      "Art filter Key Line II gets a grey (monochrome) toning instead of colour.",
      "Worked on the camera (1.5 build).", []),
+    ("mono_slots", "patch_mono_slots.py", [], "Monochrome II picture profile",
+     "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) "
+     "with its own settings, moved after Monotone in the Picture Mode list. Renames "
+     "'i-Enhance' to 'Monochrome II'.",
+     "EXPERIMENTAL, not camera-tested.", []),
     ("arrow_keys", "patch_buttons.py", [], "More arrow-key functions",
      "The arrow keys can be assigned 25 functions for stills and 15 for movies.",
      "Not tested on the camera yet.", []),

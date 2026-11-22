@@ -882,6 +882,91 @@
    ]
   },
   {
+   "id": "mono_slots",
+   "title": "Monochrome II picture profile",
+   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode list. Renames 'i-Enhance' to 'Monochrome II'.",
+   "camera": "EXPERIMENTAL, not camera-tested.",
+   "requires": [],
+   "stock_sha256": "6e791650ab095cfeda9deb8a1a2a4aa8bde911d092cde5fac2257768cb3855c1",
+   "edits": [
+    [
+     0,
+     "0x604bc4f4",
+     "0500000001"
+    ],
+    [
+     0,
+     "0x604bc6b4",
+     "0500000001"
+    ],
+    [
+     0,
+     "0x604bc6f4",
+     "0500000001"
+    ],
+    [
+     0,
+     "0x611aeddc",
+     "000000000300c31938c51a61010000000300c11938c51a61020000000300c01938c51a61050000000300bf1938c51a61030000000400c50a38c51a610700000004009100"
+    ],
+    [
+     0,
+     "0x611aee34",
+     "0400c70a"
+    ],
+    [
+     0,
+     "0x611aee40",
+     "0400c60a"
+    ],
+    [
+     0,
+     "0x6120628c",
+     "000000000300c31958582061010000000300c11958582061020000000300c01958582061050000000300bf1958582061030000000400c50a585820610700000004009100"
+    ],
+    [
+     0,
+     "0x612062e4",
+     "0400c70a"
+    ],
+    [
+     0,
+     "0x612062f0",
+     "0400c60a"
+    ],
+    [
+     0,
+     "0x61287a40",
+     "000000000300c319dc752761010000000300c119dc752761020000000300c019dc752761050000000300bf19dc752761030000000400c50adc7527610700000004009100"
+    ],
+    [
+     0,
+     "0x61287a98",
+     "0400c70a"
+    ],
+    [
+     0,
+     "0x61287aa4",
+     "0400c60a"
+    ],
+    [
+     1,
+     "0x256ae0",
+     "601f06"
+    ],
+    [
+     1,
+     "0x259b40",
+     "7c1f06"
+    ],
+    [
+     1,
+     "0x25a600",
+     "4d006f006e006f006300680072006f006d00650020004900490000004000410030003800390040004d006f006e006f006300680072006f006d0065002000490049"
+    ]
+   ]
+  },
+  {
    "id": "arrow_keys",
    "title": "More arrow-key functions",
    "description": "The arrow keys can be assigned 25 functions for stills and 15 for movies.",
