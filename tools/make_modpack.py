@@ -40,14 +40,21 @@ MODS = [
      "with its own settings, moved after Monotone in the Picture Mode menu lists. The "
      "'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength "
      "cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. "
-     "The art-filter Star Light Effect and the two Shade Effect options are hidden because they "
-     "have caused camera problems. Star Light is also disabled at runtime: both image-processing "
-     "snapshot builders map Add Effect value 5 to Off, so a saved selection cannot make the effect run.",
+     "The art-filter Star Light Effect is deleted from the Add Effects pickers and validators (no Off "
+     "placeholder is left), and the two Shade Effect options are hidden, because they have caused camera "
+     "problems. Star Light is also disabled at runtime: both image-processing snapshot builders map Add "
+     "Effect value 5 to Off, so a saved selection cannot make the effect run.",
      "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. "
-     "Star Light/Shade hiding and the runtime Star Light disable need camera re-test.", []),
+     "Star Light deletion/Shade hiding and the runtime Star Light disable need camera re-test.", []),
     ("arrow_keys", "patch_buttons.py", [], "More arrow-key functions",
      "The arrow keys can be assigned 25 functions for stills and 15 for movies.",
      "Not tested on the camera yet.", []),
+    ("picture_mode_button", "patch_picture_mode_button.py", [], "Picture Mode on a custom button",
+     "Adds 'Picture Mode' to the Button Function picker. Pressing the assigned button cycles "
+     "i-Enhance -> Vivid -> Natural -> Muted -> Monochrome; Soft Focus, art filters and the rest of "
+     "the stock Picture Mode list are skipped. The stock cycle table is kept unchanged so the "
+     "camera keeps the button assignment.",
+     "Worked on the camera (test 1.755): cycles the five picture profiles, no reset.", []),
     ("hhrs_flash", "patch_hhrs_flash.py", [], "Flash in handheld High Res",
      "Allows the flash setting in handheld High Res Shot and offers both Fill In and Manual flash "
      "with every flash type (tripod and handheld).",

@@ -884,10 +884,10 @@
   {
    "id": "mono_slots",
    "title": "Monochrome II picture profile",
-   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. The art-filter Star Light Effect and the two Shade Effect options are hidden because they have caused camera problems. Star Light is also disabled at runtime: both image-processing snapshot builders map Add Effect value 5 to Off, so a saved selection cannot make the effect run.",
-   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. Star Light/Shade hiding and the runtime Star Light disable need camera re-test.",
+   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. The art-filter Star Light Effect is deleted from the Add Effects pickers and validators (no Off placeholder is left), and the two Shade Effect options are hidden, because they have caused camera problems. Star Light is also disabled at runtime: both image-processing snapshot builders map Add Effect value 5 to Off, so a saved selection cannot make the effect run.",
+   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. Star Light deletion/Shade hiding and the runtime Star Light disable need camera re-test.",
    "requires": [],
-   "stock_sha256": "7258de621db9169ca484fcb83b9a25bd2238364b5b4016b16024e6114fc32078",
+   "stock_sha256": "ca76c957264eb26c6979e28eaecadcb066ed7f4cd6c330ae43de06f431fb7387",
    "edits": [
     [
      0,
@@ -917,72 +917,62 @@
     [
      0,
      "0x604d961a",
-     "0006070707"
+     "0607070707"
     ],
     [
      0,
      "0x604d994b",
-     "0006070707"
+     "0607070707"
     ],
     [
      0,
      "0x604d9bd4",
-     "0006070707"
+     "0607070707"
     ],
     [
      0,
      "0x604da2db",
-     "0006070707"
+     "0607070707"
     ],
     [
      0,
      "0x604dd25c",
-     "08"
+     "07"
     ],
     [
      0,
      "0x604dddc4",
-     "08"
+     "07"
     ],
     [
      0,
      "0x604dddd8",
-     "08"
+     "07"
     ],
     [
      0,
      "0x604dddec",
-     "08"
+     "07"
     ],
     [
      0,
      "0x604dea30",
-     "08"
+     "07"
     ],
     [
      0,
      "0x604e0588",
-     "08"
+     "07"
     ],
     [
      0,
      "0x604e059c",
-     "08"
-    ],
-    [
-     0,
-     "0x60fb7588",
-     "000000000400ae05"
+     "07"
     ],
     [
      0,
      "0x60fb866c",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x60fb90ac",
-     "000000000400ae05"
+     "060000000400fc04a484fb60070000000400fb04a484fb600800000004008e04a484fb600900000004008d04a484fb60ffffffffffffffffffffffff3086fb6009"
     ],
     [
      0,
@@ -1001,13 +991,88 @@
     ],
     [
      0,
-     "0x611d7b5c",
-     "000000000400ae05"
+     "0x611eead0",
+     "060000000400fc04f4781e61070000000400fb04f4781e610900000004008d04f4781e610800000004008e04f4781e61ffffffffffffffffffffffff"
     ],
     [
      0,
-     "0x611eead0",
-     "000000000400ae05"
+     "0x611ef828",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef85c",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef890",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef8c4",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef8f8",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef92c",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef960",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef994",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef9c8",
+     "09"
+    ],
+    [
+     0,
+     "0x611ef9fc",
+     "09"
+    ],
+    [
+     0,
+     "0x611efa30",
+     "09"
+    ],
+    [
+     0,
+     "0x611efa64",
+     "09"
+    ],
+    [
+     0,
+     "0x611efa98",
+     "09"
+    ],
+    [
+     0,
+     "0x611efacc",
+     "09"
+    ],
+    [
+     0,
+     "0x611efb00",
+     "09"
+    ],
+    [
+     0,
+     "0x611efb34",
+     "09"
     ],
     [
      0,
@@ -1026,23 +1091,8 @@
     ],
     [
      0,
-     "0x61231038",
-     "000000000000ae05"
-    ],
-    [
-     0,
      "0x612352f0",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x61238738",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x612472b4",
-     "000000000400ae05"
+     "060000000400fc048c512361070000000400fb048c5123610800000004008e048c5123610900000004008d048c512361ffffffffffffffffffffffffb452236109"
     ],
     [
      0,
@@ -1058,41 +1108,6 @@
      0,
      "0x61287aa4",
      "0400c60a"
-    ],
-    [
-     0,
-     "0x61291ef0",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x61291fac",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x61292a34",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x61292d54",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x61293074",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x61293258",
-     "000000000400ae05"
-    ],
-    [
-     0,
-     "0x612933e0",
-     "000000000400ae05"
     ],
     [
      0,
@@ -1173,6 +1188,151 @@
      0,
      "0x604db97c",
      "c06b0d60000000001e"
+    ]
+   ]
+  },
+  {
+   "id": "picture_mode_button",
+   "title": "Picture Mode on a custom button",
+   "description": "Adds 'Picture Mode' to the Button Function picker. Pressing the assigned button cycles i-Enhance -> Vivid -> Natural -> Muted -> Monochrome; Soft Focus, art filters and the rest of the stock Picture Mode list are skipped. The stock cycle table is kept unchanged so the camera keeps the button assignment.",
+   "camera": "Worked on the camera (test 1.755): cycles the five picture profiles, no reset.",
+   "requires": [],
+   "stock_sha256": "9cdf825a51cd1674a40b18675b34ae0449a16207a57fed37ad436463bb2b4dfa",
+   "edits": [
+    [
+     0,
+     "0x600d6100",
+     "050d2c006a0054005500e10c58001600cf0c140d150d160d170d0d0d2200aa029705180dd8015b0206000900b4013702500dc401fd0273040c0530049d00640d9006670df100240050071c01800c"
+    ],
+    [
+     0,
+     "0x600d6180",
+     "806fdd9cb9bd00a01883af07c9068000ca24af00c9068001ca1caf01c9068002ca14af02c9068003ca0caf03c9068007ca04800781806fddbcb8bd00a014dcede8be00"
+    ],
+    [
+     0,
+     "0x600d62e0",
+     "000001000200030004000500060007000900"
+    ],
+    [
+     0,
+     "0x600d6320",
+     "890c050d2c006a0054005500e10c58001600cf0c140d150d160d170d0d0d2200aa029705180dd8015b0206000900b4013702500dc401fd0273040c0530049d00640d9006670df100240050071c01800c"
+    ],
+    [
+     0,
+     "0x604db60c",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db620",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db634",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db648",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db65c",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db670",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db684",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db698",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db6ac",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db6c0",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db6d4",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db6e8",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db6fc",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db710",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db724",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db738",
+     "00610d60000000004e"
+    ],
+    [
+     0,
+     "0x604db74c",
+     "20630d600000000050"
+    ],
+    [
+     0,
+     "0x60f2350c",
+     "63"
+    ],
+    [
+     0,
+     "0x60f37e64",
+     "80610d"
+    ],
+    [
+     0,
+     "0x611d8a68",
+     "0400cb"
+    ],
+    [
+     0,
+     "0x61295f26",
+     "cb00"
+    ],
+    [
+     0,
+     "0x61296128",
+     "0400cb"
+    ],
+    [
+     0,
+     "0x612964a2",
+     "0b0b"
     ]
    ]
   },
