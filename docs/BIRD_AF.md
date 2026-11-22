@@ -4,6 +4,10 @@ Status: **research only, not implemented.** Rated **Unlikely** in `MOD_IDEAS.md`
 
 ## What the camera already has
 
+Note: `MODE_EXPOSE_BIRD_HUNT` / `MODE_CAMERA_BIRD_HUNT` exist in the setting-name
+table (block 2), but these are **scene modes** ("Bird Watching"/hunting scenes),
+not subject-detection AF. They are unrelated to `MODE_SUBJECT_DETECT`.
+
 The E-M1 Mark III has an "Intelligent Subject Detection" AF path that is a
 deep-learning pipeline, not a simple threshold:
 
