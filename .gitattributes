@@ -2,3 +2,4 @@
 * text=auto
 E139999_Focus_Stack.BIN filter=lfs diff=lfs merge=lfs -text
 E1399999_Focus_Stack.BIN filter=lfs diff=lfs merge=lfs -text
+E1399999_Mono_Slots.BIN filter=lfs diff=lfs merge=lfs -text
