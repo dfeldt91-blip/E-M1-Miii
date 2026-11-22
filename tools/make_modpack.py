@@ -51,10 +51,10 @@ MODS = [
      "Not tested on the camera yet.", []),
     ("picture_mode_button", "patch_picture_mode_button.py", [], "Picture Mode on a custom button",
      "Adds 'Picture Mode' to the Button Function picker. Pressing the assigned button cycles "
-     "i-Enhance -> Vivid -> Natural -> Muted -> Monochrome; Soft Focus, art filters and the rest of "
-     "the stock Picture Mode list are skipped. The stock cycle table is kept unchanged so the "
-     "camera keeps the button assignment.",
-     "Worked on the camera (test 1.755): cycles the five picture profiles, no reset.", []),
+     "i-Enhance -> Vivid -> Natural -> Muted -> Portrait -> Monochrome -> Custom; Soft Focus, art "
+     "filters and the rest of the stock Picture Mode list are skipped. The stock cycle table is "
+     "kept unchanged so the camera keeps the button assignment.",
+     "Five-profile version worked on the camera (test 1.755); Portrait/Custom expansion needs re-test.", []),
     ("hhrs_flash", "patch_hhrs_flash.py", [], "Flash in handheld High Res",
      "Allows the flash setting in handheld High Res Shot and offers both Fill In and Manual flash "
      "with every flash type (tripod and handheld).",

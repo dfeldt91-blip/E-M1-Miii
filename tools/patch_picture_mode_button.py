@@ -13,7 +13,7 @@ What is patched (runtime addresses):
 
   main block
     0x600d6100  new 39-entry Button Function validator list (stock 38 + 284)
-    0x600d6180  66-byte MN103 stub: get(0x6f) -> next index -> set(0x6f)
+    0x600d6180  83-byte MN103 stub: get(0x6f) -> next value -> set(0x6f)
     0x600d62e0  u16 cycle table, 0xffff terminated
     0x600d6320  new 40-entry validator list for the special button record
     0x604db608..0x604db734  16 full-button validator records -> new list, 76->78 bytes
@@ -30,17 +30,14 @@ The stub calls the stock setting API 0x60cb1b1e(sid) / 0x60cb1a73(sid, value)
 and tail-jumps to the stock action-99 return at 0x60cc4aab. The release jump
 table is left alone, so the normal button-release cleanup still runs.
 
-0x6f stores an INDEX into its 26-entry validator list at 0x604bc4f4. The first
-indexes map to these displayed modes (confirmed on camera):
-  0 i-Enhance, 1 Soft Focus, 2 Vivid, 3 Natural, 4 Muted, 5 Monochrome,
-  6 Custom, 7 Underwater, 8 Color Creator, 9 Art Filter, 10..25 more filters.
 The setter takes the DISPLAY VALUE directly (confirmed on camera), not a
 validator-list index. The wanted values are:
-  7 i-Enhance, 0 Vivid, 1 Natural, 2 Muted, 3 Monochrome.
+  7 i-Enhance, 0 Vivid, 1 Natural, 2 Muted, 5 Portrait, 3 Monochrome, 6 Custom.
 The cycle table is left BYTE-FOR-BYTE as the stock 9-value list, because the
 camera stores a parameter with the custom-button assignment and drops the
-function if the table changes. Instead the stub maps the five values itself:
-  7 -> 0 -> 1 -> 2 -> 3 -> 7.
+function if the table changes. Instead the stub maps the seven values itself:
+  7 -> 0 -> 1 -> 2 -> 5 -> 3 -> 6 -> 7.
+Soft Focus (9), art filters and the rest of the stock list are skipped.
 Use --all/--modes to change the table for a fresh assignment.
 
 Every byte the patch relies on is checked first. Requires no binutils: the
@@ -58,10 +55,10 @@ import olycompress  # noqa: E402
 BASE = 0x60021020
 BLOB_B, BLOB_B_OFF, BLOB_END = 0x60c6c000, 0xc4afe0, 0x612f1000
 
-# Flash padding. 0x600d6100..0x600d61cf and 0x600d62d0..0x600d6380 are unused
+# Flash padding. 0x600d6100..0x600d61ef and 0x600d62d0..0x600d6380 are unused
 # by the shipped mods (panorama occupies 0x600d6200..0x600d62dd).
 LIST_AT, STUB_AT, TABLE_AT, SPECIAL_AT = 0x600d6100, 0x600d6180, 0x600d62e0, 0x600d6320
-FREE = ((0x600d6100, 0x600d61d0), (0x600d62e0, 0x600d6380))
+FREE = ((0x600d6100, 0x600d61f0), (0x600d62e0, 0x600d6380))
 
 STOCK_FULL = [3333, 44, 106, 84, 85, 3297, 88, 22, 3279, 3348, 3349, 3350,
               3351, 3341, 34, 682, 1431, 3352, 472, 603, 6, 9, 436, 567,
@@ -91,7 +88,7 @@ DEFAULT_MODES = [0, 1, 2, 3, 4, 5, 6, 7, 9]  # unchanged; stub filters the cycle
 # mn10300-elf-as / -ld / -objcopy at STUB_AT. Registers a2/d2 are saved by the
 # CALL forms; d3 is scratch. The cycle table is deliberately NOT consulted: it
 # stays stock so the camera keeps the custom-button assignment. This stub maps
-# the five wanted values directly and treats anything else as a wrap to 0.
+# the seven wanted values directly and treats anything else as a wrap to 7.
 SRC = """mov 0x6f,d0
 call get,[d2,a2],24
 mov d0,d3
@@ -112,14 +109,24 @@ bra go
 L3:
 cmp 2,d3
 bne L4
-mov 3,d0
+mov 5,d0
 bra go
 L4:
-cmp 3,d3
+cmp 5,d3
 bne L5
-mov 7,d0
+mov 3,d0
 bra go
 L5:
+cmp 3,d3
+bne L6
+mov 6,d0
+bra go
+L6:
+cmp 6,d3
+bne L7
+mov 7,d0
+bra go
+L7:
 mov 7,d0
 go:
 mov d0,d1
@@ -127,9 +134,9 @@ mov 0x6f,d0
 call set,[d2,a2],20
 jmp back"""
 STUB = bytes.fromhex(
-    "806fdd9cb9bd00a01883af07c9068000ca24af00c9068001ca1caf01c9068002"
-    "ca14af02c9068003ca0caf03c9068007ca04800781806fddbcb8bd00a014"
-    "dcede8be00")
+    "806fdd9cb9bd00a01883af07c9068000ca34af00c9068001ca2caf01c9068002"
+    "ca24af02c9068005ca1caf05c9068003ca14af03c9068006ca0caf06c9068007"
+    "ca04800781806fddacb8bd00a014dcdde8be00")
 
 
 def off(a):

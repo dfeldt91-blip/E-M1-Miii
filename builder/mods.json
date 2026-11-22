@@ -1194,10 +1194,10 @@
   {
    "id": "picture_mode_button",
    "title": "Picture Mode on a custom button",
-   "description": "Adds 'Picture Mode' to the Button Function picker. Pressing the assigned button cycles i-Enhance -> Vivid -> Natural -> Muted -> Monochrome; Soft Focus, art filters and the rest of the stock Picture Mode list are skipped. The stock cycle table is kept unchanged so the camera keeps the button assignment.",
-   "camera": "Worked on the camera (test 1.755): cycles the five picture profiles, no reset.",
+   "description": "Adds 'Picture Mode' to the Button Function picker. Pressing the assigned button cycles i-Enhance -> Vivid -> Natural -> Muted -> Portrait -> Monochrome -> Custom; Soft Focus, art filters and the rest of the stock Picture Mode list are skipped. The stock cycle table is kept unchanged so the camera keeps the button assignment.",
+   "camera": "Five-profile version worked on the camera (test 1.755); Portrait/Custom expansion needs re-test.",
    "requires": [],
-   "stock_sha256": "9cdf825a51cd1674a40b18675b34ae0449a16207a57fed37ad436463bb2b4dfa",
+   "stock_sha256": "b72e70b3bc9d7d8136cc4425c4bc4ad90d796baed6899c37a5b3d065d7a4e362",
    "edits": [
     [
      0,
@@ -1207,7 +1207,7 @@
     [
      0,
      "0x600d6180",
-     "806fdd9cb9bd00a01883af07c9068000ca24af00c9068001ca1caf01c9068002ca14af02c9068003ca0caf03c9068007ca04800781806fddbcb8bd00a014dcede8be00"
+     "806fdd9cb9bd00a01883af07c9068000ca34af00c9068001ca2caf01c9068002ca24af02c9068005ca1caf05c9068003ca14af03c9068006ca0caf06c9068007ca04800781806fddacb8bd00a014dcdde8be00"
     ],
     [
      0,
