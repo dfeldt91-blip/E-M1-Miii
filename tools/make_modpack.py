@@ -37,9 +37,10 @@ MODS = [
      "Worked on the camera (1.5 build).", []),
     ("mono_slots", "patch_mono_slots.py", [], "Monochrome II picture profile",
      "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) "
-     "with its own settings, moved after Monotone in the Picture Mode list. Renames "
-     "'i-Enhance' to 'Monochrome II'.",
-     "EXPERIMENTAL, not camera-tested.", []),
+     "with its own settings, moved after Monotone in the Picture Mode menu lists. The "
+     "'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength "
+     "cell (Low/Standard/High) still appears, but has no effect on the monochrome profile.",
+     "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible.", []),
     ("arrow_keys", "patch_buttons.py", [], "More arrow-key functions",
      "The arrow keys can be assigned 25 functions for stills and 15 for movies.",
      "Not tested on the camera yet.", []),

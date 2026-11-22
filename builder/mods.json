@@ -884,8 +884,8 @@
   {
    "id": "mono_slots",
    "title": "Monochrome II picture profile",
-   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode list. Renames 'i-Enhance' to 'Monochrome II'.",
-   "camera": "EXPERIMENTAL, not camera-tested.",
+   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile.",
+   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible.",
    "requires": [],
    "stock_sha256": "6e791650ab095cfeda9deb8a1a2a4aa8bde911d092cde5fac2257768cb3855c1",
    "edits": [

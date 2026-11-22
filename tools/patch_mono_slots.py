@@ -62,7 +62,12 @@ def check(cond, msg):
 
 
 def patch_lang(blk1):
-    """Rename string 0x091 'i-Enhance' -> 'Monochrome II' and 0xca9 similarly."""
+    """Rename 0x091 and 0xca9, allocating UTF-16 strings in free padding.
+
+    Allocation is even-aligned and never reuses bytes written by an earlier
+    string, so it works when this mod is chained with other language mods.
+    It is also idempotent.
+    """
     d = bytearray(blk1)
     a, n = struct.unpack_from("<II", d, 16 * LANG_SECTION)
     o = a - B1_FLASH
@@ -70,40 +75,53 @@ def patch_lang(blk1):
     tab_end = LANG_TAB + 4 * LANG_COUNT
     t = sec.find("OlympusLanguage_enutft".encode("utf-16le"))
     check(t > tab_end, "language trailer not found")
-    free = t - tab_end
-    check(set(sec[tab_end:t]) == {0}, "padding after pointer table is not free")
 
-    # 0x091
-    p = struct.unpack_from("<I", sec, LANG_TAB + 4 * STR_IFINISH)[0]
-    s = p - LANG_RAM
-    e = s
-    while sec[e:e + 2] != b"\0\0":
-        e += 2
-    old_str = sec[s:e].decode("utf-16le")
-    check(old_str == "i-Enhance", "string 0x%03x is not 'i-Enhance' (got %r)" % (STR_IFINISH, old_str))
+    used = []
 
-    at = tab_end
-    raw = NEW_NAME.encode("utf-16le") + b"\0\0"
-    check(at + len(raw) + 2 <= t, "not enough free space")
-    sec[at:at + len(raw)] = raw
-    struct.pack_into("<I", sec, LANG_TAB + 4 * STR_IFINISH, LANG_RAM + at)
-    at += len(raw)
-    print("  language: string 0x%03x 'i-Enhance' -> '%s'" % (STR_IFINISH, NEW_NAME))
+    def bounds(sid):
+        p = struct.unpack_from("<I", sec, LANG_TAB + 4 * sid)[0]
+        s = p - LANG_RAM
+        check(0 <= s < len(sec), "string 0x%03x pointer out of range" % sid)
+        e = s
+        while e + 1 < len(sec) and sec[e:e + 2] != b"\0\0":
+            e += 2
+        check(e + 2 <= len(sec), "string 0x%03x is not terminated" % sid)
+        return s, e + 2
 
-    # 0xca9
-    p2 = struct.unpack_from("<I", sec, LANG_TAB + 4 * 0xca9)[0]
-    s2 = p2 - LANG_RAM
-    e2 = s2
-    while sec[e2:e2 + 2] != b"\0\0":
-        e2 += 2
-    old_str2 = sec[s2:e2].decode("utf-16le")
-    check(old_str2 == "@A089@i-Enhance", "string 0xca9 unexpected: %r" % old_str2)
-    raw2 = "@A089@Monochrome II".encode("utf-16le") + b"\0\0"
-    check(at + len(raw2) + 2 <= t, "not enough free space")
-    sec[at:at + len(raw2)] = raw2
-    struct.pack_into("<I", sec, LANG_TAB + 4 * 0xca9, LANG_RAM + at)
-    at += len(raw2)
-    print("  language: string 0xca9 '@A089@i-Enhance' -> '@A089@Monochrome II'")
+    def reserve(s, e):
+        for a0, b0 in used:
+            check(e <= a0 or s >= b0, "language string allocations overlap")
+        used.append((s, e))
+
+    def allocate(raw):
+        for at in range(tab_end + (tab_end & 1), t - len(raw) + 1, 2):
+            if any(at < b0 and a0 < at + len(raw) for a0, b0 in used):
+                continue
+            if all(b == 0 for b in sec[at:at + len(raw)]):
+                sec[at:at + len(raw)] = raw
+                reserve(at, at + len(raw))
+                return at
+        check(False, "not enough even-aligned free space for renamed string")
+
+    for sid, old, new in ((STR_IFINISH, "i-Enhance", NEW_NAME),
+                          (0xca9, "@A089@i-Enhance", "@A089@" + NEW_NAME)):
+        s, e = bounds(sid)
+        current = sec[s:e - 2].decode("utf-16le")
+        if current == new:
+            if s >= tab_end:
+                reserve(s, e)
+            print("  language: string 0x%03x already '%s', skipping" % (sid, new))
+            continue
+        check(current == old, "string 0x%03x is not %r (got %r)" % (sid, old, current))
+        at = allocate(new.encode("utf-16le") + b"\0\0")
+        struct.pack_into("<I", sec, LANG_TAB + 4 * sid, LANG_RAM + at)
+        print("  language: string 0x%03x %r -> %r" % (sid, old, new))
+
+    for sid, _old, new in ((STR_IFINISH, "i-Enhance", NEW_NAME),
+                           (0xca9, "@A089@i-Enhance", "@A089@" + NEW_NAME)):
+        s, e = bounds(sid)
+        check(sec[s:e - 2].decode("utf-16le") == new,
+              "renamed string 0x%03x did not round-trip" % sid)
 
     d[o:o + n] = sec
     return bytes(d)
