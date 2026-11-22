@@ -55,6 +55,11 @@ MODS = [
      "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the colour and tone, "
      "not the effect pass (no soft focus, frames or edges).",
      "Worked on the camera (1.5 build), colour only.", []),
+    ("hires_frame", "patch_hires_frame.py", [], "Frame art effect in High Res",
+     "Runs the art chain builder for High Res Shot photo jobs so the Frame art effect (with the "
+     "white-border masks from the White Frame mod) is blended into handheld High Res JPEGs. "
+     "Requires Art filters in High Res and White Frame. Experimental: may not work on all jobs.",
+     "Needs camera test (test 1.732).", ["hires_art", "white_frame"]),
     ("scp_menu", "patch_scp_menu.py", [], "SCP button cell opens the main menu",
      "The bottom-right cell of the Super Control Panel (Button Function) opens the main menu instead, "
      "like pressing MENU on the SCP.",

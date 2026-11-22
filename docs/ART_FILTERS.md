@@ -112,6 +112,15 @@ Camera 1.727: switch on (Adobe RGB) + Natural photo -> crash and reboot; switch 
 The art chain builder cannot take picture-mode jobs as they are (some art-only setup missing). Do not
 use 1.727 with the switch on. Next idea: a neutral art filter (Art Effect Frame works natively).
 
+## Frame in High Res (test 1.732)
+
+`patch_hires_frame.py`: while MODE_PIXSHIFT_SR (0x2f2) is on, chain dispatch (0x60381706) sends photo
+jobs to the art chain builder 0x60384438 instead of the picture-mode builder 0x60395eb9. With
+`patch_hires_art.py` (art filters selectable in High Res) and `patch_frame_white.py` (clean white
+border masks), an art-effect Frame selection should then get its mask stage blended into the High Res
+JPEG. High Res jobs may have the art-only setup that made picture-mode jobs crash in 1.727.
+Camera test pending.
+
 ## SCP grid cell shows AUTO for art values (tests 1.729, 1.730)
 
 Camera 1.729 (`--diag-cell`, stock Auto entry given the Pop Art I icon): Auto showed ART 1, the art

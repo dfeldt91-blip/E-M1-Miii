@@ -1297,6 +1297,29 @@
    ]
   },
   {
+   "id": "hires_frame",
+   "title": "Frame art effect in High Res",
+   "description": "Runs the art chain builder for High Res Shot photo jobs so the Frame art effect (with the white-border masks from the White Frame mod) is blended into handheld High Res JPEGs. Requires Art filters in High Res and White Frame. Experimental: may not work on all jobs.",
+   "camera": "Needs camera test (test 1.732).",
+   "requires": [
+    "hires_art",
+    "white_frame"
+   ],
+   "stock_sha256": "6df20dc94e09773256c97db1a1dc1e526cde8c3f8e4f32b8b911fc0b0f2ee516",
+   "edits": [
+    [
+     0,
+     "0x600df000",
+     "fa022c2ca00cc813fcccf2020000dd97b61e000004a001c907dcf5262a00dcf8262a00"
+    ],
+    [
+     0,
+     "0x60381706",
+     "dcfad8d5ffcbcbcb"
+    ]
+   ]
+  },
+  {
    "id": "scp_menu",
    "title": "SCP button cell opens the main menu",
    "description": "The bottom-right cell of the Super Control Panel (Button Function) opens the main menu instead, like pressing MENU on the SCP.",
