@@ -9,9 +9,8 @@ in this program: the mods are edit lists (builder/mods.json) applied to your own
   python3 builder/em1iii_builder.py --list             list the mods
   python3 builder/em1iii_builder.py --cli --mods panorama,hhrs_flash [--out DIR] [--version 1.601]
                                     [--stock FILE] [--frame-width 3] [--underwater-tint 0..4]
-                                    [--custom-looks ID,ID,ID,ID,ID,ID]   (see --looks) [--custom-looks-sd] [--owner-text "NAME PHONE"]
+                                    [--owner-text "NAME PHONE"]
                                     [--curve1 "0:30 128:128 255:235"] [--curve2 ...]   Gradation Custom1/2 curves (in:out, 0-255)
-                                    [--card-file CARD_DIR]   also write EM1MOD/LOOKS.BIN with those looks
                                                        no window ('--mods all' / '--mods none')
 
 Needs Python 3.8+ and the lz4 package (pip install lz4). The window needs tkinter.
@@ -29,7 +28,6 @@ HERE = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.abspath(__file_
 sys.path.insert(0, os.path.join(HERE, "..", "tools"))
 
 APP = "E-M1 Mark III mod builder"
-CADUCEUS_URL = "https://github.com/cakelesscoder/caduceus-ep7"
 PACK = os.path.join(HERE, "mods.json")
 DATA_DIR = os.path.join(os.path.expanduser("~"), ".em1iii-mod-builder")
 SETTINGS = os.path.join(DATA_DIR, "settings.json")
@@ -118,17 +116,6 @@ def do_build(stock, pack, selected, version_text, out_dir, log, options=None):
     return dst
 
 
-def write_card_file(root, keys, log):
-    """EM1MOD/LOOKS.BIN under ROOT (the card) with six looks (Film looks in Custom, SD option)."""
-    import patch_looks
-    d = os.path.join(root, "EM1MOD")
-    os.makedirs(d, exist_ok=True)
-    with open(os.path.join(d, "LOOKS.BIN"), "wb") as fh:
-        fh.write(patch_looks.make_looks_bin(keys))
-    log("Wrote %s: %s" % (os.path.join(d, "LOOKS.BIN"),
-                          ", ".join("Look %d = %s" % (i + 1, patch_looks.LOOKS[k]["name"]) for i, k in enumerate(keys))))
-
-
 # ---------------------------------------------------------------- command line
 
 def cli(argv):
@@ -139,12 +126,6 @@ def cli(argv):
         return 1
     pack = modcore.load_pack(PACK)
     ids = [m["id"] for m in pack["mods"]]
-    if "--looks" in argv:
-        for m in pack["mods"]:
-            if m["id"] == "custom_looks":
-                for k, name in m["options"]["look1"]["choices"]:
-                    print("%-12s %s" % (k, name))
-        return 0
     if "--list" in argv:
         for m in pack["mods"]:
             req = ("  needs: " + ", ".join(m["requires"])) if m["requires"] else ""
@@ -178,23 +159,11 @@ def cli(argv):
             options["white_frame"] = {"width_pct": float(arg("--frame-width"))}
         if arg("--underwater-tint"):
             options["underwater_mono"] = {"tint": int(arg("--underwater-tint"))}
-        if arg("--custom-looks"):
-            ks = arg("--custom-looks").split(",")
-            if len(ks) != 6:
-                print("--custom-looks needs six look ids (see --looks)")
-                return 1
-            options["custom_looks"] = {"look%d" % (i + 1): k for i, k in enumerate(ks)}
         if arg("--owner-text"):
             options["owner_title"] = {"text": arg("--owner-text")}
         for i in (1, 2):
             if arg("--curve%d" % i):
                 options.setdefault("art_gradation", {})["curve%d" % i] = arg("--curve%d" % i)
-        if "--custom-looks-sd" in argv:
-            options.setdefault("custom_looks", {})["sd"] = "on"
-        if arg("--card-file"):
-            import patch_looks
-            ks = arg("--custom-looks", ",".join(patch_looks.DEFAULT6)).split(",")
-            write_card_file(arg("--card-file"), ks, print)
         do_build(stock, pack, selected, version, arg("--out", os.getcwd()), print, options)
     except (modcore.BuildError, OSError) as e:
         print("error:", e)
@@ -335,13 +304,6 @@ def gui():
     ttk.Label(outer, foreground="#a33", wraplength=720, text=(
         "Unofficial. Builds a modified firmware from OM's official 1.6 file. Flashing it is at your own "
         "risk; mods marked 'not tested' have never run on a camera.")).pack(anchor="w", pady=(2, 0))
-    credit = ttk.Frame(outer)
-    credit.pack(anchor="w", pady=(0, 8))
-    ttk.Label(credit, text="Film looks and colour-engine research: Caduceus by cakelesscoder (Apache-2.0)  ").pack(side="left")
-    link = ttk.Label(credit, text=CADUCEUS_URL, foreground="#0645ad", cursor="hand2")
-    link.pack(side="left")
-    link.bind("<Button-1>", lambda e: __import__("webbrowser").open(CADUCEUS_URL))
-
     # 1. firmware
     f1 = ttk.LabelFrame(outer, text="1. Official firmware 1.6", padding=8)
     f1.pack(fill="x")
@@ -440,8 +402,6 @@ def gui():
     ttk.Button(f3, text="Browse...", command=lambda: out.set(filedialog.askdirectory() or out.get())).grid(row=1, column=3, padx=6)
     b_build = ttk.Button(f3, text="Build E1399999.BIN")
     b_build.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
-    b_card = ttk.Button(f3, text="Write card file (looks)...")
-    b_card.grid(row=3, column=0, columnspan=3, sticky="w", pady=(4, 0))
     log = tk.Text(outer, height=7, wrap="word")
     log.pack(fill="both", pady=(8, 0))
 
@@ -515,24 +475,6 @@ def gui():
         save_settings(s)
         work(lambda: ("built", do_build(state["stock"], pack, sel, VERSION, out.get(), say, options)))
 
-    def card_file():
-        keys = []
-        for i in range(1, 7):
-            var, keymap = opt_vars[("custom_looks", "look%d" % i)]
-            keys.append(keymap[var.get()])
-        root_dir = filedialog.askdirectory(title="SD card (top folder, next to DCIM)")
-        if not root_dir:
-            return
-        try:
-            write_card_file(root_dir, keys, say)
-            messagebox.showinfo(APP, "Wrote EM1MOD/LOOKS.BIN with the six looks chosen under 'Film looks in Custom'.\n\n"
-                                "The camera reads it at the first half-press after switching on (firmware built "
-                                "with 'Load looks from SD card'), card in slot 1. Custom's list shows Look 1-6 in "
-                                "the order of the six slots.")
-        except Exception as e:  # noqa: BLE001
-            messagebox.showerror(APP, str(e))
-
-    b_card.config(command=card_file)
     b_dl.config(command=lambda: work(download))
     b_pick.config(command=pick)
     b_build.config(command=build)
@@ -582,7 +524,7 @@ def main(argv):
     if "--help" in argv or "-h" in argv:
         print(__doc__)
         return 0
-    if "--cli" in argv or "--list" in argv or "--looks" in argv:
+    if "--cli" in argv or "--list" in argv:
         return cli(argv)
     try:
         import tkinter  # noqa: F401

@@ -24,20 +24,15 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | Sharpness as a linear scale (−2 = off … +2 = stock +2) | `sharp_scale` |
 | Custom Modes C1–C4 save and open video | `cmode_video` |
 | Underscore `_` in Edit Filename | `filename_underscore` |
-| Frame art effect: plain white border, also in Panorama | `white_frame`, `white_frame_panorama` |
+| Frame art effect: plain white border (also in Panorama) | `white_frame` |
 | XPAN icon for Panorama on the SCP | `xpan_icon` |
 | Underwater picture mode in black and white | `underwater_mono` |
-| Six film looks in Custom, picked in the app (Caduceus recipes) | `custom_looks` |
 | ISO-Auto down to L64 | `iso_auto_low` |
 | Movie recording limit 9 hours | `rec_limit` |
 | Owner name and phone in the main menu | `owner_title` |
 | Art filter tone curves as Gradation options (19 curves; SCP grid cell reads AUTO) | `art_gradation` |
 
-## Built, not yet camera-tested
-- **Looks loaded from the SD card** (`custom_looks` → "Load looks from SD card"; test firmware 1.696). On the first half-press, the camera reads `EM1MOD\LOOKS.BIN`, so you can change the six looks without reflashing.
-
 ## Tried and dropped
-- **All 31 looks in Custom's list.** Every entry past the sixth restarts the camera.
 - **Startup text.** Dropped by you, because it would slow startup.
 - **MENU as an assignable button.** It didn't work.
 - **Bleach Bypass II without its softening, or its colour on Bleach I** (1.720, 1.721, 1.734–1.738). No change, or a crash; the look and the softness come from its own photo step. Tools removed.

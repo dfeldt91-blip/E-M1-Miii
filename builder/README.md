@@ -93,10 +93,8 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `iso_auto_low` | ISO-Auto goes down to ISO 64 (in P/A/S with Default 200); Default 250+ still the floor | 1.6, 1.706-1.709 |
 | `rec_limit` | Movie recording limit 29 min / 2 h raised to 9 h | 1.6, 1.709 |
 | `owner_title` | The main menu's "Shooting Menu 1" title shows your own text (name, phone; up to 36 characters, no `@`) | worked (1.6, 1.701) |
-| `white_frame` | Frame art effect as a plain white border; width setting (% of the short side) | worked (1.6, 1.664) |
-| `white_frame_panorama` | White frame in Panorama (needs `panorama` and `white_frame`) | worked (1.6, 1.665) |
+| `white_frame` | Frame art effect as a plain white border; width setting (% of the short side); also in Panorama when that mod is enabled | worked (1.6, 1.664/1.665) |
 | `underwater_mono` | Underwater picture mode in black and white; tint setting | worked (1.6, 1.674) |
-| `custom_looks` | Custom = six Caduceus film looks (pick them here); Custom's base-mode list on the camera shows the look names | worked (1.6, 1.691); option *Load looks from SD card*: Custom shows Look 1-6, first half-press reads `EM1MOD/LOOKS.BIN` (button *Write card file*) - not camera-tested (1.696) |
 | `xpan_icon` | "XPAN" icons for Panorama on the SCP (needs `panorama`) | 1.666: XPAN in the option lists; main SCP cell shows a 17:9 label |
 
 All mods were developed and tested on a 1.5-based file. For 1.6 each one was checked byte by byte:
@@ -114,13 +112,6 @@ the same in 1.5 and 1.6. The exception is Panorama, where four addresses moved i
 4. Delete `DCOLYMP/E1399999.BIN` from the card afterwards.
 
 To go back to stock, build with no mods.
-
-## Credits
-
-The film looks in Custom (`custom_looks`) and the colour-engine research behind them come from
-**Caduceus** by cakelesscoder, Apache License 2.0: https://github.com/cakelesscoder/caduceus-ep7
-(recipes from its `sim/recipes/library_v2.json` and `library_v3.json`; the hue/lightness method from
-fishcu's PEN-F HSL work, https://github.com/fishcu/oly_fw_analysis, which Caduceus builds on).
 
 ## For developers
 

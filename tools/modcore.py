@@ -178,15 +178,15 @@ def load_pack(path):
 # Mods whose bytes are made at build time (images drawn to a chosen size). Each gets the expanded main
 # image, the plain blocks and the option values, and edits them in place.
 
-def _frame(img, plains, opts, log, panorama):
+def _frame(img, plains, opts, log, selected=()):
+    """White Frame border, including Panorama when that mod is enabled."""
     import patch_frame_white as fw
     fw.LOG = log
     pct = float(opts.get("width_pct", 3))
     check(0.5 <= pct <= 20, "frame width must be between 0.5 and 20 %")
     try:
-        if not panorama:
-            plains[2][:] = fw.patch_images(bytes(plains[2]), pct, "l0")
-        else:
+        plains[2][:] = fw.patch_images(bytes(plains[2]), pct, "l0")
+        if "panorama" in selected:
             plains[2][:], ids = fw.panorama_images(bytes(plains[2]), pct, "l0")
             m = bytearray(img[:fw.ROWS + 12 * 11 - BASE])
             m = fw.panorama_row(bytes(m), ids)
@@ -196,7 +196,7 @@ def _frame(img, plains, opts, log, panorama):
         raise BuildError(str(e))
 
 
-def _xpan(img, plains, opts, log):
+def _xpan(img, plains, opts, log, selected=()):
     import patch_xpan_icon as xi
     xi.LOG = log
     try:
@@ -205,7 +205,7 @@ def _xpan(img, plains, opts, log):
         raise BuildError(str(e))
 
 
-def _uw_mono(img, plains, opts, log):
+def _uw_mono(img, plains, opts, log, selected=()):
     import patch_underwater_mono as um
     tint = int(round(float(opts.get("tint", 0))))
     try:
@@ -215,21 +215,7 @@ def _uw_mono(img, plains, opts, log):
     log("    Underwater tint: %s" % um.TINT_NAMES[tint])
 
 
-def _custom_looks(img, plains, opts, log):
-    import patch_looks as pl
-    keys = [str(opts.get("look%d" % i, pl.DEFAULT6[i - 1])) for i in range(1, 7)]
-    try:
-        sd = str(opts.get("sd", "off")) == "on"
-        names = pl.apply6(img, BASE, keys, sd=sd)
-    except SystemExit as e:
-        raise BuildError(str(e))
-    if sd:
-        log("    Custom shows Look 1..6; built-in: " + ", ".join(names) + "; the card file EM1MOD/LOOKS.BIN replaces them")
-    else:
-        log("    Custom looks: " + ", ".join("%s = %s" % (s, n) for s, n in zip(pl.MENU_NAMES, names)))
-
-
-def _owner_title(img, plains, opts, log):
+def _owner_title(img, plains, opts, log, selected=()):
     import patch_owner_title as ot
     text = str(opts.get("text", "")).strip()
     check(text, "type the owner text (name and phone) for the Owner title mod")
@@ -299,7 +285,7 @@ def curve_from_points(points):
     return out
 
 
-def _user_curves(img, plains, opts, log):
+def _user_curves(img, plains, opts, log, selected=()):
     ident = bytes(img[IDENTITY_CURVE - BASE:IDENTITY_CURVE - BASE + 512])
     for i in range(USER_SLOTS):
         o = USER_CURVES + 512 * i - BASE
@@ -316,11 +302,9 @@ def _user_curves(img, plains, opts, log):
 GENERATORS = {
     "art_gradation": _user_curves,
     "owner_title": _owner_title,
-    "custom_looks": _custom_looks,
     "underwater_mono": _uw_mono,
     "xpan_icon": _xpan,
-    "white_frame": lambda img, plains, opts, log: _frame(img, plains, opts, log, False),
-    "white_frame_panorama": lambda img, plains, opts, log: _frame(img, plains, opts, log, True),
+    "white_frame": lambda img, plains, opts, log, selected=(): _frame(img, plains, opts, log, selected),
 }
 
 
@@ -394,7 +378,7 @@ def build(stock, pack, selected, version, log=print, options=None):
             opts = {k: v["default"] for k, v in m["options"].items()}
             opts.update(options.get(m["id"], {}))
             log("  + %s %s" % (m["title"], " ".join("%s=%s" % kv for kv in sorted(opts.items()))))
-            GENERATORS[m["generator"]](img, plains, opts, log)
+            GENERATORS[m["generator"]](img, plains, opts, log, selected)
     out_main = rebuild_main(main, img)
     out = bytearray()
     for i, b in enumerate(blocks):

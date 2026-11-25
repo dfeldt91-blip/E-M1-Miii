@@ -99,38 +99,16 @@ MODS = [
 
 # Generated at build time by the app (tools/modcore.py GENERATORS): id, title, description, status,
 # requires, options {name: {label, default, min, max}}
-def _look_options():
-    import patch_looks as pl
-    choices = [[k, v["name"]] for k, v in pl.LOOKS.items() if k != "portra400"]
-    o = {"look%d" % (i + 1): {"label": "%s slot" % pl.MENU_NAMES[i], "default": pl.DEFAULT6[i], "choices": choices}
-         for i in range(6)}
-    o["sd"] = {"label": "Load looks from SD card (not camera-tested)", "default": "off",
-               "choices": [["off", "No"], ["on", "Yes: Look 1-6, card file"]]}
-    return o
-
-
 GENERATED = [
-    ("white_frame", "Frame art effect: plain white border",
-     "The Frame art effect becomes a clean white border instead of the grungy film edge.",
-     "Worked on the camera (1.6 build 1.664).", [],
+    ("white_frame", "Frame art effect: plain white border (also in Panorama)",
+     "The Frame art effect becomes a clean white border instead of the grungy film edge. When the Panorama "
+     "mod is enabled, the white border is added there too.",
+     "Worked on the camera (1.6 builds 1.664 white border, 1.665 Panorama).", [],
      {"width_pct": {"label": "Border width (% of the short side)", "default": 3, "min": 0.5, "max": 20}}),
-    ("white_frame_panorama", "White frame in Panorama",
-     "Adds the white-border Frame masks for the Panorama aspect (stock has none there: the camera froze).",
-     "Worked on the camera (1.6 build 1.665).", ["panorama", "white_frame"], {}),
     ("xpan_icon", "XPAN icon for Panorama on the SCP",
      "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value "
      "cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
      "Camera 1.666: XPAN in the SCP option lists; the main SCP cell shows a 17:9 label.", ["panorama"], {}),
-    ("custom_looks", "Film looks in Custom (Caduceus recipes)",
-     "Custom becomes a film-look mode: hue, saturation and lightness per colour from Caduceus's film "
-     "recipes (31 looks). Pick six here; on the camera choose between them in Picture Mode > Custom > "
-     "first item, whose list shows the look names. Other picture modes and menus are unchanged. "
-     "Custom's own base-mode look (Vivid, Natural...) is replaced; tone, grain and WB shift of the "
-     "recipes are not applied yet. With 'Load looks from SD card', Custom's list shows Look 1-6 and, at the "
-     "first half-press after switching on, the camera reads EM1MOD/LOOKS.BIN from the card in slot 1 "
-     "(button 'Write card file' below); without the file it uses the six looks picked here. "
-     "Looks: Caduceus by cakelesscoder (Apache-2.0).",
-     "Worked on the camera (1.6 build 1.691).", [], _look_options()),
     ("owner_title", "Owner name and phone in the main menu",
      "The 'Shooting Menu 1' title at the top of the main menu shows your text instead, e.g. your name "
      "and phone number, so a lost or stolen camera can be traced back to you. Up to 36 characters; "
