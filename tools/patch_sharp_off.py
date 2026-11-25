@@ -18,6 +18,12 @@ Patch (normal path only; Flat/Log unchanged):
   replaced instructions and jmp 0x603daff3.
 So +2 = stock +2 (100 %), +1 75 %, 0 50 %, -1 25 %, -2 0 (no sharpening, a gain stock firmware
 also uses for some art filters). Settings, menus and EXIF keep the -2..+2 values.
+
+The special-job early-out at 0x603da879 jumps straight to END with d1 = 0, without ever
+setting (48,SP) (HDR takes this path after the shutter release). The old stub dereferenced
+that uninitialised slot on every Sharpness value, so the camera rebooted. The stub now
+returns immediately when d1 == 0: there is no gain to scale, so it never reads (48,SP)
+on the early-out path.
 """
 import hashlib
 import os
@@ -32,7 +38,9 @@ LOAD, LOAD_STOCK = 0x603daf60, bytes.fromhex("fa48030712")      # movbu (1795,a0
 END, END_STOCK, BACK = 0x603dafee, bytes.fromhex("5c2cf8b837"), 0x603daff3
 FLAT_STOCK = (0x603daf3b, bytes.fromhex("5c3070fac8d007c808fac8d107"))
 STUB = 0x600d6a40
-SRC = """mov (48,sp),a0
+SRC = """cmp 0,d1
+beq 9f
+mov (48,sp),a0
 mov (a0),d0
 cmp 0x7d0,d0
 beq 9f

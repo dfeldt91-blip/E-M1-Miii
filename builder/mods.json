@@ -8,9 +8,9 @@
  "mods": [
   {
    "id": "panorama",
-   "title": "Panorama aspect (65:24)",
-   "description": "Replaces the 7:6 aspect with 65:24 'Panorama': menu, live-view frame, AF areas, ORF frame.",
-   "camera": "Worked on the camera (1.5 build).",
+   "title": "XPAN Aspect (65:24)",
+   "description": "Adds a Panorama aspect",
+   "camera": "",
    "requires": [],
    "stock_sha256": "7efa63875af82282c933f40d14542900ada0240a02dae20dcfec2f3227d3620c",
    "edits": [
@@ -773,9 +773,9 @@
   },
   {
    "id": "stack_any_lens",
-   "title": "Focus stacking with any lens",
-   "description": "Removes the lens check for in-camera focus stacking (the change in E1399999_Focus_Stack.BIN).",
-   "camera": "Worked on the camera (1.5 build).",
+   "title": "In-Camera Focus Stacking",
+   "description": "Allows in-camera focus stacking with all AF lenses",
+   "camera": "",
    "requires": [],
    "stock_sha256": "f385fb7d3be2b86df88b6d0235a13a02ebb171a7a7fcdbd130155710ebcf8db9",
    "edits": [
@@ -788,9 +788,9 @@
   },
   {
    "id": "keyline_mono",
-   "title": "Key Line II in black and white",
-   "description": "Art filter Key Line II gets a grey (monochrome) toning instead of colour.",
-   "camera": "Worked on the camera (1.5 build).",
+   "title": "Monochrome Key Line Art Filter",
+   "description": "Changes the Key Line II art filter from color to monochrome",
+   "camera": "",
    "requires": [],
    "stock_sha256": "7650bb6e7d76092c47ad800a7ef2148b114ac87edeb57dd63abe7461b1e0c86d",
    "edits": [
@@ -803,9 +803,9 @@
   },
   {
    "id": "mono_slots",
-   "title": "Monochrome II picture profile",
-   "description": "i-Finish becomes 'Monochrome II': a monochrome picture profile (Monotone engine) with its own settings, moved after Monotone in the Picture Mode menu lists. The 'i-Enhance' menu and SCP cell labels become 'Monochrome II'. The i-Enhance effect-strength cell (Low/Standard/High) still appears, but has no effect on the monochrome profile. The art-filter Star Light Effect is deleted from the Add Effects pickers and validators (no Off placeholder is left), and the two Shade Effect options are hidden, because they have caused camera problems. Star Light is also disabled at runtime: both image-processing snapshot builders map Add Effect value 5 to Off, so a saved selection cannot make the effect run.",
-   "camera": "Profile and labels worked on the camera (test 1.7.7.8); effect-strength cell still visible. Star Light deletion/Shade hiding and the runtime Star Light disable need camera re-test.",
+   "title": "Monochrome II Picture Profile",
+   "description": "Changes i-Finish into a second Monochrome Picture Profile. iFinish setting in the SCP panel is non-functional by design",
+   "camera": "",
    "requires": [],
    "stock_sha256": "ca76c957264eb26c6979e28eaecadcb066ed7f4cd6c330ae43de06f431fb7387",
    "edits": [
@@ -1053,9 +1053,9 @@
   },
   {
    "id": "arrow_keys",
-   "title": "More arrow-key functions",
-   "description": "The arrow keys can be assigned 25 functions for stills and 15 for movies.",
-   "camera": "Not tested on the camera yet.",
+   "title": "Increaed Custom Button Options for Arrow Keys",
+   "description": "The arrow keys can be assigned 25 functions for stills and 15 for movies",
+   "camera": "",
    "requires": [],
    "stock_sha256": "90ac903595fb89dbc620b06980ce3e633b0ce3c95d5b65e44a829dbd46e50901",
    "edits": [
@@ -1113,9 +1113,9 @@
   },
   {
    "id": "picture_mode_button",
-   "title": "Picture Mode on a custom button",
-   "description": "Adds 'Picture Mode' to the Button Function picker. Pressing the assigned button cycles i-Enhance -> Vivid -> Natural -> Muted -> Portrait -> Monochrome -> Custom; Soft Focus, art filters and the rest of the stock Picture Mode list are skipped. The stock cycle table is kept unchanged so the camera keeps the button assignment.",
-   "camera": "Five-profile version worked on the camera (test 1.755); Portrait/Custom expansion needs re-test.",
+   "title": "Picture Mode on Custom Button",
+   "description": "Adds the option for Picture Mode to the Custom Button Function picker. The assigned button cycles through Art Filters.",
+   "camera": "",
    "requires": [],
    "stock_sha256": "b72e70b3bc9d7d8136cc4425c4bc4ad90d796baed6899c37a5b3d065d7a4e362",
    "edits": [
@@ -1258,9 +1258,9 @@
   },
   {
    "id": "hhrs_flash",
-   "title": "Flash in handheld High Res",
-   "description": "Allows the flash setting in handheld High Res Shot and offers both Fill In and Manual flash with every flash type (tripod and handheld).",
-   "camera": "Flash worked on the camera (1.5 build); Fill In + Manual for all flash types: test 1.745.",
+   "title": "Flash in Handheld High Resolution Mod",
+   "description": "Allows both Fill and Manual Flash options with Handheld High Resolution Mode. Flash must be TTL for either. Fully Manual Flahes do not work.",
+   "camera": "",
    "requires": [],
    "stock_sha256": "b86c54274f1e701e6fa4998a138b1e383b4f3e7ba62e321bd889e79cba8eecbf",
    "edits": [
@@ -1453,9 +1453,9 @@
   },
   {
    "id": "hires_art",
-   "title": "Art filters in High Res",
-   "description": "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the filter's colour and tone, but High Res Shot has no art-effect pass.",
-   "camera": "Worked on the camera (1.5 build), colour only.",
+   "title": "Art filters in High Resolution Mode",
+   "description": "Allows art filters to be used with High Resolution Mode. The JPEG gets the filter's color and tone, but art effects such as soft focus and frame do not function (yet)",
+   "camera": "",
    "requires": [],
    "stock_sha256": "a1341f9539adbaf16144d180a6aaf611191a182e69bd8fab527af8c04903f6fa",
    "edits": [
@@ -1473,9 +1473,9 @@
   },
   {
    "id": "scp_menu",
-   "title": "SCP button cell opens the main menu",
+   "title": "SCP Main Menu",
    "description": "The bottom-right cell of the Super Control Panel (Button Function) opens the main menu instead, like pressing MENU on the SCP.",
-   "camera": "Worked on the camera (1.6 build 1.679, menu and title).",
+   "camera": "",
    "requires": [],
    "stock_sha256": "9126c6e3650cf1864c90ba817cb0a2d93c6b9dae4fddc4eb68953eec5336d58d",
    "edits": [
@@ -1493,16 +1493,16 @@
   },
   {
    "id": "sharp_scale",
-   "title": "Sharpness -2 = off (linear scale)",
-   "description": "Sharpness becomes a straight scale of the stock +2 strength: -2 off, -1 25 %, 0 50 %, +1 75 %, +2 100 %. Stock -2 still sharpens. Flat and Log video keep their stock sharpening.",
-   "camera": "Worked on the camera (1.6 build 1.680).",
+   "title": "Linear Sharpness",
+   "description": "Sharpness becomes a straight scale from 0-100%: -2 OFF, -1 25%, 0 50%, +1 75%, +2 100%. HDR reboot fixed and camera-tested.",
+   "camera": "",
    "requires": [],
-   "stock_sha256": "9b3fff0d0cd1ee29c95a8fe72d0bb9effee3f3fd977e54d634005d0d903fc176",
+   "stock_sha256": "0511d882f48e4a6c80f12efdba91e4e99ef6f362ab7db4e7eaca6d7b3dc787ff",
    "edits": [
     [
      0,
      "0x600d6a40",
-     "5c3070fac8d007c821fac8d107c81b5c0cfa400307102802a000c20300a004c3048004f251f8c5025c2cf8b837dc86453000"
+     "a500c82a5c3070fac8d007c821fac8d107c81b5c0cfa400307102802a000c20300a004c3048004f251f8c5025c2cf8b837dc82453000"
     ],
     [
      0,
@@ -1518,9 +1518,9 @@
   },
   {
    "id": "cmode_video",
-   "title": "Custom Modes C1-C4 in video",
-   "description": "Assign to Custom Mode also works with the dial on movie. A C slot saved there opens in video mode with its movie settings; a slot saved in a photo mode stays photo.",
-   "camera": "Worked on the camera (1.6 build 1.681).",
+   "title": "Video Modes in C1-C4 Custom Dial",
+   "description": "Video Modes can now be set to C1-C4 Custom Dials",
+   "camera": "",
    "requires": [],
    "stock_sha256": "289346093f880be275b957284fc44fd6fe66cf2a722f39c213d94b9f7e257bc5",
    "edits": [
@@ -1538,9 +1538,9 @@
   },
   {
    "id": "filename_underscore",
-   "title": "Underscore in Edit Filename",
-   "description": "Edit Filename also offers '_' (after Z), for sRGB and Adobe RGB, so a file name can start with an underscore. Note: by the DCF standard a leading '_' marks Adobe RGB files.",
-   "camera": "Worked on the camera (1.6 build 1.700).",
+   "title": "Underscore (_) in Custom Filename",
+   "description": "Edit Filename also offers '_' (after Z), for sRGB and Adobe RGB, so a file name can now include an underscore.",
+   "camera": "",
    "requires": [],
    "stock_sha256": "207b92c5d7c4ddf89ba1490f15e2748987dce1e48dcadfbd79d627ca3a586cad",
    "edits": [
@@ -1613,9 +1613,9 @@
   },
   {
    "id": "iso_auto_low",
-   "title": "ISO-Auto down to L64",
-   "description": "ISO-Auto can go down to ISO 64 instead of stopping at 200. In M it always can; in P, A and S set ISO-Auto Default to 200 for no floor (Default 250 or higher still works as the floor). Upper Limit and the menus are unchanged.",
-   "camera": "Camera: M down to 64 (1.706); P/A/S version in 1.708/1.709.",
+   "title": "AUTO ISO Down to L64",
+   "description": "ISO-Auto can go down to ISO 64 instead of 200. In M it always goes to ISO 64; in P, A and S set ISO-Auto Default to 200 for no floor.",
+   "camera": "",
    "requires": [],
    "stock_sha256": "2b94c13415229195a097acc4b7ed78942ec35852def4a0efae57acda499747d6",
    "edits": [
@@ -1653,9 +1653,9 @@
   },
   {
    "id": "rec_limit",
-   "title": "Movie recording limit 9 hours",
-   "description": "Raises the 29-minute (and 2-hour) movie recording limit to 9 hours. The camera still starts a new file at the file-size limit; card space, battery and the heat cut-out still stop recording. Same change as Caduceus' camera-tested E-P7 patch.",
-   "camera": "Built into test 1.709.",
+   "title": "Video Recording Limit Set to 9 Hours",
+   "description": "Raises the 29-minute video recording limit to 9 hours. The camera still starts a new file at the file-size limit.",
+   "camera": "",
    "requires": [],
    "stock_sha256": "154f16b6967b2c820543e861a807a2baf17c9087ebaecc783fe0572735c45212",
    "edits": [
@@ -1678,9 +1678,9 @@
   },
   {
    "id": "art_gradation",
-   "title": "More tone curves in Gradation",
-   "description": "Gradation (every picture mode, menu and Super Control Panel) gets 19 more curves after Low Key, from washed out to contrasty: Faded Matte, Washed Out, Soft Matte, Airy Pastel, Low Con Film, Faded Blacks, Cine Rolloff, Matte S Curve, Neutral Soft, Bright Open, Soft S Curve, Film S Curve, Crisp, Dark Moody, Punchy S Curve, Slide Film, Hard S Curve, Crushed Silver, Graphic (names in English menus). Highlight & Shadow Control applies on top. Two more options, Custom1 and Custom2, take your own curves: draw them with 'Edit curve' (empty = no change). The small Gradation cell in the SCP grid shows AUTO for all the new options; Contrast has no effect with them.",
-   "camera": "Art curve version worked on the camera (1.719 / 1.728); user slots 1.740; designed set: test 1.741.",
+   "title": "Extra Tone Curves in Gradation",
+   "description": "From washed out to contrasty: Faded Matte, Washed Out, Soft Matte, Airy Pastel, Low Con Film, Faded Blacks, Cine Rolloff, Matte S Curve, Neutral Soft, Bright Open, Soft S Curve, Film S Curve, Crisp, Dark Moody, Punchy S Curve, Slide Film, Hard S Curve, Crushed Silver, Graphic. Highlight, Midtones & Shadow Control applies on top. Custom1 and Custom2 allow you to design your own custom curves in the app. Contrast Setting has no effect.",
+   "camera": "",
    "requires": [],
    "stock_sha256": "81312a78ebc454272f1f163216a993bb26f9de334f03fdc6f22cc35a6daf0021",
    "edits": [
@@ -2093,13 +2093,13 @@
    "generator": "art_gradation",
    "options": {
     "curve1": {
-     "label": "Custom1 curve (in:out points, 0-255)",
+     "label": "Custom Curve 1 (in:out points, 0-255)",
      "default": "",
      "text": true,
      "curve": true
     },
     "curve2": {
-     "label": "Custom2 curve (in:out points, 0-255)",
+     "label": "Custom Curve 2 (in:out points, 0-255)",
      "default": "",
      "text": true,
      "curve": true
@@ -2108,9 +2108,9 @@
   },
   {
    "id": "white_frame",
-   "title": "Frame art effect: plain white border (also in Panorama)",
-   "description": "The Frame art effect becomes a clean white border instead of the grungy film edge. When the Panorama mod is enabled, the white border is added there too.",
-   "camera": "Worked on the camera (1.6 builds 1.664 white border, 1.665 Panorama).",
+   "title": "Custom White Border Art Effect",
+   "description": "The frame art effect becomes a clean white border instead of the grungy film edge. The size can be set in the app.",
+   "camera": "",
    "requires": [],
    "generator": "white_frame",
    "options": {
@@ -2125,8 +2125,8 @@
   {
    "id": "xpan_icon",
    "title": "XPAN icon for Panorama on the SCP",
-   "description": "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
-   "camera": "Camera 1.666: XPAN in the SCP option lists; the main SCP cell shows a 17:9 label.",
+   "description": "The XPAN Aspect gets its own \"XPAN\" icons in the Super Control Panel",
+   "camera": "",
    "requires": [
     "panorama"
    ],
@@ -2135,9 +2135,9 @@
   },
   {
    "id": "owner_title",
-   "title": "Owner name and phone in the main menu",
-   "description": "The 'Shooting Menu 1' title at the top of the main menu shows your text instead, e.g. your name and phone number, so a lost or stolen camera can be traced back to you. Up to 36 characters; '@' (email) does not display. English menus only.",
-   "camera": "Worked on the camera (1.6 build 1.701; an email with @ did not display).",
+   "title": "Text at Top of Main Menu",
+   "description": "The 'Shooting Menu 1' title at the top of the main menu shows your text instead. Can be used to set your Name and Phone Number so a lost or stolen camera can be traced back to you. Up to 36 characters; '@' does not display. English menus only. Survives Factory Reset.",
+   "camera": "",
    "requires": [],
    "generator": "owner_title",
    "options": {
