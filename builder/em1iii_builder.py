@@ -192,7 +192,7 @@ def curve_editor(root, var, title):
     except Exception:
         pts = [(0, 0), (255, 255)]
     pts = [list(p) for p in pts]
-    cv = tk.Canvas(win, width=S + 2 * P, height=S + 2 * P, bg="white")
+    cv = tk.Canvas(win, width=S + 2 * P, height=S + 2 * P, bg=PALETTE.get("field", "white"))
     cv.pack(padx=8, pady=8)
     info = ttk.Label(win, text="")
     info.pack()
@@ -285,6 +285,130 @@ def curve_editor(root, var, title):
     win.grab_set()
 
 
+def system_dark():
+    """Best-effort OS light/dark detection (macOS, Windows, common Linux desktops)."""
+    try:
+        if sys.platform == "darwin":
+            import subprocess
+            out = subprocess.run(["defaults", "read", "-g", "AppleInterfaceStyle"],
+                                 capture_output=True, text=True, timeout=2).stdout.strip().lower()
+            return out == "dark"
+        if sys.platform.startswith("win"):
+            import winreg
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                 r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+            val, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return int(val) == 0
+        import subprocess
+        out = subprocess.run(["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
+                             capture_output=True, text=True, timeout=2).stdout.strip().lower()
+        return "dark" in out
+    except Exception:
+        return False
+
+
+PALETTE = {}
+
+
+def palette_for(dark):
+    if dark:
+        return dict(bg="#141824", card="#1c2230", border="#2b3446", text="#e8ecf5",
+                    muted="#9aa6bf", accent="#7c83ff", accent_active="#6873f0",
+                    accent_text="#0b1020", success="#5bd68b", warn="#ffcc66",
+                    error="#ff8080", log="#151b28", field="#232b3a", field_border="#3a465d")
+    return dict(bg="#f4f6fb", card="#ffffff", border="#dfe4ee", text="#1c2333",
+                muted="#64708a", accent="#4f46e5", accent_active="#4338ca",
+                accent_text="#ffffff", success="#0f9d58", warn="#b26a00",
+                error="#c62828", log="#fbfcfe", field="#ffffff", field_border="#cbd3e1")
+
+
+def apply_theme(root):
+    """One consistent, themeable look on macOS and Windows (ttk 'clam')."""
+    import tkinter as tk
+    from tkinter import ttk
+    p = palette_for(system_dark())
+    PALETTE.update(p)
+    root.configure(bg=p["bg"])
+    try:
+        root.tk_setPalette(background=p["bg"], foreground=p["text"],
+                           activeBackground=p["border"], activeForeground=p["text"],
+                           selectBackground=p["accent"], selectForeground=p["accent_text"])
+    except Exception:
+        pass
+    st = ttk.Style()
+    names = st.theme_names()
+    st.theme_use("clam" if "clam" in names else st.theme_use())
+    font = ("Segoe UI", 10) if sys.platform.startswith("win") else ("Helvetica", 11)
+    heading = (("Segoe UI Semibold", 20) if sys.platform.startswith("win")
+               else ("Helvetica", 19, "bold"))
+    title = (("Segoe UI Semibold", 12) if sys.platform.startswith("win")
+             else ("Helvetica", 12, "bold"))
+    small = (("Segoe UI Semibold", 10) if sys.platform.startswith("win")
+             else ("Helvetica", 10, "bold"))
+    st.configure(".", font=font, background=p["bg"], foreground=p["text"],
+                 fieldbackground=p["field"], bordercolor=p["border"],
+                 lightcolor=p["border"], darkcolor=p["border"], troughcolor=p["border"])
+    st.configure("Root.TFrame", background=p["bg"])
+    st.configure("Card.TFrame", background=p["card"])
+    st.configure("H1.TLabel", background=p["bg"], foreground=p["text"], font=heading)
+    st.configure("Sub.TLabel", background=p["bg"], foreground=p["muted"], font=font)
+    st.configure("Warn.TLabel", background=p["bg"], foreground=p["warn"], font=font)
+    st.configure("Badge.TLabel", background=p["accent"], foreground=p["accent_text"],
+                 font=font, padding=(8, 3))
+    st.configure("Card.TLabel", background=p["card"], foreground=p["text"], font=font)
+    st.configure("CardTitle.TLabel", background=p["card"], foreground=p["text"], font=title)
+    st.configure("CardMuted.TLabel", background=p["card"], foreground=p["muted"], font=font)
+    st.configure("Count.TLabel", background=p["card"], foreground=p["accent"], font=small)
+    st.configure("Card.TCheckbutton", background=p["card"], foreground=p["text"],
+                 indicatorcolor=p["field"], bordercolor=p["field_border"],
+                 lightcolor=p["card"], darkcolor=p["card"], focuscolor=p["card"])
+    st.map("Card.TCheckbutton",
+           indicatorcolor=[("selected", p["accent"]), ("pressed", p["accent_active"])],
+           background=[("active", p["card"])], lightcolor=[("active", p["card"])])
+    st.configure("TButton", background=p["card"], foreground=p["text"],
+                 bordercolor=p["field_border"], lightcolor=p["card"], darkcolor=p["card"],
+                 padding=(10, 6), font=font)
+    st.map("TButton", background=[("active", p["border"]), ("disabled", p["card"])])
+    st.configure("Accent.TButton", background=p["accent"], foreground=p["accent_text"],
+                 borderwidth=0, focusthickness=0, focuscolor=p["accent"],
+                 padding=(12, 7), font=small)
+    st.map("Accent.TButton", background=[("active", p["accent_active"]), ("disabled", p["border"])],
+           foreground=[("disabled", p["muted"])])
+    st.configure("TEntry", fieldbackground=p["field"], foreground=p["text"],
+                 insertcolor=p["text"], bordercolor=p["field_border"],
+                 lightcolor=p["field_border"], darkcolor=p["field_border"])
+    st.configure("TCombobox", fieldbackground=p["field"], foreground=p["text"],
+                 selectbackground=p["accent"], selectforeground=p["accent_text"],
+                 bordercolor=p["field_border"], lightcolor=p["field_border"],
+                 darkcolor=p["field_border"])
+    st.configure("TSpinbox", fieldbackground=p["field"], foreground=p["text"],
+                 bordercolor=p["field_border"], lightcolor=p["field_border"],
+                 darkcolor=p["field_border"])
+    st.configure("Accent.Horizontal.TProgressbar", background=p["accent"],
+                 troughcolor=p["border"], bordercolor=p["border"],
+                 lightcolor=p["accent"], darkcolor=p["accent"])
+    st.configure("Card.Vertical.TScrollbar", background=p["border"], troughcolor=p["card"],
+                 bordercolor=p["card"], arrowcolor=p["muted"],
+                 lightcolor=p["card"], darkcolor=p["card"])
+    return p
+
+
+def card(parent, title, subtitle=None):
+    """A subtle 1 px bordered panel that follows the active theme."""
+    import tkinter as tk
+    from tkinter import ttk
+    p = PALETTE
+    outer = tk.Frame(parent, bg=p["border"], bd=0)
+    inner = ttk.Frame(outer, style="Card.TFrame", padding=12)
+    inner.pack(fill="both", expand=True)
+    head = ttk.Frame(inner, style="Card.TFrame")
+    head.pack(fill="x")
+    ttk.Label(head, text=title, style="CardTitle.TLabel").pack(side="left")
+    if subtitle:
+        ttk.Label(head, text=subtitle, style="CardMuted.TLabel").pack(side="right")
+    return outer, inner
+
+
 def gui():
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
@@ -292,38 +416,47 @@ def gui():
 
     root = tk.Tk()
     root.title(APP)
-    root.minsize(760, 560)
+    root.minsize(900, 640)
+    p = apply_theme(root)
     s = load_settings()
     pack = modcore.load_pack(PACK)
     events = queue.Queue()
     state = {"stock": None, "busy": False}
 
-    outer = ttk.Frame(root, padding=10)
+    outer = ttk.Frame(root, style="Root.TFrame", padding=16)
     outer.pack(fill="both", expand=True)
-    ttk.Label(outer, text=APP, font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
-    ttk.Label(outer, foreground="#a33", wraplength=720, text=(
-        "Unofficial. Builds a modified firmware from OM's official 1.6 file. Flashing it is at your own "
-        "risk; mods marked 'not tested' have never run on a camera.")).pack(anchor="w", pady=(2, 0))
-    # 1. firmware
-    f1 = ttk.LabelFrame(outer, text="1. Official firmware 1.6", padding=8)
-    f1.pack(fill="x")
-    fw_status = ttk.Label(f1, text="", wraplength=720)
-    fw_status.pack(anchor="w")
-    r1 = ttk.Frame(f1)
-    r1.pack(fill="x", pady=(4, 0))
-    b_dl = ttk.Button(r1, text="Download from OM")
-    b_dl.pack(side="left")
-    b_pick = ttk.Button(r1, text="Use a file I already have...")
-    b_pick.pack(side="left", padx=6)
-    bar = ttk.Progressbar(r1, length=260, mode="determinate")
-    bar.pack(side="left", padx=6)
 
-    # 2. mods
-    f2 = ttk.LabelFrame(outer, text="2. Choose mods", padding=8)
-    f2.pack(fill="both", expand=True, pady=8)
-    canvas = tk.Canvas(f2, highlightthickness=0, height=260)
-    sb = ttk.Scrollbar(f2, orient="vertical", command=canvas.yview)
-    inner = ttk.Frame(canvas)
+    header = ttk.Frame(outer, style="Root.TFrame")
+    header.pack(fill="x")
+    ttk.Label(header, text="E-M1 III Mod Builder", style="H1.TLabel").pack(side="left")
+    ttk.Label(header, text="Build a modified E-M1 Mark III firmware 1.6", style="Sub.TLabel").pack(
+        side="left", padx=(12, 0), pady=(8, 0))
+    ttk.Label(header, text=("Dark theme" if system_dark() else "Light theme"),
+              style="Badge.TLabel").pack(side="right")
+    ttk.Label(outer, text=(
+        "Unofficial. Flashing modified firmware is at your own risk; mods marked 'not tested' "
+        "have never run on a camera."), style="Warn.TLabel", wraplength=860,
+        justify="left").pack(anchor="w", pady=(6, 12))
+
+    main = ttk.Frame(outer, style="Root.TFrame")
+    main.pack(fill="both", expand=True)
+    main.columnconfigure(0, weight=3)
+    main.columnconfigure(1, weight=2)
+    main.rowconfigure(0, weight=1)
+    left = ttk.Frame(main, style="Root.TFrame")
+    left.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+    right = ttk.Frame(main, style="Root.TFrame")
+    right.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+
+    # --- left column: mods -------------------------------------------------
+    mods_outer, mods = card(left, "Mods", subtitle="Choose what to change")
+    mods_outer.pack(fill="both", expand=True)
+    count = ttk.Label(mods, text="", style="Count.TLabel")
+    count.pack(anchor="w", pady=(4, 6))
+    canvas = tk.Canvas(mods, bg=p["card"], highlightthickness=0, height=360)
+    sb = ttk.Scrollbar(mods, orient="vertical", command=canvas.yview,
+                       style="Card.Vertical.TScrollbar")
+    inner = ttk.Frame(canvas, style="Card.TFrame")
     inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
     canvas.create_window((0, 0), window=inner, anchor="nw")
     canvas.configure(yscrollcommand=sb.set)
@@ -331,13 +464,19 @@ def gui():
     sb.pack(side="right", fill="y")
 
     def wheel(e):
+        if e.widget.winfo_class() in ("Entry", "TEntry", "TSpinbox", "Spinbox", "TCombobox", "Text"):
+            return
         step = -1 if (getattr(e, "num", 0) == 4 or getattr(e, "delta", 0) > 0) else 1
         canvas.yview_scroll(step * (1 if abs(getattr(e, "delta", 0)) < 120 else abs(e.delta) // 120), "units")
     for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
         canvas.bind_all(seq, wheel)
+
     chosen = set(s.get("mods", []))
     vars_ = {}
     by_id = {m["id"]: m for m in pack["mods"]}
+
+    def update_count():
+        count.config(text="%d of %d selected" % (sum(v.get() for v in vars_.values()), len(pack["mods"])))
 
     def toggled(mid):
         if vars_[mid].get():
@@ -347,20 +486,22 @@ def gui():
             for m in pack["mods"]:
                 if mid in m["requires"]:
                     vars_[m["id"]].set(False)
+        update_count()
 
     opt_vars = {}
     for i, m in enumerate(pack["mods"]):
         v = tk.BooleanVar(value=m["id"] in chosen)
         vars_[m["id"]] = v
-        ttk.Checkbutton(inner, text=m["title"], variable=v, command=lambda k=m["id"]: toggled(k)).grid(
+        ttk.Checkbutton(inner, text=m["title"], variable=v, style="Card.TCheckbutton",
+                        command=lambda k=m["id"]: toggled(k)).grid(
             row=2 * i, column=0, sticky="w", pady=(6, 0))
         note = m["description"] + "\n" + m["camera"]
         if m["requires"]:
             note += "  Needs: " + ", ".join(by_id[r]["title"] for r in m["requires"]) + "."
-        ttk.Label(inner, text=note, foreground="#555", wraplength=640, justify="left").grid(
-            row=2 * i + 1, column=0, sticky="w", padx=(24, 0))
+        ttk.Label(inner, text=note, style="CardMuted.TLabel", wraplength=520,
+                  justify="left").grid(row=2 * i + 1, column=0, sticky="w", padx=(24, 0))
         if m["options"]:
-            of = ttk.Frame(inner)
+            of = ttk.Frame(inner, style="Card.TFrame")
             of.grid(row=2 * i, column=0, sticky="e", padx=(0, 8))
             for name, o in m["options"].items():
                 saved = s.get("options", {}).get(m["id"], {}).get(name, o["default"])
@@ -369,53 +510,91 @@ def gui():
                     labels = [c[1] for c in o["choices"]]
                     var = tk.StringVar(value=labels[keys.index(saved)] if saved in keys else labels[keys.index(o["default"])])
                     opt_vars[(m["id"], name)] = (var, dict(zip(labels, keys)))
-                    ttk.Label(of, text=o["label"] + ":").pack(side="top", anchor="e")
-                    ttk.Combobox(of, textvariable=var, values=labels, state="readonly", width=16).pack(side="top", anchor="e", padx=4)
+                    ttk.Label(of, text=o["label"] + ":", style="CardMuted.TLabel").pack(side="top", anchor="e")
+                    ttk.Combobox(of, textvariable=var, values=labels, state="readonly",
+                                 width=16).pack(side="top", anchor="e", padx=4)
                     continue
                 if o.get("text"):
                     var = tk.StringVar(value=str(saved))
                     opt_vars[(m["id"], name)] = (var, "text")
-                    ttk.Label(of, text=o["label"] + ":").pack(side="top", anchor="e")
+                    ttk.Label(of, text=o["label"] + ":", style="CardMuted.TLabel").pack(side="top", anchor="e")
                     ttk.Entry(of, textvariable=var, width=30).pack(side="top", anchor="e", padx=4)
                     if o.get("curve"):
-                        ttk.Button(of, text="Edit curve...", command=lambda v=var, t=o["label"]: curve_editor(root, v, t)).pack(
+                        ttk.Button(of, text="Edit curve...", style="TButton",
+                                   command=lambda v=var, t=o["label"]: curve_editor(root, v, t)).pack(
                             side="top", anchor="e", padx=4)
                     continue
                 var = tk.StringVar(value=str(saved))
                 opt_vars[(m["id"], name)] = (var, None)
-                ttk.Label(of, text=o["label"] + ":").pack(side="left")
-                ttk.Spinbox(of, textvariable=var, from_=o["min"], to=o["max"], increment=o.get("step", 0.5), width=5).pack(side="left", padx=4)
+                ttk.Label(of, text=o["label"] + ":", style="CardMuted.TLabel").pack(side="left")
+                ttk.Spinbox(of, textvariable=var, from_=o["min"], to=o["max"],
+                            increment=o.get("step", 0.5), width=5).pack(side="left", padx=4)
+
+    actions = ttk.Frame(inner, style="Card.TFrame")
+    actions.grid(row=2 * len(pack["mods"]), column=0, sticky="w", pady=8)
+    ttk.Button(actions, text="Select all", style="TButton",
+               command=lambda: set_all(True)).pack(side="left")
+    ttk.Button(actions, text="Select none", style="TButton",
+               command=lambda: set_all(False)).pack(side="left", padx=8)
 
     def set_all(val):
         for v in vars_.values():
             v.set(val)
-    ttk.Button(inner, text="Select all", command=lambda: set_all(True)).grid(row=2 * len(pack["mods"]), column=0, sticky="w", pady=8)
-    ttk.Button(inner, text="Select none (stock 1.6)", command=lambda: set_all(False)).grid(
-        row=2 * len(pack["mods"]), column=0, sticky="w", padx=(100, 0), pady=8)
+        update_count()
 
-    # 3. output
-    f3 = ttk.LabelFrame(outer, text="3. Build", padding=8)
-    f3.pack(fill="x")
-    ttk.Label(f3, text="Save to:").grid(row=1, column=0, sticky="w", pady=4)
+    update_count()
+
+    # --- right column: firmware, build, activity ---------------------------
+    fw_outer, fw = card(right, "Firmware", subtitle="Official 1.6")
+    fw_outer.pack(fill="x", pady=(0, 8))
+    fw_status = ttk.Label(fw, text="", style="CardMuted.TLabel", wraplength=300, justify="left")
+    fw_status.pack(anchor="w")
+    r1 = ttk.Frame(fw, style="Card.TFrame")
+    r1.pack(fill="x", pady=(8, 0))
+    b_dl = ttk.Button(r1, text="Download from OM", style="Accent.TButton")
+    b_dl.pack(side="left")
+    b_pick = ttk.Button(r1, text="Use my file", style="TButton")
+    b_pick.pack(side="left", padx=6)
+    bar = ttk.Progressbar(fw, length=100, mode="determinate",
+                          style="Accent.Horizontal.TProgressbar")
+    bar.pack(fill="x", pady=(8, 0))
+
+    build_outer, bf = card(right, "Build")
+    build_outer.pack(fill="x", pady=8)
+    ttk.Label(bf, text="Save to", style="CardMuted.TLabel").pack(anchor="w")
+    r2 = ttk.Frame(bf, style="Card.TFrame")
+    r2.pack(fill="x", pady=(2, 0))
     out = tk.StringVar(value=s.get("out") or os.path.join(os.path.expanduser("~"), "E-M1III-firmware"))
-    ttk.Entry(f3, textvariable=out, width=60).grid(row=1, column=1, columnspan=2, sticky="we")
-    ttk.Button(f3, text="Browse...", command=lambda: out.set(filedialog.askdirectory() or out.get())).grid(row=1, column=3, padx=6)
-    b_build = ttk.Button(f3, text="Build E1399999.BIN")
-    b_build.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
-    log = tk.Text(outer, height=7, wrap="word")
-    log.pack(fill="both", pady=(8, 0))
+    ttk.Entry(r2, textvariable=out, width=28).pack(side="left", fill="x", expand=True)
+    ttk.Button(r2, text="Browse...", style="TButton",
+               command=lambda: out.set(filedialog.askdirectory() or out.get())).pack(side="left", padx=(6, 0))
+    b_build = ttk.Button(bf, text="Build E1399999.BIN", style="Accent.TButton")
+    b_build.pack(fill="x", pady=(10, 0))
+    ttk.Label(bf, text="Version 1.601", style="CardMuted.TLabel").pack(anchor="w", pady=(6, 0))
+
+    log_outer, lf = card(right, "Activity")
+    log_outer.pack(fill="both", expand=True)
+    log = tk.Text(lf, height=8, wrap="word", bg=p["log"], fg=p["text"],
+                  insertbackground=p["text"], relief="flat", borderwidth=1,
+                  highlightbackground=p["border"], highlightcolor=p["border"],
+                  font=("Menlo", 10) if sys.platform == "darwin" else ("Consolas", 9))
+    lsb = tk.Scrollbar(lf, command=log.yview, bg=p["border"], troughcolor=p["card"],
+                       activebackground=p["accent"], relief="flat", width=10)
+    log.configure(yscrollcommand=lsb.set)
+    log.pack(side="left", fill="both", expand=True)
+    lsb.pack(side="right", fill="y")
 
     def say(msg):
         events.put(("log", msg))
 
     def refresh_fw():
-        p = stock_path(s)
+        path = stock_path(s)
         if state["stock"] is not None:
-            fw_status.config(text="Ready: %s (checksum verified)" % p, foreground="#262")
-        elif os.path.exists(p):
-            fw_status.config(text="Found %s, checking..." % p, foreground="#555")
+            fw_status.config(text="Ready: %s (checksum verified)" % path, foreground=p["success"])
+        elif os.path.exists(path):
+            fw_status.config(text="Found %s, checking..." % path, foreground=p["muted"])
         else:
-            fw_status.config(text="Not downloaded yet.", foreground="#555")
+            fw_status.config(text="Not downloaded yet.", foreground=p["muted"])
         busy = state["busy"]
         b_build.state(["disabled"] if busy or state["stock"] is None else ["!disabled"])
         b_dl.state(["disabled"] if busy or state["stock"] is not None else ["!disabled"])
@@ -444,18 +623,18 @@ def gui():
         return None
 
     def download():
-        p = os.path.join(DATA_DIR, modcore.STOCK_NAME)
+        path = os.path.join(DATA_DIR, modcore.STOCK_NAME)
         os.makedirs(DATA_DIR, exist_ok=True)
         say("Asking OM's update server for the E-M1 Mark III firmware...")
-        modcore.download_stock(p, lambda d, t: events.put(("progress", d * 100.0 / max(t, 1))))
+        modcore.download_stock(path, lambda d, t: events.put(("progress", d * 100.0 / max(t, 1))))
         say("Downloaded and verified.")
-        return load(p)
+        return load(path)
 
     def pick():
-        p = filedialog.askopenfilename(title="Official E-M1 Mark III 1.6 firmware",
-                                       filetypes=[("Firmware", "*.BIN *.bin"), ("All files", "*")])
-        if p:
-            work(load, p)
+        path = filedialog.askopenfilename(title="Official E-M1 Mark III 1.6 firmware",
+                                          filetypes=[("Firmware", "*.BIN *.bin"), ("All files", "*")])
+        if path:
+            work(load, path)
 
     def build():
         sel = {k for k, v in vars_.items() if v.get()}
