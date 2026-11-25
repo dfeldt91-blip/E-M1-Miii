@@ -15,7 +15,6 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | Mod | App id |
 |---|---|
 | Panorama aspect 65:24 | `panorama` |
-| Multiple Exposure with 3 and 4 frames | `multiexp` |
 | Focus stacking with any lens | `stack_any_lens` |
 | Key Line II in black and white | `keyline_mono` |
 | More arrow-key functions | `arrow_keys` |
@@ -93,7 +92,6 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | S19 | **Anti-shock delays below 1/8 s** | **Likely** | |
 | S20 | **Self-timer: custom delays, more repeats** | **Likely** | |
 | S21 | **Keystone / fisheye correction options** | **Idea** | |
-| S22 | **Multiple Exposure with more than 4 frames** | **Plausible** | 3 and 4 already done. |
 | S23 | **Digital teleconverter at other factors (1.4×, 3×)** | **Idea** | |
 | S24 | **Subject detection: more subjects** (e.g. bird, animal) | **Unlikely** | The E-M1 III has no trained subject detection models. Deep-learning path: `MODE_SUBJECT_DETECT` (`0x693`) validator list is `[0,1,2,3]` (Off + 3 types); pipeline is `MDET_DL_*` / `DeepLearningSubjectDetect` (`0x6161a86c`) feeding `mdet_laf_judge_dl_subject`. See `docs/BIRD_AF.md`. |
 | S25 | **Face/eye AF in more modes** | **Idea** | |

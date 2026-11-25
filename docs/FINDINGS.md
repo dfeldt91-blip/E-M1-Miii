@@ -420,19 +420,6 @@ E-M1 III equivalents found so far:
 - Diagnostic build option `--aspect-test` (drop 3:4) tests whether validator
   edits reach the menus (E-P7 v4 step).
 
-## Multiple Exposure frames (tools/patch_multiexp.py)
-
-MODE_MULTI_EXPOSURE_FRAME 0x10a: validator 0x604dc904 ([0,2]), tab descriptors 0x611af8b0/0x61206d60/
-0x61288514, and the Number of Frames row records 0x611bc7ac/0x61271fd8/0x61280730 (36 B, two option
-lists each). The sequencer (0x609c7bff, 0x609c857c, 0x609c8da5) counts to the setting; frame array
-malloc(20). Camera: 3f and 4f work (1.602); 5f froze and restarted the camera, so the list is [0,2,3,4].
-
-Overlay between shots: the stock success handler (blob A, 0x609c8ca8) refreshes the live overlay only
-when the 1-based shot number is 1, then takes the last-shot path and drops it. The old overlay hook
-compared the shot number and frame setting the wrong way round. Test 1.746 replaces that test with
-`shot number < frames` (0x600d6f80), so with 4 frames the overlay refreshes after shots 1, 2 and 3;
-the per-shot merge has already put the accumulated image into the display. No handle rebuild is done.
-
 ## GUI icons (block 1, found 1.6; not used yet)
 
 Block 1 directory (offset 0, {u32 flash address, u32 size}, 70 entries): entries 0 and 69 are
