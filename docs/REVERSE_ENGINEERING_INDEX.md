@@ -79,6 +79,8 @@ Art Filter work.
 * Radius band table: `0x60530084`.
 * Aspect normalization: `0x603e41c5`.
 * Family-scoped frame disable: `0x6038b6a0`.
+* 3×3 blur/sharpness coefficient generator: `0x603dc04a`; tap table
+  `0x6053c1dc`; named-filter mapping pending.
 
 ### Menu/UI
 
@@ -110,7 +112,7 @@ Art Filter work.
 | Probe | Status | Feeds into |
 |---|---|---|
 | Grain pixel kernel and Y-only mask | Completed negative: no pixel kernel/mask proven; earlier patch sites unsafe | `ART_FILTER_KERNELS.md` |
-| Blur kernels for Diorama / Soft Focus | In progress | `ART_FILTER_KERNELS.md` |
+| Blur kernels for Diorama / Soft Focus | Generator proven at `0x603dc04a`; named-filter mapping pending | `ART_FILTER_KERNELS.md` |
 | Menu enumeration table/count | Completed | `ART_FILTER_MENU.md` |
 | Selection → job key, per-filter settings slots | Completed: key path and setting IDs proven | `ART_FILTER_MENU.md`, toggle design |
 | Global selector → Art selection bridge | Unresolved | `ART_FILTER_MENU.md` |

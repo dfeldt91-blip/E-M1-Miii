@@ -8,8 +8,8 @@ descriptors/request blocks and produces the visual effect.
 
 Status: active reverse engineering. The vignette/frame path and the
 `job+0x2c2c` writer are decoded. The Grainy builder path is partially traced,
-but no downstream Y-only pixel kernel has been proven. Blur is still being
-investigated.
+but no downstream Y-only pixel kernel has been proven. A 3×3 blur/sharpness
+coefficient generator is proven, but its named-filter mapping is not.
 
 ## Important architectural correction
 
@@ -254,6 +254,109 @@ Y-only pixel kernel. The earlier candidates:
 
 remain **inference only** and should not be treated as safe patch sites.
 
+## Blur / sharpness coefficient generator — generator proven, filter mapping pending
+
+A concrete 3×3 ISP coefficient generator was found at:
+
+```text
+0x603dc04a  file 0x3bb02a
+```
+
+### Proven generator path
+
+`0x603dc04a`:
+
+* reads signed byte `job+0x296` (`MOVBU (662,a0)` at `0x603dc065`);
+* clamps it to `−5..+5`, then adds `5`, giving index `0..10`;
+* loads a pointer from table `0x6053c1dc` at `0x603dc087`;
+* if dword `job+52 == 5`, applies transform `0x603dbe0d` selected by byte
+  `job+0x297`;
+* if byte `job+0x292` is nonzero, applies a second transform with table
+  `0x6051b00e`;
+* calls `0x603dbd9a` to normalize/pack the result;
+* writes nine signed halfword taps as five packed dwords at
+  `request+80..+99`, starting at `0x603dc0dd`.
+
+Supporting routines:
+
+| Purpose | Runtime | File offset |
+|---|---:|---:|
+| Tap generator entry | `0x603dc04a` | `0x3bb02a` |
+| 3×3 multiply-accumulate transform | `0x603dbb3b` | `0x3bab1b` |
+| Normalization/packing | `0x603dbd9a` | `0x3bad7a` |
+| Preset selector | `0x603dbe0d` | `0x3baded` |
+| 11-pointer table | `0x6053c1dc` | `0x51b1bc` |
+
+`0x603dbb3b` is a real multiply-accumulate over signed 16-bit taps with
+`>>8` output. This is not merely register configuration.
+
+### Proven coefficient semantics
+
+The 11 base tables pointed to by `0x6053c1dc` are at:
+
+```text
+0x6053c114..0x6053c1d0
+file 0x51b0f4..0x51b1b0
+```
+
+Their 3×3 values form:
+
+| Index | Meaning |
+|---:|---|
+| `0..4` | progressively weaker low-pass / blur-like kernels |
+| `5` | identity: centre `128`, neighbours `0` |
+| `6..10` | progressively stronger high-pass / sharpen kernels |
+
+These are proven signed 16-bit 3×3 filter taps consumed by the generator.
+
+`0x603dbe0d` also selects directional/edge-style presets from `0x6051ae16`
+onward (file `0x4f9df6`). Their sums are mostly `768`, consistent with
+fixed-gain spatial filters.
+
+### How the generator is selected
+
+`request+12` type `0xf001` is written by six small wrappers:
+
+| Runtime | File offset | Writes |
+|---:|---:|---|
+| `0x60388f41` | `0x367f21` | `0xf001`, then helper `job+0x290 = 0xb00` |
+| `0x60388f56` | `0x367f36` | `0xf001`, then `0xb01` |
+| `0x60388f6b` | `0x367f4b` | `0xf001`, then `0xb02` |
+| `0x60388f80` | `0x367f60` | `0xf001`, then `0xb03` |
+| `0x60388f95` | `0x367f75` | `0xf001`, then `0xb04` |
+| `0x60388faa` | `0x367f8a` | `0xf001`, then `0xb05` |
+
+They are installed by builder `0x6038543d` (file `0x36441d`), reached through
+wrapper `0x60383250` (file `0x362230`).
+
+Dispatcher `0x603816c5` (file `0x3606a5`) selects that builder when:
+
+```text
+job+0x1a not in {0, 4}
+job+0x1b != 0
+```
+
+### Patch status
+
+No blur patch bytes are published.
+
+The generator is proven, but this chain is not yet proven:
+
+```text
+named Art Filter + setting
+  → job+0x296
+  → low-pass tap index
+  → visible blur
+```
+
+Patching low-pass tables blindly could affect sharpness, Soft Focus,
+Watercolor, grain or another spatial effect. The likely future patch scope is
+the family-scoped pointer array `0x6053c1dc` or the six `0xb00..0xb05` wrapper
+callbacks, not a global helper.
+
+`0x60369019` remains only an older candidate coefficient loop; `0x603dc04a`
+is the concrete generator to pursue.
+
 ## Proven vs inferred
 
 Proven:
@@ -261,6 +364,7 @@ Proven:
 * request fields, pass IDs, slot pointers, band table, aspect math, guards and
   patch bytes
 * the Grainy `0x2000` builder path up to category 13
+* the `0x603dc04a` 3×3 coefficient generator, tap tables and tap semantics
 
 Inferred:
 
@@ -268,6 +372,8 @@ Inferred:
 * which `job+0x1a` value is Pop Art II versus Pin Hole
 * visual outcome of each patch
 * any colour-grain / Y-only interpretation of the Grainy flags
+* that indices `0..4` are specifically Diorama/Soft Focus blur rather than a
+  generic low-pass family
 
 ## Pending
 
@@ -276,7 +382,9 @@ Inferred:
 * Complete scratch-to-MMIO pointer chain from category 13
 * Whether `0x603845c1` variant descriptors match runtime Grainy values
 * Whether `0x60383ff7` is invoked on the Grainy-specific builder tail
-* Blur kernels for Diorama / Soft Focus
+* Writer of `job+0x1b` and which filter key reaches wrapper `0x60383250`
+* Which setting writes `job+0x296` for the `0xb00..0xb05` family
+* Camera confirmation that a low-pass tap index changes the intended visual blur
 * Effect-enable mask hook at wrapper `0x60383247`, not the epilogue
   `0x60385404..0x6038543a`
 

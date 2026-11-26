@@ -64,11 +64,12 @@ not be treated as definitive. Individual module semantics are still being decode
 
 ## Not mapped yet
 
-- Sharpness for art filters, the pixel-level grain texture kernel, the exact blur kernel
-  (Soft Focus / Diorama), and Partial Color's hue selection beyond its coefficient records.
-  The frame/vignette path is now decoded as ISP register programming in
-  [ART_FILTER_KERNELS.md](ART_FILTER_KERNELS.md); the grain/Y-only probe completed with
-  a negative result, while blur remains active.
+- Sharpness for art filters, the pixel-level grain texture kernel, the named-filter mapping
+  for blur (Soft Focus / Diorama), and Partial Color's hue selection beyond its coefficient
+  records. The frame/vignette path is now decoded as ISP register programming in
+  [ART_FILTER_KERNELS.md](ART_FILTER_KERNELS.md); the grain/Y-only probe completed with a
+  negative result, and the 3×3 blur/sharpness generator `0x603dc04a` is proven but not yet
+  tied to a named filter.
 - Visual meaning/scale of the 2 x 6 colour parameters. Their write path is fully decoded
   (A[0..5] then B[0..5] to request +100..+122 via `0x603dd053`), but no CPU reader was found,
   so hardware/opaque consumption remains unproven. The 100-byte register records are decoded
