@@ -106,8 +106,9 @@ for k in [(0x78, 1), (0x78, 2), (0x79, 1), (0x79, 2), (0x79, 3), (0x7a, 1), (0x7
           (0x7b, 1), (0x7b, 2), (0x7c, 1)]:
     E[k] = (0x603d8922, 0x604f8ece)
 
-# --- stage F: extra processing modules in the job chain (switch 0x60384953 on key - 11):
-# module entry points added on top of the shared pipeline (first and last entries of the list).
+# --- stage F: coarse legacy hints about extra processing modules. The dispatch is now
+# decoded in docs/ART_FILTER_CHAIN.md; these strings predate the two-table dispatch and
+# should not be treated as definitive per-variant module lists.
 F = {
     0x64: "0x60386fc2 (also Diorama), 0x60383c5b", 0x68: "0x60383d99 ... 0x603839fd 0x60388169 0x60388295 0x60388384 0x60383a1f",
     0x6a: "0x6038619b 0x60384353 ... 0x6038605d", 0x6c: "0x60386442 0x6038655b (short chain)",

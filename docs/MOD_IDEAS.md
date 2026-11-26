@@ -36,7 +36,7 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 - **Startup text.** Dropped by you, because it would slow startup.
 - **MENU as an assignable button.** It didn't work.
 - **Bleach Bypass II without its softening, or its colour on Bleach I** (1.720, 1.721, 1.734–1.738). No change, or a crash; the look and the softness come from its own photo step. Tools removed.
-- **Frame for picture modes via the Color Space switch** (1.722–1.727). Picture modes don't run the art stages; forcing the art chain crashed (1.727).
+- **Frame for picture modes via the Color Space switch** (1.722–1.727). Picture modes don't run the art stages; forcing the art chain crashed (1.727). Frame-only injection into the picture-mode builder is still a candidate: see [FRAME_EFFECT_PICTURE_MODES.md](FRAME_EFFECT_PICTURE_MODES.md).
 - **Art curve names in the SCP grid cell** (1.729, 1.730). Picker shows them; the grid cell stays AUTO. Left as is.
 - **On-camera HSL / Color Creator editor.** Not present in the image path on this body; dropped.
 - **Video to an external SSD.** No USB host or mass-storage code in the firmware. Use HDMI to an external recorder instead.
