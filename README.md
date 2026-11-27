@@ -21,19 +21,18 @@ The LATEST VERSION has a new UI and includes:
 - Video: Recording limit removed
 - Custom C1/2/3/4: Save Video modes
 - Art Filter: Monochrome Key Lines II
-- Multiple Exposures: Increased from two images to four [preview does not show after image 2 and 3]
 - Custom Buttons: Options increased for right and down buttons
 - 6 Selectable Filter Slots assigned to Custom Picture Profile
 - Underscore is now an option for custom filename
 - Text can be set at top of first menu page (I use for Name/Phone if lost/stolen, survives factory reset)
-- Digital Teleconverter in Hi Res Mode (Yes, I know there is a drop in resolution but it adds some reach. Best results are with Sharpness set between -2 and -1.
+- Digital Teleconverter in Hi Res Mode. Best results with Sharpness set low.
 
 WORKING ON:
 - Full Sensor Highlight/Shadow Metering
 - Various Picture/Art Profile Mods
 - 20mp 'High Res' Mode
 
-SOON TO BE RELEASED:
+SOON TO BE RELEASED (Finished work, next app version):
 - Nothing at the moment
 
 Thank you to Caduceus, Fishcu and many others for their work which helped to create this.
