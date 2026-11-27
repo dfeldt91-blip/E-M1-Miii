@@ -13,7 +13,6 @@ Going forward I will be making large pushes for specific feature sets. For examp
 My CURRENT FOCUS is on the ART Filter system. My goal is to remove the current ART Filters and enable more slots, each of which is either a color or monochrome base, with settings to enable/disable/alter vignette/grain/gradation/saturation/etc per filter slot. This would essentially give you the ability to create your own looks in camera - I, and a lot of others, don't like to edit on a computer so this is for us!
 
 The LATEST VERSION has a new UI and includes:
-
 - Tone Curves: Large selection added to Gradation Menu
 - Tone Curves: Two Configurable Custom slots via app
 - Handheld High Res Mode: Manual and Fill Flash (TTL lens required)
@@ -29,6 +28,14 @@ The LATEST VERSION has a new UI and includes:
 - 6 Selectable Filter Slots assigned to Custom Picture Profile
 - Underscore is now an option for custom filename
 - Text can be set at top of first menu page (I use for Name/Phone if lost/stolen, survives factory reset)
+
+SOON TO BE RELEASED:
+- Digital Teleconverter in Hi Res Mode (Yes, I know there is a drop in resolution but it adds some reach. Best results are with Sharpness set between -2 and -1.
+
+WORKING ON:
+- Full Sensor Highlight/Shadow Metering
+- Various Picture/Art Profile Mods
+- 20mp 'High Res' Mode
 
 Thank you to Caduceus, Fishcu and many others for their work which helped to create this.
 
