@@ -28,6 +28,7 @@ The LATEST VERSION has a new UI and includes:
 - Digital Teleconverter in Hi Res Mode. Best results with Sharpness set low.
 
 WORKING ON:
+- Adding proper tone curve names to the SCP cell and picker for each of the new tone curves
 - Full Sensor Highlight/Shadow Metering
 - Various Picture/Art Profile Mods
 - 20mp 'High Res' Mode
