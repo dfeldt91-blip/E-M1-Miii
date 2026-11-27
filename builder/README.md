@@ -85,6 +85,7 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `keyline_mono` | Key Line II in black and white | worked (1.5 build) |
 | `arrow_keys` | More arrow-key functions | not tested |
 | `hhrs_flash` | Flash in handheld High Res | worked (1.5 build) |
+| `dtc_highres` | Digital Teleconverter in High Res Mode | 1.F: shot and playback OK; output resolution unmeasured |
 | `hires_art` | Art filters in High Res (colour/tone only) | worked (1.5 build) |
 | `scp_menu` | SCP bottom-right cell (Button Function) opens the main menu, titled "Menu" | worked (1.6, 1.679) |
 | `sharp_scale` | Sharpness −2 off, −1 25 %, 0 50 %, +1 75 %, +2 100 % (stock +2) | worked (1.6, 1.680) |
