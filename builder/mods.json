@@ -1452,6 +1452,41 @@
    ]
   },
   {
+   "id": "dtc_highres",
+   "title": "Digital Teleconverter in High Res Mode",
+   "description": "Keeps Digital Teleconverter enabled in the special drive modes where stock forces it off, including the High Res variants. Camera-tested (1.F): DTC is allowed in High Res, the shot completes and plays back. Output resolution not yet measured.",
+   "camera": "",
+   "requires": [],
+   "stock_sha256": "f0d6fbd30e5c1b38641b07a1a3189c6268c85698e040061f87dac3d9c1ec0bb7",
+   "edits": [
+    [
+     0,
+     "0x60488df8",
+     "e40e48"
+    ],
+    [
+     0,
+     "0x60488e08",
+     "e40e48"
+    ],
+    [
+     0,
+     "0x60488e18",
+     "e40e48"
+    ],
+    [
+     0,
+     "0x60488e28",
+     "e40e48"
+    ],
+    [
+     0,
+     "0x60488e38",
+     "e40e48"
+    ]
+   ]
+  },
+  {
    "id": "hires_art",
    "title": "Art filters in High Resolution Mode",
    "description": "Allows art filters to be used with High Resolution Mode. The JPEG gets the filter's color and tone, but art effects such as soft focus and frame do not function (yet)",
