@@ -28,6 +28,8 @@ The LATEST VERSION has a new UI and includes:
 - Digital Teleconverter in Hi Res Mode. Best results with Sharpness set low.
 
 WORKING ON:
+- 6 Custom Picture Profiles to replace stock profiles
+- Per Profile Shadow/Midtone/Highlight settings
 - Adding proper tone curve names to the SCP cell and picker for each of the new tone curves
 - Full Sensor Highlight/Shadow Metering
 - Various Picture/Art Profile Mods
