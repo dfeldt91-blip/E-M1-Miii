@@ -56,6 +56,11 @@ MODS = [
      "Allows the flash setting in handheld High Res Shot and offers both Fill In and Manual flash "
      "with every flash type (tripod and handheld).",
      "Flash worked on the camera (1.5 build); Fill In + Manual for all flash types: test 1.745.", []),
+    ("dtc_highres", "patch_dtc_highres.py", [], "Digital Teleconverter in High Res",
+     "Keeps Digital Teleconverter enabled in the special drive modes where stock forces it off, "
+     "including the High Res variants. Camera-tested (1.F): the shot completes and plays back; "
+     "output resolution not yet measured.",
+     "Camera-tested (1.F); DTC allowed in High Res, shot and playback OK.", []),
     ("hires_art", "patch_hires_art.py", [], "Art filters in High Res",
      "Allows art filters and e-Portrait with High Res Shot. The JPEG gets the filter's colour and "
      "tone, but High Res Shot has no art-effect pass.",
