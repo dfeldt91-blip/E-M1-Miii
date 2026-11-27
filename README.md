@@ -1,6 +1,4 @@
-E-M1 MIII Mod Builder App
-
-Welcome to the E-M1 Miii Mod Builder page.
+Welcome to the E-M1 Miii Mod Builder
 
 This is a Mac and Windows program that allows a user to create a custom modded firmware for their E-M1 Miii camera. It works by downloading the official Version 1.6 firmware from Olympus, allows a user to select mods, then creates a modded firmware and gives instructions for install. It also allows you to download the official stock version 1.6 firmware if you would like to go back to stock.
 
