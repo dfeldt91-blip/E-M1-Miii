@@ -26,14 +26,15 @@ The LATEST VERSION has a new UI and includes:
 - 6 Selectable Filter Slots assigned to Custom Picture Profile
 - Underscore is now an option for custom filename
 - Text can be set at top of first menu page (I use for Name/Phone if lost/stolen, survives factory reset)
-
-SOON TO BE RELEASED:
 - Digital Teleconverter in Hi Res Mode (Yes, I know there is a drop in resolution but it adds some reach. Best results are with Sharpness set between -2 and -1.
 
 WORKING ON:
 - Full Sensor Highlight/Shadow Metering
 - Various Picture/Art Profile Mods
 - 20mp 'High Res' Mode
+
+SOON TO BE RELEASED:
+- Nothing at the moment
 
 Thank you to Caduceus, Fishcu and many others for their work which helped to create this.
 
