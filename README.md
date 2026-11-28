@@ -47,7 +47,6 @@ The latest release has a new UI and includes:
 - Proper tone-curve names in the SCP cell and picker Icons for each new tone curve
 - Full-sensor highlight/shadow metering
 - Various picture and art profile mods
-- A 20 MP "High Res" mode (50/80mp downsampled to 20mp)
 
 ## Credits
 
