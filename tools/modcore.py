@@ -196,7 +196,8 @@ def _frame(img, plains, opts, log, selected=()):
         raise BuildError(str(e))
 
 
-def _xpan(img, plains, opts, log, selected=()):
+def _panorama_icons(img, plains, opts, log, selected=()):
+    """XPAN icons, applied as part of the single Panorama mod."""
     import patch_xpan_icon as xi
     xi.LOG = log
     try:
@@ -303,7 +304,7 @@ GENERATORS = {
     "art_gradation": _user_curves,
     "owner_title": _owner_title,
     "underwater_mono": _uw_mono,
-    "xpan_icon": _xpan,
+    "panorama_icons": _panorama_icons,
     "white_frame": lambda img, plains, opts, log, selected=(): _frame(img, plains, opts, log, selected),
 }
 

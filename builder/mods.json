@@ -8,9 +8,9 @@
  "mods": [
   {
    "id": "panorama",
-   "title": "XPAN Aspect (65:24)",
-   "description": "Adds a Panorama aspect",
-   "camera": "",
+   "title": "XPAN Aspect (65:24) with XPAN icons",
+   "description": "Adds a 65:24 Panorama aspect (menu, live-view frame, AF areas, ORF frame) with its own \"XPAN\" icons in the Super Control Panel.",
+   "camera": "Aspect worked on the camera (1.5 build); icons: 1.666 (XPAN in the SCP option lists, main SCP cell shows a 17:9 label).",
    "requires": [],
    "stock_sha256": "7efa63875af82282c933f40d14542900ada0240a02dae20dcfec2f3227d3620c",
    "edits": [
@@ -769,7 +769,8 @@
      "0x61294210",
      "060000000400f100"
     ]
-   ]
+   ],
+   "generator": "panorama_icons"
   },
   {
    "id": "stack_any_lens",
@@ -2156,17 +2157,6 @@
      "max": 20
     }
    }
-  },
-  {
-   "id": "xpan_icon",
-   "title": "XPAN icon for Panorama on the SCP",
-   "description": "The XPAN Aspect gets its own \"XPAN\" icons in the Super Control Panel",
-   "camera": "",
-   "requires": [
-    "panorama"
-   ],
-   "generator": "xpan_icon",
-   "options": {}
   },
   {
    "id": "owner_title",

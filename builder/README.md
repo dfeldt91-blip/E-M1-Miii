@@ -80,7 +80,7 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 
 | id | Mod | Camera status |
 |---|---|---|
-| `panorama` | Panorama aspect 65:24 (replaces 7:6) | worked (1.5 build) |
+| `panorama` | XPAN aspect 65:24 (replaces 7:6) with its own "XPAN" SCP icons | aspect worked (1.5 build); icons 1.666 |
 | `stack_any_lens` | In-camera focus stacking with any lens | worked (1.5 build) |
 | `keyline_mono` | Key Line II in black and white | worked (1.5 build) |
 | `arrow_keys` | More arrow-key functions | not tested |
@@ -96,7 +96,6 @@ The download and your settings are kept in `~/.em1iii-mod-builder/`.
 | `owner_title` | The main menu's "Shooting Menu 1" title shows your own text (name, phone; up to 36 characters, no `@`) | worked (1.6, 1.701) |
 | `white_frame` | Frame art effect as a plain white border; width setting (% of the short side); also in Panorama when that mod is enabled | worked (1.6, 1.664/1.665) |
 | `underwater_mono` | Underwater picture mode in black and white; tint setting | worked (1.6, 1.674) |
-| `xpan_icon` | "XPAN" icons for Panorama on the SCP (needs `panorama`) | 1.666: XPAN in the option lists; main SCP cell shows a 17:9 label |
 
 All mods were developed and tested on a 1.5-based file. For 1.6 each one was checked byte by byte:
 every changed byte, the code and data around it, and every firmware address the new code uses are

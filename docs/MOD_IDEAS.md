@@ -14,7 +14,7 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 ## Done: in the app, camera-tested
 | Mod | App id |
 |---|---|
-| Panorama aspect 65:24 | `panorama` |
+| XPAN aspect 65:24 with its own SCP icons | `panorama` |
 | Focus stacking with any lens | `stack_any_lens` |
 | Key Line II in black and white | `keyline_mono` |
 | More arrow-key functions | `arrow_keys` |
@@ -25,7 +25,6 @@ The ratings are estimates from what we know of the firmware so far. A rating onl
 | Custom Modes C1–C4 save and open video | `cmode_video` |
 | Underscore `_` in Edit Filename | `filename_underscore` |
 | Frame art effect: plain white border (also in Panorama) | `white_frame` |
-| XPAN icon for Panorama on the SCP | `xpan_icon` |
 | Underwater picture mode in black and white | `underwater_mono` |
 | ISO-Auto down to L64 | `iso_auto_low` |
 | Movie recording limit 9 hours | `rec_limit` |

@@ -23,9 +23,11 @@ import modcore  # noqa: E402
 
 # id, tool, extra args, title, description, camera status, requires
 MODS = [
-    ("panorama", "patch_aspect.py", ["--stage18"], "Panorama aspect (65:24)",
-     "Replaces the 7:6 aspect with 65:24 'Panorama': menu, live-view frame, AF areas, ORF frame.",
-     "Worked on the camera (1.5 build).", []),
+    ("panorama", "patch_aspect.py", ["--stage18"], "XPAN Aspect (65:24) with XPAN icons",
+     "Adds a 65:24 Panorama aspect (menu, live-view frame, AF areas, ORF frame) with its own "
+     "\"XPAN\" icons in the Super Control Panel.",
+     "Aspect worked on the camera (1.5 build); icons: 1.666 (XPAN in the SCP option lists, "
+     "main SCP cell shows a 17:9 label).", []),
     ("stack_any_lens", "patch_stack_any_lens.py", [], "Focus stacking with any lens",
      "Removes the lens check for in-camera focus stacking (the change in E1399999_Focus_Stack.BIN).",
      "Worked on the camera (1.5 build).", []),
@@ -110,10 +112,6 @@ GENERATED = [
      "mod is enabled, the white border is added there too.",
      "Worked on the camera (1.6 builds 1.664 white border, 1.665 Panorama).", [],
      {"width_pct": {"label": "Border width (% of the short side)", "default": 3, "min": 0.5, "max": 20}}),
-    ("xpan_icon", "XPAN icon for Panorama on the SCP",
-     "Panorama gets its own \"XPAN\" icons in the Super Control Panel (list, highlighted and current-value "
-     "cell) instead of the 16:9 icon. Adds three icons to the camera's icon store.",
-     "Camera 1.666: XPAN in the SCP option lists; the main SCP cell shows a 17:9 label.", ["panorama"], {}),
     ("owner_title", "Owner name and phone in the main menu",
      "The 'Shooting Menu 1' title at the top of the main menu shows your text instead, e.g. your name "
      "and phone number, so a lost or stolen camera can be traced back to you. Up to 36 characters; "
@@ -175,11 +173,13 @@ def main(argv):
         if chain != [bytes(x) for x in merged]:
             sys.exit("merged edit lists differ from the chained tools")
         print("merged edit lists == chained tools")
-    for m in pack["mods"]:                 # edit-list mods that also take build-time options
+    for m in pack["mods"]:                 # edit-list mods that also run a build-time generator
         if m["id"] == "art_gradation":
             m["generator"] = "art_gradation"
             m["options"] = {"curve%d" % i: {"label": "Custom%d curve (in:out points, 0-255)" % i, "default": "",
                                             "text": True, "curve": True} for i in (1, 2)}
+        elif m["id"] == "panorama":         # XPAN icons are part of the one Panorama option
+            m["generator"] = "panorama_icons"
     for mid, title, desc, status, req, opts in GENERATED:
         pack["mods"].append({"id": mid, "title": title, "description": desc, "camera": status, "requires": req,
                              "generator": mid, "options": opts})
