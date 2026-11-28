@@ -4,7 +4,7 @@ Build a custom, unofficial firmware bundle for the Olympus **OM-D E-M1 Mark III*
 
 **Download the latest app:** https://github.com/dfeldt91-blip/E-M1-Miii/releases
 
-> ⚠️ **This is unofficial** Modifying and flashing your camera's firmware is done entirely at your own risk.
+> ⚠️ **This is unofficial.** Modifying and flashing your camera's firmware is done entirely at your own risk.
 
 ## What it does
 
