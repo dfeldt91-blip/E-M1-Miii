@@ -1,5 +1,0 @@
-To load a firmware in IDA, you need to specify the following values as "ROM start address" and "Loading address":
-
-    E-M1 - 0x6DAF1020.
-    E-M5ii, E-M1ii, Pen-F - 0x60021020.
-
